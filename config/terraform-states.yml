@@ -1,0 +1,151 @@
+# Terraform State Configuration
+# 
+# This file defines the Terraform state files to aggregate for infrastructure visualization.
+# All state files must be in the S3 bucket specified by TF_STATE_BUCKET environment variable.
+#
+# Configuration Options:
+#   - name: Human-readable name for the state (displayed in UI)
+#   - key: S3 object key path to the .tfstate file
+#   - description: Optional description of what this state manages
+#   - resource_types: Optional filter to only extract specific resource types
+#   - enabled: Set to false to temporarily exclude a state file (default: true)
+
+# S3 bucket is configured via environment variable:
+# TF_STATE_BUCKET=my-lab-terraform-state
+
+terraform_states:
+  # ------------------------------------------------------------------------------
+  # Core Networking
+  # ------------------------------------------------------------------------------
+  - name: "Networking"
+    key: "lab/networking/terraform.tfstate"
+    description: "VPCs, subnets, route tables, internet gateways, NAT gateways"
+    resource_types:
+      - aws_vpc
+      - aws_subnet
+      - aws_route_table
+      - aws_internet_gateway
+      - aws_nat_gateway
+      - aws_eip
+
+  # ------------------------------------------------------------------------------
+  # Security
+  # ------------------------------------------------------------------------------
+  - name: "Security"
+    key: "lab/security/terraform.tfstate"
+    description: "Security groups, NACLs, IAM roles and policies"
+    resource_types:
+      - aws_security_group
+      - aws_network_acl
+      - aws_iam_role
+      - aws_iam_policy
+
+  # ------------------------------------------------------------------------------
+  # Compute Resources
+  # ------------------------------------------------------------------------------
+  - name: "Compute - Web Tier"
+    key: "lab/compute/web/terraform.tfstate"
+    description: "Web server EC2 instances and related resources"
+    resource_types:
+      - aws_instance
+      - aws_ebs_volume
+      - aws_eip
+
+  - name: "Compute - Application Tier"
+    key: "lab/compute/app/terraform.tfstate"
+    description: "Application server EC2 instances"
+    resource_types:
+      - aws_instance
+      - aws_ebs_volume
+
+  - name: "Compute - Bastion"
+    key: "lab/compute/bastion/terraform.tfstate"
+    description: "Bastion/jump host for SSH access"
+    resource_types:
+      - aws_instance
+
+  # ------------------------------------------------------------------------------
+  # Database Resources
+  # ------------------------------------------------------------------------------
+  - name: "Databases - Primary"
+    key: "lab/databases/primary/terraform.tfstate"
+    description: "Primary RDS instances (PostgreSQL, MySQL)"
+    resource_types:
+      - aws_db_instance
+      - aws_db_subnet_group
+      - aws_db_parameter_group
+
+  - name: "Databases - Analytics"
+    key: "lab/databases/analytics/terraform.tfstate"
+    description: "Analytics and reporting database instances"
+    resource_types:
+      - aws_db_instance
+
+  # ------------------------------------------------------------------------------
+  # Load Balancing
+  # ------------------------------------------------------------------------------
+  - name: "Load Balancers"
+    key: "lab/loadbalancers/terraform.tfstate"
+    description: "Application and Network Load Balancers"
+    enabled: true
+    resource_types:
+      - aws_lb
+      - aws_lb_target_group
+      - aws_lb_listener
+
+  # ------------------------------------------------------------------------------
+  # Shared Services
+  # ------------------------------------------------------------------------------
+  - name: "Shared Services"
+    key: "lab/shared/terraform.tfstate"
+    description: "Shared infrastructure components (S3, SNS, SQS, etc.)"
+    resource_types:
+      - aws_s3_bucket
+      - aws_sns_topic
+      - aws_sqs_queue
+
+  # ------------------------------------------------------------------------------
+  # Example: Disabled State
+  # ------------------------------------------------------------------------------
+  # - name: "Legacy Infrastructure"
+  #   key: "lab/legacy/terraform.tfstate"
+  #   description: "Old infrastructure being decommissioned"
+  #   enabled: false
+
+# ------------------------------------------------------------------------------
+# Global Settings
+# ------------------------------------------------------------------------------
+settings:
+  # How to handle resources that appear in multiple state files
+  # Options: "first" (keep first occurrence), "last" (keep last), "error" (fail)
+  duplicate_handling: "first"
+  
+  # Whether to auto-discover state files matching a pattern (alternative to explicit list)
+  # If enabled, will scan for *.tfstate files under the prefix
+  auto_discovery:
+    enabled: false
+    prefix: "lab/"
+    exclude_patterns:
+      - "*/archive/*"
+      - "*/backup/*"
+  
+  # Resource types to extract (if not specified per-state, extract these by default)
+  # Comment out to extract all resource types
+  default_resource_types:
+    - aws_instance
+    - aws_db_instance
+    # Future expansion:
+    # - aws_vpc
+    # - aws_subnet
+    # - aws_security_group
+    # - aws_lb
+    # - aws_ecs_cluster
+    # - aws_ecs_service
+    # - aws_lambda_function
+
+  # Refresh settings
+  refresh:
+    # Minimum seconds between full refreshes (rate limiting)
+    min_interval_seconds: 30
+    # Timeout for fetching each state file
+    timeout_seconds: 60

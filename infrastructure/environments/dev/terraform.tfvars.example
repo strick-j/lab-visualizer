@@ -1,0 +1,35 @@
+# =============================================================================
+# Development Environment - Example Variables
+# Copy to terraform.tfvars and update with your values
+# =============================================================================
+
+# Project settings
+project_name = "aws-infra-visualizer"
+environment  = "dev"
+aws_region   = "us-east-1"
+
+# Network settings
+vpc_cidr           = "10.0.0.0/16"
+availability_zones = ["us-east-1a", "us-east-1b"]
+enable_nat_gateway = true
+
+# Container settings
+container_port    = 8000
+health_check_path = "/api/health"
+
+# Terraform state bucket to visualize (your existing TF state)
+tf_state_bucket = "your-terraform-state-bucket"
+
+# Domain settings (optional - leave empty to use ALB DNS)
+# domain_name     = "infra.example.com"
+# route53_zone_id = "Z1234567890ABC"
+# certificate_arn = ""  # Leave empty to create new cert
+
+# OIDC/SSO settings (optional - leave empty to disable auth)
+# oidc_issuer        = "https://your-idp.okta.com"
+# oidc_client_id     = "0oa..."
+# oidc_client_secret = "..."
+
+# Application settings
+log_level = "DEBUG"
+debug     = true

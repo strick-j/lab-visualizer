@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  # ===========================================================================
+  # Backend API
+  # ===========================================================================
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - AWS_REGION=${AWS_REGION:-us-east-1}
+      - AWS_ACCOUNT_ID=${AWS_ACCOUNT_ID}
+      - TF_STATE_BUCKET=${TF_STATE_BUCKET}
+      - TF_STATE_CONFIG=/app/config/terraform-states.yml
+      - DATABASE_URL=sqlite:///./data/app.db
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - DEBUG=${DEBUG:-true}
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000,http://localhost:5173}
+      - SESSION_SECRET=${SESSION_SECRET:-dev-secret-change-in-production}
+      - OIDC_ISSUER=${OIDC_ISSUER:-}
+      - OIDC_CLIENT_ID=${OIDC_CLIENT_ID:-}
+      - OIDC_CLIENT_SECRET=${OIDC_CLIENT_SECRET:-}
+    volumes:
+      - ./backend/app:/app/app:ro
+      - ./config:/app/config:ro
+      - backend-data:/app/data
+      # Mount AWS credentials for local development
+      - ~/.aws:/root/.aws:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # ===========================================================================
+  # Frontend (Development Server)
+  # ===========================================================================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    ports:
+      - "3000:3000"
+    environment:
+      - VITE_API_URL=http://localhost:8000
+    volumes:
+      - ./frontend/src:/app/src:ro
+      - ./frontend/public:/app/public:ro
+    depends_on:
+      - backend
+
+volumes:
+  backend-data:

@@ -1,0 +1,114 @@
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+  getStatusSummary,
+  getEC2Instances,
+  getEC2Instance,
+  getRDSInstances,
+  getRDSInstance,
+  refreshData,
+  getTerraformStates,
+  getDrift,
+} from '@/api';
+import type { ResourceFilters } from '@/types';
+
+// =============================================================================
+// Query Keys
+// =============================================================================
+
+export const queryKeys = {
+  statusSummary: ['status-summary'] as const,
+  ec2Instances: (filters?: ResourceFilters) => ['ec2-instances', filters] as const,
+  ec2Instance: (id: string) => ['ec2-instance', id] as const,
+  rdsInstances: (filters?: ResourceFilters) => ['rds-instances', filters] as const,
+  rdsInstance: (id: string) => ['rds-instance', id] as const,
+  terraformStates: ['terraform-states'] as const,
+  drift: ['drift'] as const,
+};
+
+// =============================================================================
+// Status Summary
+// =============================================================================
+
+export function useStatusSummary() {
+  return useQuery({
+    queryKey: queryKeys.statusSummary,
+    queryFn: getStatusSummary,
+    refetchInterval: 60000, // Refresh every minute
+  });
+}
+
+// =============================================================================
+// EC2 Instances
+// =============================================================================
+
+export function useEC2Instances(filters?: ResourceFilters) {
+  return useQuery({
+    queryKey: queryKeys.ec2Instances(filters),
+    queryFn: () => getEC2Instances(filters),
+  });
+}
+
+export function useEC2Instance(instanceId: string) {
+  return useQuery({
+    queryKey: queryKeys.ec2Instance(instanceId),
+    queryFn: () => getEC2Instance(instanceId),
+    enabled: !!instanceId,
+  });
+}
+
+// =============================================================================
+// RDS Instances
+// =============================================================================
+
+export function useRDSInstances(filters?: ResourceFilters) {
+  return useQuery({
+    queryKey: queryKeys.rdsInstances(filters),
+    queryFn: () => getRDSInstances(filters),
+  });
+}
+
+export function useRDSInstance(dbIdentifier: string) {
+  return useQuery({
+    queryKey: queryKeys.rdsInstance(dbIdentifier),
+    queryFn: () => getRDSInstance(dbIdentifier),
+    enabled: !!dbIdentifier,
+  });
+}
+
+// =============================================================================
+// Refresh
+// =============================================================================
+
+export function useRefreshData() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (force = false) => refreshData(force),
+    onSuccess: () => {
+      // Invalidate all resource queries after refresh
+      queryClient.invalidateQueries({ queryKey: ['status-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['ec2-instances'] });
+      queryClient.invalidateQueries({ queryKey: ['rds-instances'] });
+      queryClient.invalidateQueries({ queryKey: ['terraform-states'] });
+      queryClient.invalidateQueries({ queryKey: ['drift'] });
+    },
+  });
+}
+
+// =============================================================================
+// Terraform
+// =============================================================================
+
+export function useTerraformStates() {
+  return useQuery({
+    queryKey: queryKeys.terraformStates,
+    queryFn: getTerraformStates,
+  });
+}
+
+export function useDrift() {
+  return useQuery({
+    queryKey: queryKeys.drift,
+    queryFn: getDrift,
+  });
+}

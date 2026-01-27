@@ -1,0 +1,140 @@
+# =============================================================================
+# Development Environment - Variables
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Project Configuration
+# -----------------------------------------------------------------------------
+
+variable "project_name" {
+  description = "Name of the project"
+  type        = string
+  default     = "aws-infra-visualizer"
+}
+
+variable "environment" {
+  description = "Environment name"
+  type        = string
+  default     = "dev"
+}
+
+variable "aws_region" {
+  description = "AWS region"
+  type        = string
+  default     = "us-east-1"
+}
+
+# -----------------------------------------------------------------------------
+# Network Configuration
+# -----------------------------------------------------------------------------
+
+variable "vpc_cidr" {
+  description = "CIDR block for VPC"
+  type        = string
+  default     = "10.0.0.0/16"
+}
+
+variable "availability_zones" {
+  description = "List of availability zones"
+  type        = list(string)
+  default     = ["us-east-1a", "us-east-1b"]
+}
+
+variable "enable_nat_gateway" {
+  description = "Enable NAT Gateway for private subnets"
+  type        = bool
+  default     = true
+}
+
+# -----------------------------------------------------------------------------
+# Container Configuration
+# -----------------------------------------------------------------------------
+
+variable "container_image" {
+  description = "Docker image for the container (leave empty to use ECR)"
+  type        = string
+  default     = ""
+}
+
+variable "container_port" {
+  description = "Port the container listens on"
+  type        = number
+  default     = 8000
+}
+
+variable "health_check_path" {
+  description = "Path for health checks"
+  type        = string
+  default     = "/api/health"
+}
+
+# -----------------------------------------------------------------------------
+# Domain Configuration (Optional)
+# -----------------------------------------------------------------------------
+
+variable "domain_name" {
+  description = "Domain name for the application (leave empty for ALB DNS)"
+  type        = string
+  default     = ""
+}
+
+variable "route53_zone_id" {
+  description = "Route53 hosted zone ID"
+  type        = string
+  default     = ""
+}
+
+variable "certificate_arn" {
+  description = "ARN of existing ACM certificate"
+  type        = string
+  default     = ""
+}
+
+# -----------------------------------------------------------------------------
+# Terraform State Configuration
+# -----------------------------------------------------------------------------
+
+variable "tf_state_bucket" {
+  description = "S3 bucket containing Terraform state files to visualize"
+  type        = string
+  default     = ""
+}
+
+# -----------------------------------------------------------------------------
+# Authentication (OIDC)
+# -----------------------------------------------------------------------------
+
+variable "oidc_issuer" {
+  description = "OIDC identity provider issuer URL"
+  type        = string
+  default     = ""
+}
+
+variable "oidc_client_id" {
+  description = "OIDC client ID"
+  type        = string
+  default     = ""
+}
+
+variable "oidc_client_secret" {
+  description = "OIDC client secret"
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+# -----------------------------------------------------------------------------
+# Application Configuration
+# -----------------------------------------------------------------------------
+
+variable "log_level" {
+  description = "Application log level"
+  type        = string
+  default     = "DEBUG"
+}
+
+variable "debug" {
+  description = "Enable debug mode"
+  type        = bool
+  default     = true
+}
