@@ -30,6 +30,12 @@ help:
 	@echo "  frontend-dev     Start frontend dev server"
 	@echo "  frontend-test    Run frontend tests"
 	@echo "  frontend-lint    Lint frontend code"
+	@echo ""
+	@echo "Database:"
+	@echo "  db-init      Initialize database and create tables"
+	@echo "  db-reset     Reset database (drops all data)"
+	@echo "  db-seed      Seed database with sample data"
+	@echo "  db-setup     Initialize and seed database"
 
 # =============================================================================
 # Combined Commands
@@ -121,6 +127,25 @@ frontend-format:
 
 frontend-build:
 	cd frontend && npm run build
+
+# =============================================================================
+# Database Commands
+# =============================================================================
+
+db-init:
+	@echo "Initializing database..."
+	cd backend && python -m scripts.init_db
+
+db-reset:
+	@echo "Resetting database..."
+	cd backend && python -m scripts.reset_db
+
+db-seed:
+	@echo "Seeding database with sample data..."
+	cd backend && python -m scripts.seed_db
+
+db-setup: db-init db-seed
+	@echo "Database setup complete"
 
 # =============================================================================
 # Infrastructure Commands
