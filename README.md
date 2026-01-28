@@ -64,12 +64,20 @@ A web application that provides visual representation of AWS infrastructure stat
    # Edit .env with your AWS and SSO configuration
    ```
 
-3. **Start with Docker Compose**
+3. **Initialize frontend dependencies**
+   ```bash
+   cd frontend
+   npm install
+   cd ..
+   ```
+   > **Note**: This step is required to generate the `package-lock.json` file, which is needed for the Docker build process.
+
+4. **Start with Docker Compose**
    ```bash
    docker-compose up -d
    ```
 
-4. **Access the application**
+5. **Access the application**
    - Frontend: http://localhost:3000
    - API: http://localhost:8000
    - API Docs: http://localhost:8000/docs
