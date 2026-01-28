@@ -6,9 +6,9 @@ import type { TerraformStateInfo, DriftItem } from '@/types';
 
 function StateFileCard({ state }: { state: TerraformStateInfo }) {
   const statusColors = {
-    synced: 'text-green-600 bg-green-50',
-    error: 'text-red-600 bg-red-50',
-    unknown: 'text-gray-600 bg-gray-50',
+    synced: 'text-green-600 bg-green-50 dark:text-green-400 dark:bg-green-900/30',
+    error: 'text-red-600 bg-red-50 dark:text-red-400 dark:bg-red-900/30',
+    unknown: 'text-gray-600 bg-gray-50 dark:text-gray-400 dark:bg-gray-700',
   };
 
   const statusIcons = {
@@ -21,25 +21,25 @@ function StateFileCard({ state }: { state: TerraformStateInfo }) {
   const StatusIcon = statusIcons[state.status as keyof typeof statusIcons] || statusIcons.unknown;
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-4">
+    <div className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-3">
           <div className={cn('rounded-lg p-2', statusConfig)}>
             {StatusIcon}
           </div>
           <div>
-            <h4 className="font-medium text-gray-900">{state.name}</h4>
-            <p className="text-sm text-gray-500">{state.key}</p>
+            <h4 className="font-medium text-gray-900 dark:text-gray-100">{state.name}</h4>
+            <p className="text-sm text-gray-500 dark:text-gray-400">{state.key}</p>
           </div>
         </div>
-        <span className="rounded-full bg-purple-100 px-2.5 py-0.5 text-sm font-medium text-purple-700">
+        <span className="rounded-full bg-purple-100 px-2.5 py-0.5 text-sm font-medium text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
           {state.resource_count} resources
         </span>
       </div>
       {state.description && (
-        <p className="mt-2 text-sm text-gray-600">{state.description}</p>
+        <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">{state.description}</p>
       )}
-      <p className="mt-2 text-xs text-gray-400">
+      <p className="mt-2 text-xs text-gray-400 dark:text-gray-500">
         Last modified: {formatRelativeTime(state.last_modified)}
       </p>
     </div>
@@ -49,17 +49,17 @@ function StateFileCard({ state }: { state: TerraformStateInfo }) {
 function DriftItemCard({ item }: { item: DriftItem }) {
   const driftConfig = {
     unmanaged: {
-      color: 'text-amber-700 bg-amber-50 border-amber-200',
+      color: 'text-amber-700 bg-amber-50 border-amber-200 dark:text-amber-300 dark:bg-amber-900/30 dark:border-amber-800',
       icon: <AlertTriangle className="h-4 w-4" />,
       label: 'Unmanaged',
     },
     orphaned: {
-      color: 'text-red-700 bg-red-50 border-red-200',
+      color: 'text-red-700 bg-red-50 border-red-200 dark:text-red-300 dark:bg-red-900/30 dark:border-red-800',
       icon: <XCircle className="h-4 w-4" />,
       label: 'Orphaned',
     },
     modified: {
-      color: 'text-blue-700 bg-blue-50 border-blue-200',
+      color: 'text-blue-700 bg-blue-50 border-blue-200 dark:text-blue-300 dark:bg-blue-900/30 dark:border-blue-800',
       icon: <FileText className="h-4 w-4" />,
       label: 'Modified',
     },
@@ -74,7 +74,7 @@ function DriftItemCard({ item }: { item: DriftItem }) {
         <div className="flex-1">
           <div className="flex items-center gap-2">
             <span className="font-medium">{item.resource_id}</span>
-            <span className="rounded bg-white/50 px-1.5 py-0.5 text-xs">
+            <span className="rounded bg-white/50 px-1.5 py-0.5 text-xs dark:bg-gray-800/50">
               {config.label}
             </span>
           </div>
@@ -109,8 +109,8 @@ export function TerraformPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Terraform</h1>
-        <p className="text-gray-500">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Terraform</h1>
+        <p className="text-gray-500 dark:text-gray-400">
           Manage and monitor your Terraform state files
         </p>
       </div>
@@ -123,8 +123,8 @@ export function TerraformPage() {
               <FileText className="h-6 w-6 text-purple-600" />
             </div>
             <div>
-              <p className="text-sm text-gray-500">State Files</p>
-              <p className="text-2xl font-bold text-gray-900">
+              <p className="text-sm text-gray-500 dark:text-gray-400">State Files</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
                 {statesData?.states.length || 0}
               </p>
             </div>
@@ -137,8 +137,8 @@ export function TerraformPage() {
               <CheckCircle className="h-6 w-6 text-green-600" />
             </div>
             <div>
-              <p className="text-sm text-gray-500">Managed Resources</p>
-              <p className="text-2xl font-bold text-gray-900">
+              <p className="text-sm text-gray-500 dark:text-gray-400">Managed Resources</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
                 {statesData?.total_tf_managed_resources || 0}
               </p>
             </div>
@@ -158,8 +158,8 @@ export function TerraformPage() {
               )}
             </div>
             <div>
-              <p className="text-sm text-gray-500">Drift Items</p>
-              <p className="text-2xl font-bold text-gray-900">
+              <p className="text-sm text-gray-500 dark:text-gray-400">Drift Items</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
                 {driftData?.items.length || 0}
               </p>
             </div>
@@ -174,7 +174,7 @@ export function TerraformPage() {
         </CardHeader>
         <CardContent>
           {statesData?.states.length === 0 ? (
-            <p className="text-center text-gray-500 py-4">
+            <p className="text-center text-gray-500 py-4 dark:text-gray-400">
               No state files configured
             </p>
           ) : (
@@ -202,11 +202,11 @@ export function TerraformPage() {
         </CardHeader>
         <CardContent>
           {!driftData ? (
-            <p className="text-center text-gray-500 py-4">
+            <p className="text-center text-gray-500 py-4 dark:text-gray-400">
               Click "Check Drift" to detect configuration drift
             </p>
           ) : driftData.items.length === 0 ? (
-            <div className="flex items-center justify-center gap-2 py-8 text-green-600">
+            <div className="flex items-center justify-center gap-2 py-8 text-green-600 dark:text-green-400">
               <CheckCircle className="h-6 w-6" />
               <span className="text-lg font-medium">No drift detected</span>
             </div>
@@ -218,7 +218,7 @@ export function TerraformPage() {
             </div>
           )}
           {driftData && (
-            <p className="mt-4 text-center text-sm text-gray-400">
+            <p className="mt-4 text-center text-sm text-gray-400 dark:text-gray-500">
               Last checked: {formatRelativeTime(driftData.checked_at)}
             </p>
           )}

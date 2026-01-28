@@ -16,8 +16,8 @@ export function Loading({ size = 'md', className, text }: LoadingProps) {
 
   return (
     <div className={cn('flex flex-col items-center justify-center gap-3', className)}>
-      <Loader2 className={cn('animate-spin text-blue-600', sizes[size])} />
-      {text && <p className="text-sm text-gray-500">{text}</p>}
+      <Loader2 className={cn('animate-spin text-blue-600 dark:text-blue-400', sizes[size])} />
+      {text && <p className="text-sm text-gray-500 dark:text-gray-400">{text}</p>}
     </div>
   );
 }

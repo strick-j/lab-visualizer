@@ -1,5 +1,6 @@
 import { RefreshCw } from 'lucide-react';
 import { Button } from '@/components/common';
+import { ThemeToggle } from '@/components/common/ThemeToggle';
 import { useRefreshData, useStatusSummary } from '@/hooks';
 import { formatRelativeTime } from '@/lib/utils';
 
@@ -12,7 +13,7 @@ export function Header() {
   };
 
   return (
-    <header className="sticky top-0 z-10 border-b border-gray-200 bg-white">
+    <header className="sticky top-0 z-10 border-b border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         <div className="flex items-center gap-3">
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-aws-squid">
@@ -21,16 +22,17 @@ export function Header() {
             </svg>
           </div>
           <div>
-            <h1 className="text-lg font-semibold text-gray-900">
+            <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
               AWS Infrastructure Visualizer
             </h1>
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-gray-500 dark:text-gray-400">
               Last updated: {formatRelativeTime(summary?.last_refreshed)}
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-4">
+          <ThemeToggle />
           <Button
             variant="outline"
             size="sm"

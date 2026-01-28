@@ -5,7 +5,7 @@
 /* Custom base styles */
 @layer base {
   body {
-    @apply antialiased;
+    @apply antialiased bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-gray-100;
   }
 }
 
@@ -35,8 +35,16 @@
     background-color: #d1d5db;
     border-radius: 3px;
   }
-  
+
   .scrollbar-thin::-webkit-scrollbar-thumb:hover {
     background-color: #9ca3af;
+  }
+
+  .dark .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: #4b5563;
+  }
+
+  .dark .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background-color: #6b7280;
   }
 }
