@@ -17,7 +17,7 @@ const navigation = [
 
 export function Sidebar() {
   return (
-    <aside className="fixed left-0 top-16 z-10 h-[calc(100vh-4rem)] w-64 border-r border-gray-200 bg-white">
+    <aside className="fixed left-0 top-16 z-10 h-[calc(100vh-4rem)] w-64 border-r border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
       <nav className="flex flex-col gap-1 p-4">
         {navigation.map((item) => (
           <NavLink
@@ -27,8 +27,8 @@ export function Sidebar() {
               cn(
                 'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
                 isActive
-                  ? 'bg-blue-50 text-blue-700'
-                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                  ? 'bg-blue-50 text-blue-700 dark:bg-gray-700 dark:text-white'
+                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white'
               )
             }
           >
@@ -38,15 +38,15 @@ export function Sidebar() {
         ))}
       </nav>
 
-      <div className="absolute bottom-0 left-0 right-0 border-t border-gray-200 p-4">
+      <div className="absolute bottom-0 left-0 right-0 border-t border-gray-200 p-4 dark:border-gray-700">
         <NavLink
           to="/settings"
           className={({ isActive }) =>
             cn(
               'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
               isActive
-                ? 'bg-blue-50 text-blue-700'
-                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                ? 'bg-blue-50 text-blue-700 dark:bg-gray-700 dark:text-white'
+                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white'
             )
           }
         >

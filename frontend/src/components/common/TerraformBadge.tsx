@@ -11,8 +11,8 @@ export function TerraformBadge({ managed, className }: TerraformBadgeProps) {
       className={cn(
         'inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs font-medium',
         managed
-          ? 'bg-purple-100 text-purple-700'
-          : 'bg-gray-100 text-gray-600',
+          ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300'
+          : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400',
         className
       )}
     >

@@ -83,7 +83,7 @@ export function useRefreshData() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (force = false) => refreshData(force),
+    mutationFn: (force?: boolean) => refreshData(force),
     onSuccess: () => {
       // Invalidate all resource queries after refresh
       queryClient.invalidateQueries({ queryKey: ['status-summary'] });

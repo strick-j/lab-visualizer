@@ -45,33 +45,33 @@ export const statusConfig: Record<
 > = {
   active: {
     label: 'Active',
-    color: 'text-green-700',
-    bgColor: 'bg-green-50',
+    color: 'text-green-700 dark:text-green-300',
+    bgColor: 'bg-green-50 dark:bg-green-900/30',
     dotColor: 'bg-green-500',
   },
   inactive: {
     label: 'Inactive',
-    color: 'text-gray-700',
-    bgColor: 'bg-gray-50',
-    dotColor: 'bg-gray-400',
+    color: 'text-gray-700 dark:text-gray-300',
+    bgColor: 'bg-gray-50 dark:bg-gray-700',
+    dotColor: 'bg-gray-400 dark:bg-gray-500',
   },
   transitioning: {
     label: 'Transitioning',
-    color: 'text-yellow-700',
-    bgColor: 'bg-yellow-50',
+    color: 'text-yellow-700 dark:text-yellow-300',
+    bgColor: 'bg-yellow-50 dark:bg-yellow-900/30',
     dotColor: 'bg-yellow-500',
   },
   error: {
     label: 'Error',
-    color: 'text-red-700',
-    bgColor: 'bg-red-50',
+    color: 'text-red-700 dark:text-red-300',
+    bgColor: 'bg-red-50 dark:bg-red-900/30',
     dotColor: 'bg-red-500',
   },
   unknown: {
     label: 'Unknown',
-    color: 'text-gray-500',
-    bgColor: 'bg-gray-50',
-    dotColor: 'bg-gray-300',
+    color: 'text-gray-500 dark:text-gray-400',
+    bgColor: 'bg-gray-50 dark:bg-gray-700',
+    dotColor: 'bg-gray-300 dark:bg-gray-500',
   },
 };
 
