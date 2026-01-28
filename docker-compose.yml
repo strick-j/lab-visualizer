@@ -27,8 +27,8 @@ services:
       - ./backend/app:/app/app:ro
       - ./config:/app/config:ro
       - backend-data:/app/data
-      # Mount AWS credentials for local development
-      - ~/.aws:/root/.aws:ro
+      # Mount AWS credentials for local development (appuser's home)
+      - ~/.aws:/home/appuser/.aws:ro
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
       interval: 30s
@@ -46,10 +46,13 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - VITE_API_URL=http://localhost:8000
+      - VITE_PROXY_TARGET=http://backend:8000
+      # Don't set VITE_API_URL - let it default to '/api' for relative URLs
     volumes:
       - ./frontend/src:/app/src:ro
       - ./frontend/public:/app/public:ro
+      - ./frontend/vite.config.ts:/app/vite.config.ts:ro
+      - ./frontend/package.json:/app/package.json:ro
     depends_on:
       - backend
 
