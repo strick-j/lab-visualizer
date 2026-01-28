@@ -34,10 +34,10 @@ export function RDSListPage() {
       header: 'Name',
       render: (instance: RDSInstance) => (
         <div>
-          <p className="font-medium text-gray-900">
+          <p className="font-medium text-gray-900 dark:text-gray-100">
             {getResourceName(instance.name, instance.db_instance_identifier)}
           </p>
-          <p className="text-xs text-gray-500">{instance.db_instance_identifier}</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400">{instance.db_instance_identifier}</p>
         </div>
       ),
     },
@@ -53,8 +53,8 @@ export function RDSListPage() {
       header: 'Engine',
       render: (instance: RDSInstance) => (
         <div>
-          <p className="text-gray-700">{instance.engine}</p>
-          <p className="text-xs text-gray-500">{instance.engine_version}</p>
+          <p className="text-gray-700 dark:text-gray-300">{instance.engine}</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400">{instance.engine_version}</p>
         </div>
       ),
     },
@@ -62,21 +62,21 @@ export function RDSListPage() {
       key: 'class',
       header: 'Class',
       render: (instance: RDSInstance) => (
-        <span className="text-gray-700">{instance.db_instance_class}</span>
+        <span className="text-gray-700 dark:text-gray-300">{instance.db_instance_class}</span>
       ),
     },
     {
       key: 'storage',
       header: 'Storage',
       render: (instance: RDSInstance) => (
-        <span className="text-gray-700">{instance.allocated_storage} GB</span>
+        <span className="text-gray-700 dark:text-gray-300">{instance.allocated_storage} GB</span>
       ),
     },
     {
       key: 'multiaz',
       header: 'Multi-AZ',
       render: (instance: RDSInstance) => (
-        <span className={instance.multi_az ? 'text-green-600' : 'text-gray-400'}>
+        <span className={instance.multi_az ? 'text-green-600 dark:text-green-400' : 'text-gray-400 dark:text-gray-500'}>
           {instance.multi_az ? 'Yes' : 'No'}
         </span>
       ),
@@ -92,7 +92,7 @@ export function RDSListPage() {
       key: 'updated',
       header: 'Updated',
       render: (instance: RDSInstance) => (
-        <span className="text-gray-500 text-sm">
+        <span className="text-sm text-gray-500 dark:text-gray-400">
           {formatRelativeTime(instance.updated_at)}
         </span>
       ),
@@ -116,8 +116,8 @@ export function RDSListPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">RDS Databases</h1>
-        <p className="text-gray-500">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">RDS Databases</h1>
+        <p className="text-gray-500 dark:text-gray-400">
           {data?.meta.total || 0} databases found
         </p>
       </div>

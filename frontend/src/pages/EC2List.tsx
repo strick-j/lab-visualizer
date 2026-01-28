@@ -34,10 +34,10 @@ export function EC2ListPage() {
       header: 'Name',
       render: (instance: EC2Instance) => (
         <div>
-          <p className="font-medium text-gray-900">
+          <p className="font-medium text-gray-900 dark:text-gray-100">
             {getResourceName(instance.name, instance.instance_id)}
           </p>
-          <p className="text-xs text-gray-500">{instance.instance_id}</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400">{instance.instance_id}</p>
         </div>
       ),
     },
@@ -52,19 +52,19 @@ export function EC2ListPage() {
       key: 'type',
       header: 'Type',
       render: (instance: EC2Instance) => (
-        <span className="text-gray-700">{instance.instance_type}</span>
+        <span className="text-gray-700 dark:text-gray-300">{instance.instance_type}</span>
       ),
     },
     {
       key: 'ip',
       header: 'IP Address',
       render: (instance: EC2Instance) => (
-        <div className="text-gray-700">
+        <div className="text-gray-700 dark:text-gray-300">
           {instance.private_ip && (
             <p className="text-sm">{instance.private_ip}</p>
           )}
           {instance.public_ip && (
-            <p className="text-xs text-gray-500">{instance.public_ip}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">{instance.public_ip}</p>
           )}
           {!instance.private_ip && !instance.public_ip && '-'}
         </div>
@@ -74,7 +74,7 @@ export function EC2ListPage() {
       key: 'az',
       header: 'AZ',
       render: (instance: EC2Instance) => (
-        <span className="text-gray-700">{instance.availability_zone || '-'}</span>
+        <span className="text-gray-700 dark:text-gray-300">{instance.availability_zone || '-'}</span>
       ),
     },
     {
@@ -88,7 +88,7 @@ export function EC2ListPage() {
       key: 'updated',
       header: 'Updated',
       render: (instance: EC2Instance) => (
-        <span className="text-gray-500 text-sm">
+        <span className="text-sm text-gray-500 dark:text-gray-400">
           {formatRelativeTime(instance.updated_at)}
         </span>
       ),
@@ -112,8 +112,8 @@ export function EC2ListPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">EC2 Instances</h1>
-        <p className="text-gray-500">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">EC2 Instances</h1>
+        <p className="text-gray-500 dark:text-gray-400">
           {data?.meta.total || 0} instances found
         </p>
       </div>
