@@ -22,8 +22,8 @@ export function DashboardPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-gray-500">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Dashboard</h1>
+        <p className="text-gray-500 dark:text-gray-400">
           Overview of your AWS infrastructure
         </p>
       </div>
@@ -51,21 +51,21 @@ export function DashboardPage() {
               </CardHeader>
               <CardContent>
                 {drift?.drift_detected ? (
-                  <div className="flex items-center gap-2 text-amber-600">
+                  <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400">
                     <AlertTriangle className="h-5 w-5" />
                     <span className="font-medium">
                       {drift.items.length} drift item(s) detected
                     </span>
                   </div>
                 ) : (
-                  <div className="flex items-center gap-2 text-green-600">
+                  <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
                     <CheckCircle className="h-5 w-5" />
                     <span className="font-medium">No drift detected</span>
                   </div>
                 )}
                 <Link
                   to="/terraform"
-                  className="mt-2 block text-sm text-blue-600 hover:text-blue-700"
+                  className="mt-2 block text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
                 >
                   View Terraform details →
                 </Link>
@@ -83,16 +83,16 @@ export function DashboardPage() {
             <CardTitle>Recent EC2 Instances</CardTitle>
             <Link
               to="/ec2"
-              className="text-sm text-blue-600 hover:text-blue-700"
+              className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
             >
               View all →
             </Link>
           </CardHeader>
           <CardContent>
             {ec2Loading ? (
-              <div className="py-4 text-center text-gray-500">Loading...</div>
+              <div className="py-4 text-center text-gray-500 dark:text-gray-400">Loading...</div>
             ) : recentEC2.length === 0 ? (
-              <div className="py-4 text-center text-gray-500">
+              <div className="py-4 text-center text-gray-500 dark:text-gray-400">
                 No EC2 instances found
               </div>
             ) : (
@@ -101,13 +101,13 @@ export function DashboardPage() {
                   <Link
                     key={instance.instance_id}
                     to={`/ec2?selected=${instance.instance_id}`}
-                    className="flex items-center justify-between rounded-lg px-3 py-2 hover:bg-gray-50"
+                    className="flex items-center justify-between rounded-lg px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-700"
                   >
                     <div>
-                      <p className="font-medium text-gray-900">
+                      <p className="font-medium text-gray-900 dark:text-gray-100">
                         {getResourceName(instance.name, instance.instance_id)}
                       </p>
-                      <p className="text-sm text-gray-500">
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
                         {instance.instance_type}
                       </p>
                     </div>
@@ -125,16 +125,16 @@ export function DashboardPage() {
             <CardTitle>Recent RDS Databases</CardTitle>
             <Link
               to="/rds"
-              className="text-sm text-blue-600 hover:text-blue-700"
+              className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
             >
               View all →
             </Link>
           </CardHeader>
           <CardContent>
             {rdsLoading ? (
-              <div className="py-4 text-center text-gray-500">Loading...</div>
+              <div className="py-4 text-center text-gray-500 dark:text-gray-400">Loading...</div>
             ) : recentRDS.length === 0 ? (
-              <div className="py-4 text-center text-gray-500">
+              <div className="py-4 text-center text-gray-500 dark:text-gray-400">
                 No RDS instances found
               </div>
             ) : (
@@ -143,13 +143,13 @@ export function DashboardPage() {
                   <Link
                     key={instance.db_instance_identifier}
                     to={`/rds?selected=${instance.db_instance_identifier}`}
-                    className="flex items-center justify-between rounded-lg px-3 py-2 hover:bg-gray-50"
+                    className="flex items-center justify-between rounded-lg px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-700"
                   >
                     <div>
-                      <p className="font-medium text-gray-900">
+                      <p className="font-medium text-gray-900 dark:text-gray-100">
                         {getResourceName(instance.name, instance.db_instance_identifier)}
                       </p>
-                      <p className="text-sm text-gray-500">
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
                         {instance.engine} {instance.engine_version}
                       </p>
                     </div>
@@ -164,7 +164,7 @@ export function DashboardPage() {
 
       {/* Last Updated */}
       {summary?.last_refreshed && (
-        <p className="text-center text-sm text-gray-500">
+        <p className="text-center text-sm text-gray-500 dark:text-gray-400">
           Data last refreshed {formatRelativeTime(summary.last_refreshed)}
         </p>
       )}
