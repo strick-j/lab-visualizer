@@ -72,7 +72,7 @@ async def get_status_summary(db: AsyncSession = Depends(get_db)):
 
 
 async def _get_ec2_counts(db: AsyncSession) -> ResourceCount:
-    """Get EC2 instance counts by display status."""
+    """Get EC2 instance counts by display status, excluding deleted instances."""
     # Map EC2 states to display statuses
     state_mapping = {
         "active": ["running"],
@@ -85,7 +85,10 @@ async def _get_ec2_counts(db: AsyncSession) -> ResourceCount:
 
     for display_status, states in state_mapping.items():
         result = await db.execute(
-            select(func.count(EC2Instance.id)).where(EC2Instance.state.in_(states))
+            select(func.count(EC2Instance.id)).where(
+                EC2Instance.state.in_(states),
+                EC2Instance.is_deleted == False
+            )
         )
         counts[display_status] = result.scalar_one()
 
@@ -94,7 +97,7 @@ async def _get_ec2_counts(db: AsyncSession) -> ResourceCount:
 
 
 async def _get_rds_counts(db: AsyncSession) -> ResourceCount:
-    """Get RDS instance counts by display status."""
+    """Get RDS instance counts by display status, excluding deleted instances."""
     # Map RDS statuses to display statuses
     status_mapping = {
         "active": ["available"],
@@ -107,7 +110,10 @@ async def _get_rds_counts(db: AsyncSession) -> ResourceCount:
 
     for display_status, statuses in status_mapping.items():
         result = await db.execute(
-            select(func.count(RDSInstance.id)).where(RDSInstance.status.in_(statuses))
+            select(func.count(RDSInstance.id)).where(
+                RDSInstance.status.in_(statuses),
+                RDSInstance.is_deleted == False
+            )
         )
         counts[display_status] = result.scalar_one()
 
@@ -188,11 +194,21 @@ async def _get_or_create_region(db: AsyncSession, region_name: str) -> Region:
 async def _sync_ec2_instances(
     db: AsyncSession, instances: list, region_id: int
 ) -> int:
-    """Sync EC2 instances to database."""
+    """Sync EC2 instances to database, marking deleted ones."""
     count = 0
+
+    # Get all existing instance IDs for this region
+    result = await db.execute(
+        select(EC2Instance.instance_id).where(EC2Instance.region_id == region_id)
+    )
+    existing_ids = set(row[0] for row in result.all())
+
+    # Track which instances we see from AWS
+    seen_ids = set()
 
     for instance_data in instances:
         instance_id = instance_data["instance_id"]
+        seen_ids.add(instance_id)
 
         # Check if instance exists
         result = await db.execute(
@@ -201,7 +217,7 @@ async def _sync_ec2_instances(
         existing = result.scalar_one_or_none()
 
         if existing:
-            # Update existing instance
+            # Update existing instance and mark as not deleted
             existing.name = instance_data.get("name")
             existing.instance_type = instance_data["instance_type"]
             existing.state = instance_data["state"]
@@ -212,6 +228,8 @@ async def _sync_ec2_instances(
             existing.availability_zone = instance_data.get("availability_zone")
             existing.launch_time = instance_data.get("launch_time")
             existing.tags = json.dumps(instance_data.get("tags", {}))
+            existing.is_deleted = False
+            existing.deleted_at = None
         else:
             # Create new instance
             new_instance = EC2Instance(
@@ -227,10 +245,26 @@ async def _sync_ec2_instances(
                 availability_zone=instance_data.get("availability_zone"),
                 launch_time=instance_data.get("launch_time"),
                 tags=json.dumps(instance_data.get("tags", {})),
+                is_deleted=False,
             )
             db.add(new_instance)
 
         count += 1
+
+    # Mark instances that weren't in AWS response as deleted
+    deleted_ids = existing_ids - seen_ids
+    if deleted_ids:
+        result = await db.execute(
+            select(EC2Instance).where(
+                EC2Instance.instance_id.in_(deleted_ids),
+                EC2Instance.region_id == region_id
+            )
+        )
+        for instance in result.scalars():
+            if not instance.is_deleted:
+                instance.is_deleted = True
+                instance.deleted_at = datetime.now(timezone.utc)
+                logger.info(f"Marked EC2 instance as deleted: {instance.instance_id}")
 
     await db.flush()
     return count
@@ -239,11 +273,21 @@ async def _sync_ec2_instances(
 async def _sync_rds_instances(
     db: AsyncSession, instances: list, region_id: int
 ) -> int:
-    """Sync RDS instances to database."""
+    """Sync RDS instances to database, marking deleted ones."""
     count = 0
+
+    # Get all existing instance identifiers for this region
+    result = await db.execute(
+        select(RDSInstance.db_instance_identifier).where(RDSInstance.region_id == region_id)
+    )
+    existing_ids = set(row[0] for row in result.all())
+
+    # Track which instances we see from AWS
+    seen_ids = set()
 
     for instance_data in instances:
         db_identifier = instance_data["db_instance_identifier"]
+        seen_ids.add(db_identifier)
 
         # Check if instance exists
         result = await db.execute(
@@ -254,7 +298,7 @@ async def _sync_rds_instances(
         existing = result.scalar_one_or_none()
 
         if existing:
-            # Update existing instance
+            # Update existing instance and mark as not deleted
             existing.name = instance_data.get("name")
             existing.db_instance_class = instance_data["db_instance_class"]
             existing.status = instance_data["status"]
@@ -267,6 +311,8 @@ async def _sync_rds_instances(
             existing.availability_zone = instance_data.get("availability_zone")
             existing.multi_az = instance_data.get("multi_az", False)
             existing.tags = json.dumps(instance_data.get("tags", {}))
+            existing.is_deleted = False
+            existing.deleted_at = None
         else:
             # Create new instance
             new_instance = RDSInstance(
@@ -284,10 +330,26 @@ async def _sync_rds_instances(
                 availability_zone=instance_data.get("availability_zone"),
                 multi_az=instance_data.get("multi_az", False),
                 tags=json.dumps(instance_data.get("tags", {})),
+                is_deleted=False,
             )
             db.add(new_instance)
 
         count += 1
+
+    # Mark instances that weren't in AWS response as deleted
+    deleted_ids = existing_ids - seen_ids
+    if deleted_ids:
+        result = await db.execute(
+            select(RDSInstance).where(
+                RDSInstance.db_instance_identifier.in_(deleted_ids),
+                RDSInstance.region_id == region_id
+            )
+        )
+        for instance in result.scalars():
+            if not instance.is_deleted:
+                instance.is_deleted = True
+                instance.deleted_at = datetime.now(timezone.utc)
+                logger.info(f"Marked RDS instance as deleted: {instance.db_instance_identifier}")
 
     await db.flush()
     return count

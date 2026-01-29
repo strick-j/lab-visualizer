@@ -47,8 +47,10 @@ async def list_ec2_instances(
     Returns:
         List of EC2 instances matching the filters
     """
-    # Build query
-    query = select(EC2Instance).options(joinedload(EC2Instance.region))
+    # Build query - exclude deleted instances by default
+    query = select(EC2Instance).options(joinedload(EC2Instance.region)).where(
+        EC2Instance.is_deleted == False
+    )
 
     # Apply filters
     if status:
@@ -151,6 +153,8 @@ def _instance_to_response(instance: EC2Instance) -> EC2InstanceResponse:
         tf_state_source=instance.tf_state_source,
         tf_resource_address=instance.tf_resource_address,
         region_name=instance.region.name if instance.region else None,
+        is_deleted=instance.is_deleted,
+        deleted_at=instance.deleted_at,
         updated_at=instance.updated_at,
     )
 
@@ -182,6 +186,8 @@ def _instance_to_detail(instance: EC2Instance) -> EC2InstanceDetail:
         tf_state_source=instance.tf_state_source,
         tf_resource_address=instance.tf_resource_address,
         region_name=instance.region.name if instance.region else None,
+        is_deleted=instance.is_deleted,
+        deleted_at=instance.deleted_at,
         created_at=instance.created_at,
         updated_at=instance.updated_at,
     )

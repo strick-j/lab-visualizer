@@ -49,8 +49,10 @@ async def list_rds_instances(
     Returns:
         List of RDS instances matching the filters
     """
-    # Build query
-    query = select(RDSInstance).options(joinedload(RDSInstance.region))
+    # Build query - exclude deleted instances by default
+    query = select(RDSInstance).options(joinedload(RDSInstance.region)).where(
+        RDSInstance.is_deleted == False
+    )
 
     # Apply filters
     if status:
@@ -162,6 +164,8 @@ def _instance_to_response(instance: RDSInstance) -> RDSInstanceResponse:
         tf_state_source=instance.tf_state_source,
         tf_resource_address=instance.tf_resource_address,
         region_name=instance.region.name if instance.region else None,
+        is_deleted=instance.is_deleted,
+        deleted_at=instance.deleted_at,
         updated_at=instance.updated_at,
     )
 
@@ -195,6 +199,8 @@ def _instance_to_detail(instance: RDSInstance) -> RDSInstanceDetail:
         tf_state_source=instance.tf_state_source,
         tf_resource_address=instance.tf_resource_address,
         region_name=instance.region.name if instance.region else None,
+        is_deleted=instance.is_deleted,
+        deleted_at=instance.deleted_at,
         created_at=instance.created_at,
         updated_at=instance.updated_at,
     )

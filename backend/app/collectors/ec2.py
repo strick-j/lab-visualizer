@@ -60,10 +60,6 @@ class EC2Collector(BaseCollector):
         try:
             state = instance.get("State", {}).get("Name", "unknown")
 
-            # Skip terminated instances (optional - can be configured)
-            if state == "terminated":
-                return None
-
             tags = instance.get("Tags", [])
             tags_dict = self._tags_to_dict(tags)
 
