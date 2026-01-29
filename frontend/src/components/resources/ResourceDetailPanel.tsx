@@ -10,9 +10,9 @@ interface DetailRowProps {
 
 function DetailRow({ label, value }: DetailRowProps) {
   return (
-    <div className="flex justify-between py-2">
-      <span className="text-sm text-gray-500 dark:text-gray-400">{label}</span>
-      <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{value || '-'}</span>
+    <div className="flex justify-between gap-4 py-2">
+      <span className="flex-shrink-0 text-sm text-gray-500 dark:text-gray-400">{label}</span>
+      <span className="break-all text-right text-sm font-medium text-gray-900 dark:text-gray-100">{value || '-'}</span>
     </div>
   );
 }
