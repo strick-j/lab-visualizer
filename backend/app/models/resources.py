@@ -83,6 +83,10 @@ class EC2Instance(Base):
     tf_state_source: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     tf_resource_address: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
 
+    # Deletion tracking
+    is_deleted: Mapped[bool] = mapped_column(Boolean, default=False)
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.now(), nullable=False
@@ -145,6 +149,10 @@ class RDSInstance(Base):
     tf_managed: Mapped[bool] = mapped_column(Boolean, default=False)
     tf_state_source: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     tf_resource_address: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+
+    # Deletion tracking
+    is_deleted: Mapped[bool] = mapped_column(Boolean, default=False)
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(

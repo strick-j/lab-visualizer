@@ -22,6 +22,8 @@ export interface EC2Instance {
   tf_state_source: string | null;
   tf_resource_address: string | null;
   region_name: string | null;
+  is_deleted: boolean;
+  deleted_at: string | null;
   updated_at: string;
   created_at?: string;
 }
@@ -46,6 +48,8 @@ export interface RDSInstance {
   tf_state_source: string | null;
   tf_resource_address: string | null;
   region_name: string | null;
+  is_deleted: boolean;
+  deleted_at: string | null;
   updated_at: string;
   created_at?: string;
 }

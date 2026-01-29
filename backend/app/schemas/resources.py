@@ -90,6 +90,8 @@ class EC2InstanceResponse(EC2InstanceBase):
     tf_state_source: Optional[str] = None
     tf_resource_address: Optional[str] = None
     region_name: Optional[str] = Field(None, description="AWS region name")
+    is_deleted: bool = False
+    deleted_at: Optional[datetime] = None
     updated_at: datetime
 
 
@@ -131,6 +133,8 @@ class RDSInstanceResponse(RDSInstanceBase):
     tf_state_source: Optional[str] = None
     tf_resource_address: Optional[str] = None
     region_name: Optional[str] = Field(None, description="AWS region name")
+    is_deleted: bool = False
+    deleted_at: Optional[datetime] = None
     updated_at: datetime
 
 
