@@ -319,6 +319,11 @@ class TerraformStateAggregator:
         all_resources: Dict[str, List[TerraformResource]] = {
             "ec2": [],
             "rds": [],
+            "vpc": [],
+            "subnet": [],
+            "igw": [],
+            "nat_gateway": [],
+            "eip": [],
         }
 
         for config in state_configs:
