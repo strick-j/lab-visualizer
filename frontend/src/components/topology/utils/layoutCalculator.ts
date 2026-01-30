@@ -41,7 +41,7 @@ const Z_INDEX = {
 const config = {
   vpcPadding: 30,
   vpcHeaderHeight: 45,
-  subnetPadding: 15,
+  subnetPadding: 20,
   subnetHeaderHeight: 50,
   nodeWidth: {
     resource: 170,
@@ -341,8 +341,9 @@ function layoutSubnet(
 
   // Layout resources inside subnet (Layer 3 - children of subnet)
   // Positions are relative to the subnet node
+  // Add subnetPadding to both X and Y for proper spacing from container edges
   const resourceStartX = config.subnetPadding;
-  const resourceStartY = config.subnetHeaderHeight;
+  const resourceStartY = config.subnetHeaderHeight + config.subnetPadding;
 
   resources.forEach((resource, index) => {
     const col = index % config.resourcesPerRow;
