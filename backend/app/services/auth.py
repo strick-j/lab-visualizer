@@ -283,6 +283,13 @@ async def ensure_admin_user(db: AsyncSession) -> None:
 
     existing = await get_user_by_username(db, settings.admin_username)
     if existing:
+        # Update password and ensure admin privileges on each startup
+        # This allows password changes via .env to take effect
+        existing.password_hash = hash_password(settings.admin_password)
+        existing.is_admin = True
+        existing.is_active = True
+        await db.commit()
+        logger.info(f"Updated admin user: {settings.admin_username}")
         return
 
     await create_local_user(
