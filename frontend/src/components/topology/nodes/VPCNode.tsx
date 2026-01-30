@@ -16,7 +16,7 @@ function VPCNodeComponent({ data }: NodeProps<VPCNodeData>) {
   return (
     <div
       className={cn(
-        'min-w-[600px] min-h-[400px] rounded-lg border-2 border-dashed p-4',
+        'w-full h-full rounded-lg border-2 border-dashed p-4',
         statusColors[data.displayStatus]
       )}
     >

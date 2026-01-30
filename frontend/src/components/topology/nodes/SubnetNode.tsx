@@ -20,7 +20,7 @@ function SubnetNodeComponent({ data }: NodeProps<SubnetNodeData>) {
   return (
     <div
       className={cn(
-        'min-w-[280px] min-h-[150px] rounded-lg border-2 p-3',
+        'w-full h-full rounded-lg border-2 p-3',
         subnetTypeStyles[data.subnetType]
       )}
     >
