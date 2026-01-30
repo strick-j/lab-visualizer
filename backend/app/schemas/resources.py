@@ -145,6 +145,199 @@ class RDSInstanceDetail(RDSInstanceResponse):
 
 
 # =============================================================================
+# VPC Schemas
+# =============================================================================
+
+
+class VPCBase(BaseSchema):
+    """Base VPC schema."""
+
+    vpc_id: str
+    name: Optional[str] = None
+    cidr_block: str
+    state: str
+    is_default: bool = False
+
+
+class VPCResponse(VPCBase):
+    """VPC response schema."""
+
+    id: int
+    display_status: DisplayStatus
+    enable_dns_support: bool = True
+    enable_dns_hostnames: bool = False
+    tags: Optional[Dict[str, Any]] = None
+    tf_managed: bool = False
+    tf_state_source: Optional[str] = None
+    tf_resource_address: Optional[str] = None
+    region_name: Optional[str] = Field(None, description="AWS region name")
+    is_deleted: bool = False
+    deleted_at: Optional[datetime] = None
+    updated_at: datetime
+
+
+class VPCDetail(VPCResponse):
+    """Detailed VPC response with all fields."""
+
+    created_at: datetime
+
+
+# =============================================================================
+# Subnet Schemas
+# =============================================================================
+
+
+class SubnetBase(BaseSchema):
+    """Base Subnet schema."""
+
+    subnet_id: str
+    name: Optional[str] = None
+    vpc_id: str
+    cidr_block: str
+    availability_zone: str
+    subnet_type: str  # public, private, unknown
+    state: str
+
+
+class SubnetResponse(SubnetBase):
+    """Subnet response schema."""
+
+    id: int
+    display_status: DisplayStatus
+    available_ip_count: int = 0
+    map_public_ip_on_launch: bool = False
+    tags: Optional[Dict[str, Any]] = None
+    tf_managed: bool = False
+    tf_state_source: Optional[str] = None
+    tf_resource_address: Optional[str] = None
+    region_name: Optional[str] = Field(None, description="AWS region name")
+    is_deleted: bool = False
+    deleted_at: Optional[datetime] = None
+    updated_at: datetime
+
+
+class SubnetDetail(SubnetResponse):
+    """Detailed Subnet response with all fields."""
+
+    created_at: datetime
+
+
+# =============================================================================
+# Internet Gateway Schemas
+# =============================================================================
+
+
+class InternetGatewayBase(BaseSchema):
+    """Base Internet Gateway schema."""
+
+    igw_id: str
+    name: Optional[str] = None
+    vpc_id: Optional[str] = None  # Null when detached
+    state: str
+
+
+class InternetGatewayResponse(InternetGatewayBase):
+    """Internet Gateway response schema."""
+
+    id: int
+    display_status: DisplayStatus
+    tags: Optional[Dict[str, Any]] = None
+    tf_managed: bool = False
+    tf_state_source: Optional[str] = None
+    tf_resource_address: Optional[str] = None
+    region_name: Optional[str] = Field(None, description="AWS region name")
+    is_deleted: bool = False
+    deleted_at: Optional[datetime] = None
+    updated_at: datetime
+
+
+class InternetGatewayDetail(InternetGatewayResponse):
+    """Detailed Internet Gateway response with all fields."""
+
+    created_at: datetime
+
+
+# =============================================================================
+# NAT Gateway Schemas
+# =============================================================================
+
+
+class NATGatewayBase(BaseSchema):
+    """Base NAT Gateway schema."""
+
+    nat_gateway_id: str
+    name: Optional[str] = None
+    vpc_id: str
+    subnet_id: str
+    state: str
+    connectivity_type: str  # public, private
+
+
+class NATGatewayResponse(NATGatewayBase):
+    """NAT Gateway response schema."""
+
+    id: int
+    display_status: DisplayStatus
+    primary_private_ip: Optional[str] = None
+    primary_public_ip: Optional[str] = None
+    allocation_id: Optional[str] = None
+    network_interface_id: Optional[str] = None
+    tags: Optional[Dict[str, Any]] = None
+    tf_managed: bool = False
+    tf_state_source: Optional[str] = None
+    tf_resource_address: Optional[str] = None
+    region_name: Optional[str] = Field(None, description="AWS region name")
+    is_deleted: bool = False
+    deleted_at: Optional[datetime] = None
+    updated_at: datetime
+
+
+class NATGatewayDetail(NATGatewayResponse):
+    """Detailed NAT Gateway response with all fields."""
+
+    created_at: datetime
+
+
+# =============================================================================
+# Elastic IP Schemas
+# =============================================================================
+
+
+class ElasticIPBase(BaseSchema):
+    """Base Elastic IP schema."""
+
+    allocation_id: str
+    name: Optional[str] = None
+    public_ip: str
+    private_ip: Optional[str] = None
+    domain: str  # vpc, standard
+
+
+class ElasticIPResponse(ElasticIPBase):
+    """Elastic IP response schema."""
+
+    id: int
+    display_status: DisplayStatus
+    association_id: Optional[str] = None
+    instance_id: Optional[str] = None
+    network_interface_id: Optional[str] = None
+    tags: Optional[Dict[str, Any]] = None
+    tf_managed: bool = False
+    tf_state_source: Optional[str] = None
+    tf_resource_address: Optional[str] = None
+    region_name: Optional[str] = Field(None, description="AWS region name")
+    is_deleted: bool = False
+    deleted_at: Optional[datetime] = None
+    updated_at: datetime
+
+
+class ElasticIPDetail(ElasticIPResponse):
+    """Detailed Elastic IP response with all fields."""
+
+    created_at: datetime
+
+
+# =============================================================================
 # Terraform Schemas
 # =============================================================================
 

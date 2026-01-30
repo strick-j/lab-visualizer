@@ -5,6 +5,16 @@ import {
   getEC2Instance,
   getRDSInstances,
   getRDSInstance,
+  getVPCs,
+  getVPC,
+  getSubnets,
+  getSubnet,
+  getInternetGateways,
+  getInternetGateway,
+  getNATGateways,
+  getNATGateway,
+  getElasticIPs,
+  getElasticIP,
   refreshData,
   getTerraformStates,
   getDrift,
@@ -21,6 +31,16 @@ export const queryKeys = {
   ec2Instance: (id: string) => ['ec2-instance', id] as const,
   rdsInstances: (filters?: ResourceFilters) => ['rds-instances', filters] as const,
   rdsInstance: (id: string) => ['rds-instance', id] as const,
+  vpcs: (filters?: ResourceFilters) => ['vpcs', filters] as const,
+  vpc: (id: string) => ['vpc', id] as const,
+  subnets: (filters?: ResourceFilters) => ['subnets', filters] as const,
+  subnet: (id: string) => ['subnet', id] as const,
+  internetGateways: (filters?: ResourceFilters) => ['internet-gateways', filters] as const,
+  internetGateway: (id: string) => ['internet-gateway', id] as const,
+  natGateways: (filters?: ResourceFilters) => ['nat-gateways', filters] as const,
+  natGateway: (id: string) => ['nat-gateway', id] as const,
+  elasticIPs: (filters?: ResourceFilters) => ['elastic-ips', filters] as const,
+  elasticIP: (id: string) => ['elastic-ip', id] as const,
   terraformStates: ['terraform-states'] as const,
   drift: ['drift'] as const,
 };
@@ -76,6 +96,101 @@ export function useRDSInstance(dbIdentifier: string) {
 }
 
 // =============================================================================
+// VPCs
+// =============================================================================
+
+export function useVPCs(filters?: ResourceFilters) {
+  return useQuery({
+    queryKey: queryKeys.vpcs(filters),
+    queryFn: () => getVPCs(filters),
+  });
+}
+
+export function useVPC(vpcId: string) {
+  return useQuery({
+    queryKey: queryKeys.vpc(vpcId),
+    queryFn: () => getVPC(vpcId),
+    enabled: !!vpcId,
+  });
+}
+
+// =============================================================================
+// Subnets
+// =============================================================================
+
+export function useSubnets(filters?: ResourceFilters) {
+  return useQuery({
+    queryKey: queryKeys.subnets(filters),
+    queryFn: () => getSubnets(filters),
+  });
+}
+
+export function useSubnet(subnetId: string) {
+  return useQuery({
+    queryKey: queryKeys.subnet(subnetId),
+    queryFn: () => getSubnet(subnetId),
+    enabled: !!subnetId,
+  });
+}
+
+// =============================================================================
+// Internet Gateways
+// =============================================================================
+
+export function useInternetGateways(filters?: ResourceFilters) {
+  return useQuery({
+    queryKey: queryKeys.internetGateways(filters),
+    queryFn: () => getInternetGateways(filters),
+  });
+}
+
+export function useInternetGateway(igwId: string) {
+  return useQuery({
+    queryKey: queryKeys.internetGateway(igwId),
+    queryFn: () => getInternetGateway(igwId),
+    enabled: !!igwId,
+  });
+}
+
+// =============================================================================
+// NAT Gateways
+// =============================================================================
+
+export function useNATGateways(filters?: ResourceFilters) {
+  return useQuery({
+    queryKey: queryKeys.natGateways(filters),
+    queryFn: () => getNATGateways(filters),
+  });
+}
+
+export function useNATGateway(natGatewayId: string) {
+  return useQuery({
+    queryKey: queryKeys.natGateway(natGatewayId),
+    queryFn: () => getNATGateway(natGatewayId),
+    enabled: !!natGatewayId,
+  });
+}
+
+// =============================================================================
+// Elastic IPs
+// =============================================================================
+
+export function useElasticIPs(filters?: ResourceFilters) {
+  return useQuery({
+    queryKey: queryKeys.elasticIPs(filters),
+    queryFn: () => getElasticIPs(filters),
+  });
+}
+
+export function useElasticIP(allocationId: string) {
+  return useQuery({
+    queryKey: queryKeys.elasticIP(allocationId),
+    queryFn: () => getElasticIP(allocationId),
+    enabled: !!allocationId,
+  });
+}
+
+// =============================================================================
 // Refresh
 // =============================================================================
 
@@ -89,6 +204,11 @@ export function useRefreshData() {
       queryClient.invalidateQueries({ queryKey: ['status-summary'] });
       queryClient.invalidateQueries({ queryKey: ['ec2-instances'] });
       queryClient.invalidateQueries({ queryKey: ['rds-instances'] });
+      queryClient.invalidateQueries({ queryKey: ['vpcs'] });
+      queryClient.invalidateQueries({ queryKey: ['subnets'] });
+      queryClient.invalidateQueries({ queryKey: ['internet-gateways'] });
+      queryClient.invalidateQueries({ queryKey: ['nat-gateways'] });
+      queryClient.invalidateQueries({ queryKey: ['elastic-ips'] });
       queryClient.invalidateQueries({ queryKey: ['terraform-states'] });
       queryClient.invalidateQueries({ queryKey: ['drift'] });
     },
