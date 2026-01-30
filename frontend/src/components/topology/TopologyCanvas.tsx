@@ -2,7 +2,6 @@ import { useCallback, useMemo } from 'react';
 import ReactFlow, {
   Background,
   Controls,
-  MiniMap,
   useNodesState,
   useEdgesState,
   BackgroundVariant,
@@ -20,7 +19,7 @@ import {
   NATGatewayNode,
 } from './nodes';
 import { calculateTopologyLayout, createEdges } from './utils/layoutCalculator';
-import type { TopologyResponse, TopologyNodeData } from '@/types/topology';
+import type { TopologyResponse } from '@/types/topology';
 
 // Register custom node types
 const nodeTypes: NodeTypes = {
@@ -30,26 +29,6 @@ const nodeTypes: NodeTypes = {
   rds: RDSNode,
   'internet-gateway': InternetGatewayNode,
   'nat-gateway': NATGatewayNode,
-};
-
-// MiniMap node color mapping
-const nodeColor = (node: Node<TopologyNodeData>) => {
-  switch (node.type) {
-    case 'vpc':
-      return '#a855f7';
-    case 'subnet':
-      return '#6b7280';
-    case 'ec2':
-      return '#f97316';
-    case 'rds':
-      return '#3b82f6';
-    case 'internet-gateway':
-      return '#06b6d4';
-    case 'nat-gateway':
-      return '#8b5cf6';
-    default:
-      return '#9ca3af';
-  }
 };
 
 interface TopologyCanvasProps {
@@ -111,14 +90,10 @@ export function TopologyCanvas({ data, onNodeClick }: TopologyCanvasProps) {
         />
         <Controls
           showInteractive={false}
-          className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg"
-        />
-        <MiniMap
-          nodeColor={nodeColor}
-          nodeStrokeWidth={3}
-          zoomable
-          pannable
-          className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg"
+          showFitView={true}
+          showZoom={true}
+          position="bottom-right"
+          className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg [&>button]:border-gray-200 [&>button]:dark:border-gray-700"
         />
       </ReactFlow>
     </div>

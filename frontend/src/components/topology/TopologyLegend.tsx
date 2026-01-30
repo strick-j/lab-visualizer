@@ -1,4 +1,6 @@
-import { Network, Boxes, Server, Database, Globe, ArrowUpDown } from 'lucide-react';
+import { useState } from 'react';
+import { Network, Boxes, Server, Database, Globe, ArrowUpDown, ChevronDown, ChevronUp } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 const legendItems = [
   { icon: Network, label: 'VPC', color: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-100 dark:bg-purple-900/50' },
@@ -22,58 +24,81 @@ const subnetTypes = [
 ];
 
 export function TopologyLegend() {
+  const [isExpanded, setIsExpanded] = useState(true);
+
   return (
-    <div className="absolute bottom-4 left-4 z-10 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 shadow-lg max-w-xs">
-      <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">Legend</h3>
+    <div className="absolute bottom-4 left-4 z-10 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg overflow-hidden">
+      {/* Header - always visible */}
+      <button
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+      >
+        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Legend</h3>
+        {isExpanded ? (
+          <ChevronDown className="h-4 w-4 text-gray-500" />
+        ) : (
+          <ChevronUp className="h-4 w-4 text-gray-500" />
+        )}
+      </button>
 
-      {/* Resource Types */}
-      <div className="space-y-2 mb-4">
-        <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Resources</p>
-        <div className="grid grid-cols-2 gap-2">
-          {legendItems.map((item) => (
-            <div key={item.label} className="flex items-center gap-2">
-              <div className={`p-1 rounded ${item.bg}`}>
-                <item.icon className={`h-3 w-3 ${item.color}`} />
-              </div>
-              <span className="text-xs text-gray-700 dark:text-gray-300">{item.label}</span>
+      {/* Collapsible content */}
+      <div
+        className={cn(
+          'transition-all duration-200 ease-in-out',
+          isExpanded ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0 overflow-hidden'
+        )}
+      >
+        <div className="px-4 pb-4 space-y-4">
+          {/* Resource Types */}
+          <div className="space-y-2">
+            <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Resources</p>
+            <div className="grid grid-cols-2 gap-2">
+              {legendItems.map((item) => (
+                <div key={item.label} className="flex items-center gap-2">
+                  <div className={`p-1 rounded ${item.bg}`}>
+                    <item.icon className={`h-3 w-3 ${item.color}`} />
+                  </div>
+                  <span className="text-xs text-gray-700 dark:text-gray-300">{item.label}</span>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-      </div>
+          </div>
 
-      {/* Status Indicators */}
-      <div className="space-y-2 mb-4">
-        <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Status</p>
-        <div className="flex flex-wrap gap-3">
-          {statusItems.map((item) => (
-            <div key={item.label} className="flex items-center gap-1.5">
-              <span className={`w-2 h-2 rounded-full ${item.color}`} />
-              <span className="text-xs text-gray-700 dark:text-gray-300">{item.label}</span>
+          {/* Status Indicators */}
+          <div className="space-y-2">
+            <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Status</p>
+            <div className="flex flex-wrap gap-3">
+              {statusItems.map((item) => (
+                <div key={item.label} className="flex items-center gap-1.5">
+                  <span className={`w-2 h-2 rounded-full ${item.color}`} />
+                  <span className="text-xs text-gray-700 dark:text-gray-300">{item.label}</span>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-      </div>
+          </div>
 
-      {/* Subnet Types */}
-      <div className="space-y-2">
-        <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Subnet Types</p>
-        <div className="flex gap-3">
-          {subnetTypes.map((item) => (
-            <div key={item.label} className="flex items-center gap-1.5">
-              <div className={`w-4 h-3 rounded border-2 ${item.color}`} />
-              <span className="text-xs text-gray-700 dark:text-gray-300">{item.label}</span>
+          {/* Subnet Types */}
+          <div className="space-y-2">
+            <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Subnet Types</p>
+            <div className="flex gap-3">
+              {subnetTypes.map((item) => (
+                <div key={item.label} className="flex items-center gap-1.5">
+                  <div className={`w-4 h-3 rounded border-2 ${item.color}`} />
+                  <span className="text-xs text-gray-700 dark:text-gray-300">{item.label}</span>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-      </div>
+          </div>
 
-      {/* Terraform Badge */}
-      <div className="mt-4 pt-3 border-t border-gray-200 dark:border-gray-700">
-        <div className="flex items-center gap-2">
-          <span className="px-1.5 py-0.5 text-xs font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300 rounded">
-            TF
-          </span>
-          <span className="text-xs text-gray-600 dark:text-gray-400">Terraform Managed</span>
+          {/* Terraform Badge */}
+          <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
+            <div className="flex items-center gap-2">
+              <span className="px-1.5 py-0.5 text-xs font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300 rounded">
+                TF
+              </span>
+              <span className="text-xs text-gray-600 dark:text-gray-400">Terraform Managed</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
