@@ -41,21 +41,22 @@ const Z_INDEX = {
 const config = {
   vpcPadding: 30,
   vpcHeaderHeight: 45,
-  subnetPadding: 12,
-  subnetHeaderHeight: 40,
+  subnetPadding: 15,
+  subnetHeaderHeight: 50,
   nodeWidth: {
     resource: 170,
     gateway: 140,
   },
   nodeHeight: {
-    resource: 80,
+    // EC2/RDS nodes: icon row + type + IP + TF badge + padding ≈ 105px
+    resource: 105,
     gateway: 60,
   },
   spacing: {
-    horizontal: 12,
-    vertical: 15,
+    horizontal: 15,
+    vertical: 20,
     subnetGap: 20,
-    rowGap: 20,
+    rowGap: 25,
     vpcGap: 50,
   },
   resourcesPerRow: 2,
