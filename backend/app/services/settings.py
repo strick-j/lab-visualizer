@@ -20,8 +20,13 @@ env_settings = get_settings()
 
 async def get_auth_settings(db: AsyncSession) -> Optional[AuthSettings]:
     """Get the current auth settings from the database."""
-    result = await db.execute(select(AuthSettings).limit(1))
-    return result.scalar_one_or_none()
+    try:
+        result = await db.execute(select(AuthSettings).limit(1))
+        return result.scalar_one_or_none()
+    except Exception as e:
+        # Table might not exist yet, return None to fall back to env vars
+        logger.debug(f"Could not query auth_settings table: {e}")
+        return None
 
 
 async def get_or_create_auth_settings(db: AsyncSession) -> AuthSettings:
