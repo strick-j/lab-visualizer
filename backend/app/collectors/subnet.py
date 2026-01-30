@@ -84,6 +84,7 @@ class SubnetCollector(BaseCollector):
         Determine if subnet is public, private, or unknown based on route table.
 
         A subnet is public if it has a route to an Internet Gateway (0.0.0.0/0 → igw-*).
+        A subnet is private if it has a route table (explicit or main) without an IGW route.
 
         Args:
             subnet_id: The subnet ID
@@ -93,11 +94,11 @@ class SubnetCollector(BaseCollector):
             'public', 'private', or 'unknown'
         """
         try:
-            # Find route table associated with this subnet
+            # First pass: look for explicit subnet association
             for rt in route_tables:
-                # Check if this route table is associated with the subnet
                 for assoc in rt.get("Associations", []):
-                    if assoc.get("SubnetId") == subnet_id or assoc.get("Main", False):
+                    if assoc.get("SubnetId") == subnet_id:
+                        # Found explicit route table for this subnet
                         # Check routes for Internet Gateway
                         for route in rt.get("Routes", []):
                             dest_cidr = route.get("DestinationCidrBlock", "")
@@ -107,11 +108,26 @@ class SubnetCollector(BaseCollector):
                             if dest_cidr == "0.0.0.0/0" and gateway_id.startswith("igw-"):
                                 return "public"
 
-                        # If we found the route table but no IGW route, it's private
-                        if assoc.get("SubnetId") == subnet_id:
-                            return "private"
+                        # Explicit route table without IGW route = private
+                        return "private"
 
-            # Default to unknown if we couldn't determine
+            # Second pass: check main route table (implicit association)
+            for rt in route_tables:
+                for assoc in rt.get("Associations", []):
+                    if assoc.get("Main", False):
+                        # Found main route table - check for IGW route
+                        for route in rt.get("Routes", []):
+                            dest_cidr = route.get("DestinationCidrBlock", "")
+                            gateway_id = route.get("GatewayId", "")
+
+                            # Public subnet has route to IGW for 0.0.0.0/0
+                            if dest_cidr == "0.0.0.0/0" and gateway_id.startswith("igw-"):
+                                return "public"
+
+                        # Main route table without IGW route = private
+                        return "private"
+
+            # Default to unknown if we couldn't find any route table
             return "unknown"
 
         except Exception as e:
