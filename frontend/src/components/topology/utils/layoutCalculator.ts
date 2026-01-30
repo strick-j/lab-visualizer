@@ -1,8 +1,11 @@
 /**
  * Layout calculator for infrastructure topology visualization.
  *
- * Calculates positions for nodes in a hierarchical layout:
- * VPC -> Subnets (public/private rows) -> Resources (EC2, RDS, Gateways)
+ * Uses React Flow's parentNode feature for proper nested containers.
+ * Layer hierarchy (bottom to top):
+ * - Layer 1: VPC (z-index 0)
+ * - Layer 2: Subnet (z-index 1)
+ * - Layer 3: Resources - EC2, RDS, Gateways (z-index 2)
  */
 
 import type { Node, Edge } from 'reactflow';
@@ -27,25 +30,33 @@ type ResourceItem =
   | { type: 'rds'; data: TopologyRDSInstance }
   | { type: 'nat'; data: TopologyNATGateway };
 
+// Z-index layers
+const Z_INDEX = {
+  VPC: 0,
+  SUBNET: 1,
+  GATEWAY: 2,
+  RESOURCE: 2,
+};
+
 const config = {
-  vpcPadding: 40,
-  vpcHeaderHeight: 50,
-  subnetPadding: 15,
-  subnetHeaderHeight: 45,
+  vpcPadding: 30,
+  vpcHeaderHeight: 45,
+  subnetPadding: 12,
+  subnetHeaderHeight: 40,
   nodeWidth: {
-    resource: 175,
-    gateway: 145,
+    resource: 170,
+    gateway: 140,
   },
   nodeHeight: {
-    resource: 85,
-    gateway: 65,
+    resource: 80,
+    gateway: 60,
   },
   spacing: {
-    horizontal: 15,
-    vertical: 20,
-    subnetGap: 25,
-    rowGap: 25,
-    vpcGap: 60,
+    horizontal: 12,
+    vertical: 15,
+    subnetGap: 20,
+    rowGap: 20,
+    vpcGap: 50,
   },
   resourcesPerRow: 2,
 };
@@ -68,8 +79,8 @@ function calculateSubnetDimensions(subnet: TopologySubnet): SubnetDimensions {
 
   if (resourceCount === 0) {
     return {
-      width: 300,
-      height: config.subnetHeaderHeight + config.subnetPadding * 2,
+      width: 280,
+      height: config.subnetHeaderHeight + config.subnetPadding * 2 + 20,
     };
   }
 
@@ -130,6 +141,8 @@ function layoutVPC(vpc: TopologyVPC, startX: number): LayoutResult & { width: nu
   const nodes: Node<TopologyNodeData>[] = [];
   const edges: Edge[] = [];
 
+  const vpcNodeId = `vpc-${vpc.id}`;
+
   // Separate subnets by type
   const publicSubnets = vpc.subnets.filter((s) => s.subnet_type === 'public');
   const privateSubnets = vpc.subnets.filter((s) => s.subnet_type === 'private');
@@ -141,7 +154,7 @@ function layoutVPC(vpc: TopologyVPC, startX: number): LayoutResult & { width: nu
   const unknownDims = calculateSubnetRowDimensions(unknownSubnets);
 
   // Calculate total VPC dimensions
-  const contentWidth = Math.max(publicDims.width, privateDims.width, unknownDims.width, 400);
+  const contentWidth = Math.max(publicDims.width, privateDims.width, unknownDims.width, 350);
   const vpcWidth = contentWidth + config.vpcPadding * 2;
 
   // Calculate heights
@@ -174,12 +187,12 @@ function layoutVPC(vpc: TopologyVPC, startX: number): LayoutResult & { width: nu
 
   const vpcHeight = config.vpcHeaderHeight + contentHeight + config.vpcPadding * 2;
 
-  // Create VPC node first
-  const vpcNodeId = `vpc-${vpc.id}`;
+  // Create VPC node (Layer 1 - bottom)
   nodes.push({
     id: vpcNodeId,
     type: 'vpc',
     position: { x: startX, y: 0 },
+    zIndex: Z_INDEX.VPC,
     data: {
       type: 'vpc',
       label: vpc.name || 'VPC',
@@ -195,15 +208,18 @@ function layoutVPC(vpc: TopologyVPC, startX: number): LayoutResult & { width: nu
     },
   });
 
-  // Now position children
-  let currentY = config.vpcHeaderHeight + config.vpcPadding;
+  // Track Y position relative to VPC content area
+  let relativeY = config.vpcHeaderHeight + config.vpcPadding;
 
-  // Internet Gateway at top
+  // Internet Gateway at top (child of VPC)
   if (vpc.internet_gateway) {
     nodes.push({
       id: `igw-${vpc.internet_gateway.id}`,
       type: 'internet-gateway',
-      position: { x: startX + config.vpcPadding, y: currentY },
+      position: { x: config.vpcPadding, y: relativeY },
+      parentNode: vpcNodeId,
+      extent: 'parent',
+      zIndex: Z_INDEX.GATEWAY,
       data: {
         type: 'internet-gateway',
         label: vpc.internet_gateway.name || 'Internet Gateway',
@@ -213,49 +229,49 @@ function layoutVPC(vpc: TopologyVPC, startX: number): LayoutResult & { width: nu
         igwId: vpc.internet_gateway.id,
       } as InternetGatewayNodeData,
     });
-    currentY += config.nodeHeight.gateway + config.spacing.vertical;
+    relativeY += config.nodeHeight.gateway + config.spacing.vertical;
   }
 
-  // Layout public subnets
+  // Layout public subnets (children of VPC)
   if (publicSubnets.length > 0) {
-    const rowStartX = startX + config.vpcPadding + (contentWidth - publicDims.width) / 2;
+    const rowStartX = config.vpcPadding + (contentWidth - publicDims.width) / 2;
     let subnetX = rowStartX;
 
     publicSubnets.forEach((subnet, idx) => {
       const subnetDims = calculateSubnetDimensions(subnet);
-      const subnetLayout = layoutSubnet(subnet, subnetX, currentY, subnetDims, publicDims.height);
+      const subnetLayout = layoutSubnet(subnet, subnetX, relativeY, subnetDims, publicDims.height, vpcNodeId);
       nodes.push(...subnetLayout.nodes);
       edges.push(...subnetLayout.edges);
       subnetX += publicDims.subnetWidths[idx] + config.spacing.horizontal;
     });
 
-    currentY += publicDims.height + config.spacing.rowGap;
+    relativeY += publicDims.height + config.spacing.rowGap;
   }
 
-  // Layout private subnets
+  // Layout private subnets (children of VPC)
   if (privateSubnets.length > 0) {
-    const rowStartX = startX + config.vpcPadding + (contentWidth - privateDims.width) / 2;
+    const rowStartX = config.vpcPadding + (contentWidth - privateDims.width) / 2;
     let subnetX = rowStartX;
 
     privateSubnets.forEach((subnet, idx) => {
       const subnetDims = calculateSubnetDimensions(subnet);
-      const subnetLayout = layoutSubnet(subnet, subnetX, currentY, subnetDims, privateDims.height);
+      const subnetLayout = layoutSubnet(subnet, subnetX, relativeY, subnetDims, privateDims.height, vpcNodeId);
       nodes.push(...subnetLayout.nodes);
       edges.push(...subnetLayout.edges);
       subnetX += privateDims.subnetWidths[idx] + config.spacing.horizontal;
     });
 
-    currentY += privateDims.height + config.spacing.rowGap;
+    relativeY += privateDims.height + config.spacing.rowGap;
   }
 
-  // Layout unknown subnets
+  // Layout unknown subnets (children of VPC)
   if (unknownSubnets.length > 0) {
-    const rowStartX = startX + config.vpcPadding + (contentWidth - unknownDims.width) / 2;
+    const rowStartX = config.vpcPadding + (contentWidth - unknownDims.width) / 2;
     let subnetX = rowStartX;
 
     unknownSubnets.forEach((subnet, idx) => {
       const subnetDims = calculateSubnetDimensions(subnet);
-      const subnetLayout = layoutSubnet(subnet, subnetX, currentY, subnetDims, unknownDims.height);
+      const subnetLayout = layoutSubnet(subnet, subnetX, relativeY, subnetDims, unknownDims.height, vpcNodeId);
       nodes.push(...subnetLayout.nodes);
       edges.push(...subnetLayout.edges);
       subnetX += unknownDims.subnetWidths[idx] + config.spacing.horizontal;
@@ -267,22 +283,26 @@ function layoutVPC(vpc: TopologyVPC, startX: number): LayoutResult & { width: nu
 
 function layoutSubnet(
   subnet: TopologySubnet,
-  startX: number,
-  startY: number,
+  relativeX: number,
+  relativeY: number,
   dims: SubnetDimensions,
-  rowHeight: number
+  rowHeight: number,
+  vpcNodeId: string
 ): LayoutResult {
   const nodes: Node<TopologyNodeData>[] = [];
   const edges: Edge[] = [];
 
-  // Use row height to make all subnets in a row the same height
+  const subnetNodeId = `subnet-${subnet.id}`;
   const subnetHeight = rowHeight;
 
-  // Create subnet node
+  // Create subnet node (Layer 2 - child of VPC)
   nodes.push({
-    id: `subnet-${subnet.id}`,
+    id: subnetNodeId,
     type: 'subnet',
-    position: { x: startX, y: startY },
+    position: { x: relativeX, y: relativeY },
+    parentNode: vpcNodeId,
+    extent: 'parent',
+    zIndex: Z_INDEX.SUBNET,
     data: {
       type: 'subnet',
       label: subnet.name || 'Subnet',
@@ -318,9 +338,10 @@ function layoutSubnet(
     resources.push({ type: 'rds', data: rds });
   });
 
-  // Layout resources inside subnet
-  const resourceStartX = startX + config.subnetPadding;
-  const resourceStartY = startY + config.subnetHeaderHeight;
+  // Layout resources inside subnet (Layer 3 - children of subnet)
+  // Positions are relative to the subnet node
+  const resourceStartX = config.subnetPadding;
+  const resourceStartY = config.subnetHeaderHeight;
 
   resources.forEach((resource, index) => {
     const col = index % config.resourcesPerRow;
@@ -335,6 +356,9 @@ function layoutSubnet(
         id: `ec2-${ec2.id}`,
         type: 'ec2',
         position: { x, y },
+        parentNode: subnetNodeId,
+        extent: 'parent',
+        zIndex: Z_INDEX.RESOURCE,
         data: {
           type: 'ec2',
           label: ec2.name || ec2.id,
@@ -354,6 +378,9 @@ function layoutSubnet(
         id: `rds-${rds.id}`,
         type: 'rds',
         position: { x, y },
+        parentNode: subnetNodeId,
+        extent: 'parent',
+        zIndex: Z_INDEX.RESOURCE,
         data: {
           type: 'rds',
           label: rds.name || rds.id,
@@ -372,6 +399,9 @@ function layoutSubnet(
         id: `nat-${nat.id}`,
         type: 'nat-gateway',
         position: { x, y },
+        parentNode: subnetNodeId,
+        extent: 'parent',
+        zIndex: Z_INDEX.RESOURCE,
         data: {
           type: 'nat-gateway',
           label: nat.name || 'NAT Gateway',
@@ -403,6 +433,7 @@ export function createEdges(data: TopologyResponse): Edge[] {
           type: 'smoothstep',
           animated: true,
           style: { stroke: '#94a3b8', strokeWidth: 2 },
+          zIndex: 10,
         });
       }
     }
@@ -421,6 +452,7 @@ export function createEdges(data: TopologyResponse): Edge[] {
             type: 'smoothstep',
             animated: true,
             style: { stroke: '#a78bfa', strokeWidth: 2, strokeDasharray: '5,5' },
+            zIndex: 10,
           });
         }
       }
