@@ -21,6 +21,7 @@ from app.api.routes import (
     nat_gateway,
     rds,
     resources,
+    settings,
     subnet,
     terraform,
     vpc,
@@ -111,6 +112,11 @@ app.include_router(
 )
 app.include_router(
     terraform.router, prefix="/api/terraform", tags=["Terraform"], dependencies=auth_dependency
+)
+
+# Settings routes - admin only (auth is handled within the route handlers)
+app.include_router(
+    settings.router, prefix="/api/settings", tags=["Settings"], dependencies=auth_dependency
 )
 
 

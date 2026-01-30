@@ -4,3 +4,4 @@ export { RDSListPage } from './RDSList';
 export { VPCPage } from './VPCPage';
 export { TerraformPage } from './Terraform';
 export { LoginPage } from './LoginPage';
+export { SettingsPage } from './SettingsPage';

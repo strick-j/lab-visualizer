@@ -32,6 +32,7 @@ from app.services.auth import (
     revoke_session,
     validate_access_token,
 )
+from app.services.settings import get_effective_oidc_config, get_effective_saml_config
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -54,14 +55,17 @@ def get_client_info(request: Request) -> tuple[Optional[str], Optional[str]]:
 
 
 @router.get("/config", response_model=AuthConfigResponse)
-async def get_auth_config():
+async def get_auth_config(db: AsyncSession = Depends(get_db)):
     """Get authentication configuration for the frontend."""
+    oidc_config = await get_effective_oidc_config(db)
+    saml_config = await get_effective_saml_config(db)
+
     return AuthConfigResponse(
         local_auth_enabled=settings.local_auth_enabled,
-        oidc_enabled=settings.oidc_enabled,
-        saml_enabled=settings.saml_enabled,
-        oidc_issuer=settings.oidc_issuer if settings.oidc_enabled else None,
-        saml_idp_entity_id=settings.saml_idp_entity_id if settings.saml_enabled else None,
+        oidc_enabled=oidc_config["enabled"] and bool(oidc_config["issuer"]),
+        saml_enabled=saml_config["enabled"] and bool(saml_config["idp_sso_url"]),
+        oidc_issuer=oidc_config["issuer"] if oidc_config["enabled"] else None,
+        saml_idp_entity_id=saml_config["idp_entity_id"] if saml_config["enabled"] else None,
     )
 
 
@@ -177,9 +181,11 @@ async def get_current_user(
 
 
 @router.get("/oidc/login")
-async def oidc_login(request: Request):
+async def oidc_login(request: Request, db: AsyncSession = Depends(get_db)):
     """Initiate OIDC authentication flow."""
-    if not settings.oidc_enabled:
+    oidc_config = await get_effective_oidc_config(db)
+
+    if not oidc_config["enabled"] or not oidc_config["issuer"]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="OIDC authentication is not configured",
@@ -193,13 +199,13 @@ async def oidc_login(request: Request):
     redirect_uri = str(request.url_for("oidc_callback"))
     params = {
         "response_type": "code",
-        "client_id": settings.oidc_client_id,
+        "client_id": oidc_config["client_id"],
         "redirect_uri": redirect_uri,
         "scope": "openid email profile",
         "state": state,
     }
 
-    auth_url = f"{settings.oidc_issuer}/authorize?{urlencode(params)}"
+    auth_url = f"{oidc_config['issuer']}/authorize?{urlencode(params)}"
     return {"auth_url": auth_url, "state": state}
 
 
@@ -211,7 +217,9 @@ async def oidc_callback(
     db: AsyncSession = Depends(get_db),
 ):
     """Handle OIDC callback after authentication."""
-    if not settings.oidc_enabled:
+    oidc_config = await get_effective_oidc_config(db)
+
+    if not oidc_config["enabled"] or not oidc_config["issuer"]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="OIDC authentication is not configured",
@@ -227,7 +235,7 @@ async def oidc_callback(
 
     # Exchange code for tokens
     redirect_uri = str(request.url_for("oidc_callback"))
-    token_endpoint = f"{settings.oidc_issuer}/token"
+    token_endpoint = f"{oidc_config['issuer']}/token"
 
     async with httpx.AsyncClient() as client:
         try:
@@ -237,8 +245,8 @@ async def oidc_callback(
                     "grant_type": "authorization_code",
                     "code": code,
                     "redirect_uri": redirect_uri,
-                    "client_id": settings.oidc_client_id,
-                    "client_secret": settings.oidc_client_secret,
+                    "client_id": oidc_config["client_id"],
+                    "client_secret": oidc_config["client_secret"],
                 },
             )
             token_response.raise_for_status()
@@ -251,7 +259,7 @@ async def oidc_callback(
             )
 
         # Get user info
-        userinfo_endpoint = f"{settings.oidc_issuer}/userinfo"
+        userinfo_endpoint = f"{oidc_config['issuer']}/userinfo"
         try:
             userinfo_response = await client.get(
                 userinfo_endpoint,
@@ -308,9 +316,11 @@ async def oidc_callback(
 
 
 @router.get("/saml/login")
-async def saml_login(request: Request):
+async def saml_login(request: Request, db: AsyncSession = Depends(get_db)):
     """Initiate SAML authentication flow."""
-    if not settings.saml_configured:
+    saml_config = await get_effective_saml_config(db)
+
+    if not saml_config["enabled"] or not saml_config["idp_sso_url"]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="SAML authentication is not configured",
@@ -322,14 +332,10 @@ async def saml_login(request: Request):
 
     # Construct SAML AuthnRequest URL (simplified - in production use python3-saml)
     callback_url = str(request.url_for("saml_callback"))
-    params = {
-        "SAMLRequest": "",  # Would be Base64-encoded AuthnRequest XML
-        "RelayState": relay_state,
-    }
 
     # For now, return the SSO URL - full SAML request generation would use python3-saml
     return {
-        "sso_url": settings.saml_idp_sso_url,
+        "sso_url": saml_config["idp_sso_url"],
         "relay_state": relay_state,
         "callback_url": callback_url,
         "message": "Full SAML AuthnRequest generation requires python3-saml library",
@@ -342,7 +348,9 @@ async def saml_callback(
     db: AsyncSession = Depends(get_db),
 ):
     """Handle SAML callback (Assertion Consumer Service)."""
-    if not settings.saml_configured:
+    saml_config = await get_effective_saml_config(db)
+
+    if not saml_config["enabled"] or not saml_config["idp_sso_url"]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="SAML authentication is not configured",
@@ -378,9 +386,11 @@ async def saml_callback(
 
 
 @router.get("/saml/metadata")
-async def saml_metadata(request: Request):
+async def saml_metadata(request: Request, db: AsyncSession = Depends(get_db)):
     """Return SAML Service Provider metadata."""
-    if not settings.saml_enabled:
+    saml_config = await get_effective_saml_config(db)
+
+    if not saml_config["enabled"]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="SAML authentication is not enabled",
@@ -389,7 +399,7 @@ async def saml_metadata(request: Request):
     # Return basic SP metadata info
     callback_url = str(request.url_for("saml_callback"))
     return {
-        "entity_id": settings.saml_sp_entity_id or str(request.base_url),
+        "entity_id": saml_config["sp_entity_id"] or str(request.base_url),
         "acs_url": callback_url,
         "message": "Full metadata XML generation requires python3-saml library",
     }

@@ -19,6 +19,12 @@ import type {
   User,
   OIDCLoginResponse,
   SAMLLoginResponse,
+  AuthSettingsResponse,
+  OIDCSettings,
+  OIDCSettingsUpdate,
+  SAMLSettings,
+  SAMLSettingsUpdate,
+  TestConnectionResponse,
 } from '@/types';
 
 // Create axios instance with base configuration
@@ -296,6 +302,40 @@ export async function initiateOIDCLogin(): Promise<OIDCLoginResponse> {
 
 export async function initiateSAMLLogin(): Promise<SAMLLoginResponse> {
   const response = await api.get('/auth/saml/login');
+  return response.data;
+}
+
+// =============================================================================
+// Settings (Admin only)
+// =============================================================================
+
+export async function getAuthSettings(): Promise<AuthSettingsResponse> {
+  const response = await api.get('/settings');
+  return response.data;
+}
+
+export async function getOIDCSettings(): Promise<OIDCSettings> {
+  const response = await api.get('/settings/oidc');
+  return response.data;
+}
+
+export async function updateOIDCSettings(settings: OIDCSettingsUpdate): Promise<OIDCSettings> {
+  const response = await api.put('/settings/oidc', settings);
+  return response.data;
+}
+
+export async function testOIDCConnection(issuer: string): Promise<TestConnectionResponse> {
+  const response = await api.post('/settings/oidc/test', { issuer });
+  return response.data;
+}
+
+export async function getSAMLSettings(): Promise<SAMLSettings> {
+  const response = await api.get('/settings/saml');
+  return response.data;
+}
+
+export async function updateSAMLSettings(settings: SAMLSettingsUpdate): Promise<SAMLSettings> {
+  const response = await api.put('/settings/saml', settings);
   return response.data;
 }
 

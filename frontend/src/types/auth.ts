@@ -41,3 +41,54 @@ export interface SAMLLoginResponse {
   callback_url: string;
   message: string;
 }
+
+// Settings types
+export interface OIDCSettings {
+  enabled: boolean;
+  issuer: string | null;
+  client_id: string | null;
+  client_secret_configured: boolean;
+  display_name: string;
+  updated_at: string | null;
+  updated_by: string | null;
+}
+
+export interface SAMLSettings {
+  enabled: boolean;
+  idp_entity_id: string | null;
+  idp_sso_url: string | null;
+  idp_certificate_configured: boolean;
+  sp_entity_id: string | null;
+  display_name: string;
+  updated_at: string | null;
+  updated_by: string | null;
+}
+
+export interface AuthSettingsResponse {
+  local_auth_enabled: boolean;
+  oidc: OIDCSettings;
+  saml: SAMLSettings;
+}
+
+export interface OIDCSettingsUpdate {
+  enabled: boolean;
+  issuer?: string;
+  client_id?: string;
+  client_secret?: string;
+  display_name?: string;
+}
+
+export interface SAMLSettingsUpdate {
+  enabled: boolean;
+  idp_entity_id?: string;
+  idp_sso_url?: string;
+  idp_certificate?: string;
+  sp_entity_id?: string;
+  display_name?: string;
+}
+
+export interface TestConnectionResponse {
+  success: boolean;
+  message: string;
+  details?: Record<string, string>;
+}
