@@ -248,4 +248,20 @@ export async function getDrift(): Promise<DriftResponse> {
   return response.data;
 }
 
+// =============================================================================
+// Topology
+// =============================================================================
+
+import type { TopologyResponse } from '@/types/topology';
+
+export async function getTopology(
+  filters?: { vpc_id?: string }
+): Promise<TopologyResponse> {
+  const params = new URLSearchParams();
+  if (filters?.vpc_id) params.append('vpc_id', filters.vpc_id);
+
+  const response = await api.get('/topology', { params });
+  return response.data;
+}
+
 export default api;

@@ -1,0 +1,120 @@
+import { useCallback } from 'react';
+import { AlertCircle, RefreshCw, Waypoints } from 'lucide-react';
+import { useTopology, useRefreshData } from '@/hooks/useResources';
+import { TopologyCanvas } from './TopologyCanvas';
+import { TopologyLegend } from './TopologyLegend';
+import { Loading } from '@/components/common';
+
+interface InfrastructureTopologyProps {
+  vpcId?: string;
+  onResourceSelect?: (resourceId: string, resourceType: string) => void;
+}
+
+export function InfrastructureTopology({
+  vpcId,
+  onResourceSelect,
+}: InfrastructureTopologyProps) {
+  const { data, isLoading, isError, error, refetch } = useTopology(
+    vpcId ? { vpc_id: vpcId } : undefined
+  );
+  const refreshMutation = useRefreshData();
+
+  const handleRefresh = useCallback(async () => {
+    await refreshMutation.mutateAsync(false);
+    await refetch();
+  }, [refreshMutation, refetch]);
+
+  const handleNodeClick = useCallback(
+    (nodeId: string, nodeType: string) => {
+      // Extract the actual resource ID from the node ID (e.g., "ec2-i-xxx" -> "i-xxx")
+      const resourceId = nodeId.replace(/^(vpc|subnet|ec2|rds|igw|nat)-/, '');
+      onResourceSelect?.(resourceId, nodeType);
+    },
+    [onResourceSelect]
+  );
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <Loading text="Loading infrastructure topology..." />
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full gap-4">
+        <AlertCircle className="h-12 w-12 text-red-500" />
+        <div className="text-center">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+            Failed to load topology
+          </h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            {error instanceof Error ? error.message : 'An error occurred'}
+          </p>
+        </div>
+        <button
+          onClick={() => refetch()}
+          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
+        >
+          <RefreshCw className="h-4 w-4" />
+          Retry
+        </button>
+      </div>
+    );
+  }
+
+  if (!data || data.vpcs.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full gap-4">
+        <Waypoints className="h-16 w-16 text-gray-300 dark:text-gray-600" />
+        <div className="text-center max-w-md">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+            No Terraform-managed infrastructure found
+          </h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+            This visualization only shows resources that are managed by Terraform.
+            Make sure your Terraform state files are configured and resources have been refreshed.
+          </p>
+        </div>
+        <button
+          onClick={handleRefresh}
+          disabled={refreshMutation.isPending}
+          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        >
+          <RefreshCw className={`h-4 w-4 ${refreshMutation.isPending ? 'animate-spin' : ''}`} />
+          {refreshMutation.isPending ? 'Refreshing...' : 'Refresh Data'}
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative w-full h-full">
+      <TopologyCanvas data={data} onNodeClick={handleNodeClick} />
+      <TopologyLegend />
+
+      {/* Stats overlay */}
+      <div className="absolute top-4 right-4 z-10 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-3 shadow-lg">
+        <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-xs">
+          <div className="flex justify-between">
+            <span className="text-gray-500 dark:text-gray-400">VPCs:</span>
+            <span className="font-medium text-gray-900 dark:text-gray-100">{data.meta.total_vpcs}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-gray-500 dark:text-gray-400">Subnets:</span>
+            <span className="font-medium text-gray-900 dark:text-gray-100">{data.meta.total_subnets}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-gray-500 dark:text-gray-400">EC2:</span>
+            <span className="font-medium text-gray-900 dark:text-gray-100">{data.meta.total_ec2}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-gray-500 dark:text-gray-400">RDS:</span>
+            <span className="font-medium text-gray-900 dark:text-gray-100">{data.meta.total_rds}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

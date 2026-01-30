@@ -18,6 +18,7 @@ import {
   refreshData,
   getTerraformStates,
   getDrift,
+  getTopology,
 } from '@/api';
 import type { ResourceFilters } from '@/types';
 
@@ -43,6 +44,7 @@ export const queryKeys = {
   elasticIP: (id: string) => ['elastic-ip', id] as const,
   terraformStates: ['terraform-states'] as const,
   drift: ['drift'] as const,
+  topology: (filters?: { vpc_id?: string }) => ['topology', filters] as const,
 };
 
 // =============================================================================
@@ -211,6 +213,7 @@ export function useRefreshData() {
       queryClient.invalidateQueries({ queryKey: ['elastic-ips'] });
       queryClient.invalidateQueries({ queryKey: ['terraform-states'] });
       queryClient.invalidateQueries({ queryKey: ['drift'] });
+      queryClient.invalidateQueries({ queryKey: ['topology'] });
     },
   });
 }
@@ -230,5 +233,16 @@ export function useDrift() {
   return useQuery({
     queryKey: queryKeys.drift,
     queryFn: getDrift,
+  });
+}
+
+// =============================================================================
+// Topology
+// =============================================================================
+
+export function useTopology(filters?: { vpc_id?: string }) {
+  return useQuery({
+    queryKey: queryKeys.topology(filters),
+    queryFn: () => getTopology(filters),
   });
 }
