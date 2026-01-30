@@ -10,7 +10,18 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import ec2, health, rds, resources, terraform
+from app.api.routes import (
+    ec2,
+    eip,
+    health,
+    igw,
+    nat_gateway,
+    rds,
+    resources,
+    subnet,
+    terraform,
+    vpc,
+)
 from app.config import get_settings
 from app.models.database import init_db
 
@@ -61,6 +72,11 @@ app.include_router(health.router, prefix="/api", tags=["Health"])
 app.include_router(resources.router, prefix="/api", tags=["Resources"])
 app.include_router(ec2.router, prefix="/api", tags=["EC2"])
 app.include_router(rds.router, prefix="/api", tags=["RDS"])
+app.include_router(vpc.router, prefix="/api", tags=["VPC"])
+app.include_router(subnet.router, prefix="/api", tags=["Subnets"])
+app.include_router(igw.router, prefix="/api", tags=["Internet Gateways"])
+app.include_router(nat_gateway.router, prefix="/api", tags=["NAT Gateways"])
+app.include_router(eip.router, prefix="/api", tags=["Elastic IPs"])
 app.include_router(terraform.router, prefix="/api/terraform", tags=["Terraform"])
 
 

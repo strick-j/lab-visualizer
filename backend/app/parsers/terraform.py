@@ -51,6 +51,11 @@ class TerraformStateParser:
     SUPPORTED_RESOURCE_TYPES = {
         "aws_instance": "ec2",
         "aws_db_instance": "rds",
+        "aws_vpc": "vpc",
+        "aws_subnet": "subnet",
+        "aws_internet_gateway": "igw",
+        "aws_nat_gateway": "nat_gateway",
+        "aws_eip": "eip",
     }
 
     def __init__(self, bucket: Optional[str] = None):
@@ -255,6 +260,11 @@ class TerraformStateParser:
         id_mappings = {
             "aws_instance": "id",  # EC2 instance ID
             "aws_db_instance": "identifier",  # RDS identifier
+            "aws_vpc": "id",  # VPC ID
+            "aws_subnet": "id",  # Subnet ID
+            "aws_internet_gateway": "id",  # IGW ID
+            "aws_nat_gateway": "id",  # NAT Gateway ID
+            "aws_eip": "id",  # Elastic IP allocation ID
         }
 
         id_field = id_mappings.get(resource_type, "id")

@@ -3,6 +3,7 @@ import {
   LayoutDashboard,
   Server,
   Database,
+  Network,
   GitBranch,
   Settings,
 } from 'lucide-react';
@@ -12,6 +13,7 @@ const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
   { name: 'EC2 Instances', href: '/ec2', icon: Server },
   { name: 'RDS Databases', href: '/rds', icon: Database },
+  { name: 'VPC Networking', href: '/vpc', icon: Network },
   { name: 'Terraform', href: '/terraform', icon: GitBranch },
 ];
 

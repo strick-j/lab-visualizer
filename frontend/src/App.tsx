@@ -1,7 +1,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Layout } from '@/components/layout';
-import { DashboardPage, EC2ListPage, RDSListPage, TerraformPage } from '@/pages';
+import { DashboardPage, EC2ListPage, RDSListPage, VPCPage, TerraformPage } from '@/pages';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 
 // Create React Query client
@@ -25,6 +25,7 @@ function App() {
               <Route index element={<DashboardPage />} />
               <Route path="ec2" element={<EC2ListPage />} />
               <Route path="rds" element={<RDSListPage />} />
+              <Route path="vpc" element={<VPCPage />} />
               <Route path="terraform" element={<TerraformPage />} />
               <Route path="settings" element={<SettingsPlaceholder />} />
             </Route>

@@ -54,6 +54,118 @@ export interface RDSInstance {
   created_at?: string;
 }
 
+export interface VPC {
+  id: number;
+  vpc_id: string;
+  name: string | null;
+  cidr_block: string;
+  state: string;
+  is_default: boolean;
+  display_status: DisplayStatus;
+  enable_dns_support: boolean;
+  enable_dns_hostnames: boolean;
+  tags: Record<string, string> | null;
+  tf_managed: boolean;
+  tf_state_source: string | null;
+  tf_resource_address: string | null;
+  region_name: string | null;
+  is_deleted: boolean;
+  deleted_at: string | null;
+  updated_at: string;
+  created_at?: string;
+}
+
+export type SubnetType = 'public' | 'private' | 'unknown';
+
+export interface Subnet {
+  id: number;
+  subnet_id: string;
+  name: string | null;
+  vpc_id: string;
+  cidr_block: string;
+  availability_zone: string;
+  subnet_type: SubnetType;
+  state: string;
+  display_status: DisplayStatus;
+  available_ip_count: number;
+  map_public_ip_on_launch: boolean;
+  tags: Record<string, string> | null;
+  tf_managed: boolean;
+  tf_state_source: string | null;
+  tf_resource_address: string | null;
+  region_name: string | null;
+  is_deleted: boolean;
+  deleted_at: string | null;
+  updated_at: string;
+  created_at?: string;
+}
+
+export interface InternetGateway {
+  id: number;
+  igw_id: string;
+  name: string | null;
+  vpc_id: string | null;
+  state: string;
+  display_status: DisplayStatus;
+  tags: Record<string, string> | null;
+  tf_managed: boolean;
+  tf_state_source: string | null;
+  tf_resource_address: string | null;
+  region_name: string | null;
+  is_deleted: boolean;
+  deleted_at: string | null;
+  updated_at: string;
+  created_at?: string;
+}
+
+export type ConnectivityType = 'public' | 'private';
+
+export interface NATGateway {
+  id: number;
+  nat_gateway_id: string;
+  name: string | null;
+  vpc_id: string;
+  subnet_id: string;
+  state: string;
+  connectivity_type: ConnectivityType;
+  display_status: DisplayStatus;
+  primary_private_ip: string | null;
+  primary_public_ip: string | null;
+  allocation_id: string | null;
+  network_interface_id: string | null;
+  tags: Record<string, string> | null;
+  tf_managed: boolean;
+  tf_state_source: string | null;
+  tf_resource_address: string | null;
+  region_name: string | null;
+  is_deleted: boolean;
+  deleted_at: string | null;
+  updated_at: string;
+  created_at?: string;
+}
+
+export interface ElasticIP {
+  id: number;
+  allocation_id: string;
+  name: string | null;
+  public_ip: string;
+  private_ip: string | null;
+  domain: string;
+  display_status: DisplayStatus;
+  association_id: string | null;
+  instance_id: string | null;
+  network_interface_id: string | null;
+  tags: Record<string, string> | null;
+  tf_managed: boolean;
+  tf_state_source: string | null;
+  tf_resource_address: string | null;
+  region_name: string | null;
+  is_deleted: boolean;
+  deleted_at: string | null;
+  updated_at: string;
+  created_at?: string;
+}
+
 // =============================================================================
 // API Response Types
 // =============================================================================
@@ -130,4 +242,16 @@ export interface ResourceFilters {
   region?: string;
   search?: string;
   tf_managed?: boolean;
+  vpc_id?: string;
+  subnet_id?: string;
+  subnet_type?: SubnetType;
+  connectivity_type?: ConnectivityType;
+  instance_id?: string;
+  associated?: boolean;
 }
+
+// =============================================================================
+// VPC Page Types
+// =============================================================================
+
+export type VPCResourceType = 'vpcs' | 'subnets' | 'internet-gateways' | 'nat-gateways' | 'elastic-ips';

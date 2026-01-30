@@ -49,6 +49,21 @@ class Region(Base):
     rds_instances: Mapped[list["RDSInstance"]] = relationship(
         back_populates="region", cascade="all, delete-orphan"
     )
+    vpcs: Mapped[list["VPC"]] = relationship(
+        back_populates="region", cascade="all, delete-orphan"
+    )
+    subnets: Mapped[list["Subnet"]] = relationship(
+        back_populates="region", cascade="all, delete-orphan"
+    )
+    internet_gateways: Mapped[list["InternetGateway"]] = relationship(
+        back_populates="region", cascade="all, delete-orphan"
+    )
+    nat_gateways: Mapped[list["NATGateway"]] = relationship(
+        back_populates="region", cascade="all, delete-orphan"
+    )
+    elastic_ips: Mapped[list["ElasticIP"]] = relationship(
+        back_populates="region", cascade="all, delete-orphan"
+    )
 
 
 class EC2Instance(Base):
@@ -180,3 +195,302 @@ class RDSInstance(Base):
             "incompatible-parameters": "error",
         }
         return status_map.get(self.status, "unknown")
+
+
+class VPC(Base):
+    """VPC (Virtual Private Cloud) resource."""
+
+    __tablename__ = "vpcs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    vpc_id: Mapped[str] = mapped_column(String(30), unique=True, nullable=False)
+    region_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("regions.id"), nullable=False
+    )
+
+    # Basic info
+    name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    cidr_block: Mapped[str] = mapped_column(String(20), nullable=False)
+    state: Mapped[str] = mapped_column(String(20), nullable=False)  # available, pending
+    is_default: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    # DNS settings
+    enable_dns_support: Mapped[bool] = mapped_column(Boolean, default=True)
+    enable_dns_hostnames: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    # Metadata
+    tags: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON string
+
+    # Terraform tracking
+    tf_managed: Mapped[bool] = mapped_column(Boolean, default=False)
+    tf_state_source: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    tf_resource_address: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+
+    # Deletion tracking
+    is_deleted: Mapped[bool] = mapped_column(Boolean, default=False)
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+
+    # Timestamps
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+    # Relationships
+    region: Mapped["Region"] = relationship(back_populates="vpcs")
+
+    @property
+    def display_status(self) -> str:
+        """Get normalized display status."""
+        status_map = {
+            "available": "active",
+            "pending": "transitioning",
+        }
+        return status_map.get(self.state, "unknown")
+
+
+class Subnet(Base):
+    """Subnet resource."""
+
+    __tablename__ = "subnets"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    subnet_id: Mapped[str] = mapped_column(String(30), unique=True, nullable=False)
+    region_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("regions.id"), nullable=False
+    )
+
+    # Basic info
+    name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    vpc_id: Mapped[str] = mapped_column(String(30), nullable=False)
+    cidr_block: Mapped[str] = mapped_column(String(20), nullable=False)
+    availability_zone: Mapped[str] = mapped_column(String(20), nullable=False)
+
+    # Classification
+    subnet_type: Mapped[str] = mapped_column(
+        String(10), nullable=False
+    )  # public, private, unknown
+
+    # Configuration
+    state: Mapped[str] = mapped_column(
+        String(20), nullable=False
+    )  # available, pending
+    available_ip_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    map_public_ip_on_launch: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    # Metadata
+    tags: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON string
+
+    # Terraform tracking
+    tf_managed: Mapped[bool] = mapped_column(Boolean, default=False)
+    tf_state_source: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    tf_resource_address: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+
+    # Deletion tracking
+    is_deleted: Mapped[bool] = mapped_column(Boolean, default=False)
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+
+    # Timestamps
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+    # Relationships
+    region: Mapped["Region"] = relationship(back_populates="subnets")
+
+    @property
+    def display_status(self) -> str:
+        """Get normalized display status."""
+        status_map = {
+            "available": "active",
+            "pending": "transitioning",
+        }
+        return status_map.get(self.state, "unknown")
+
+
+class InternetGateway(Base):
+    """Internet Gateway resource."""
+
+    __tablename__ = "internet_gateways"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    igw_id: Mapped[str] = mapped_column(String(30), unique=True, nullable=False)
+    region_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("regions.id"), nullable=False
+    )
+
+    # Basic info
+    name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    vpc_id: Mapped[Optional[str]] = mapped_column(
+        String(30), nullable=True
+    )  # Nullable when detached
+    state: Mapped[str] = mapped_column(
+        String(20), nullable=False
+    )  # available, attached, detaching, detached
+
+    # Metadata
+    tags: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON string
+
+    # Terraform tracking
+    tf_managed: Mapped[bool] = mapped_column(Boolean, default=False)
+    tf_state_source: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    tf_resource_address: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+
+    # Deletion tracking
+    is_deleted: Mapped[bool] = mapped_column(Boolean, default=False)
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+
+    # Timestamps
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+    # Relationships
+    region: Mapped["Region"] = relationship(back_populates="internet_gateways")
+
+    @property
+    def display_status(self) -> str:
+        """Get normalized display status."""
+        status_map = {
+            "available": "active",
+            "attached": "active",
+            "detaching": "transitioning",
+            "detached": "inactive",
+        }
+        return status_map.get(self.state, "unknown")
+
+
+class NATGateway(Base):
+    """NAT Gateway resource."""
+
+    __tablename__ = "nat_gateways"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    nat_gateway_id: Mapped[str] = mapped_column(String(30), unique=True, nullable=False)
+    region_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("regions.id"), nullable=False
+    )
+
+    # Basic info
+    name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    vpc_id: Mapped[str] = mapped_column(String(30), nullable=False)
+    subnet_id: Mapped[str] = mapped_column(String(30), nullable=False)
+    state: Mapped[str] = mapped_column(
+        String(20), nullable=False
+    )  # pending, available, deleting, deleted, failed
+
+    # Configuration
+    connectivity_type: Mapped[str] = mapped_column(
+        String(10), nullable=False
+    )  # public, private
+    primary_private_ip: Mapped[Optional[str]] = mapped_column(String(45), nullable=True)
+    primary_public_ip: Mapped[Optional[str]] = mapped_column(String(45), nullable=True)
+
+    # Associations
+    allocation_id: Mapped[Optional[str]] = mapped_column(
+        String(50), nullable=True
+    )  # EIP allocation
+    network_interface_id: Mapped[Optional[str]] = mapped_column(
+        String(30), nullable=True
+    )
+
+    # Metadata
+    tags: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON string
+
+    # Terraform tracking
+    tf_managed: Mapped[bool] = mapped_column(Boolean, default=False)
+    tf_state_source: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    tf_resource_address: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+
+    # Deletion tracking
+    is_deleted: Mapped[bool] = mapped_column(Boolean, default=False)
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+
+    # Timestamps
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+    # Relationships
+    region: Mapped["Region"] = relationship(back_populates="nat_gateways")
+
+    @property
+    def display_status(self) -> str:
+        """Get normalized display status."""
+        status_map = {
+            "available": "active",
+            "pending": "transitioning",
+            "deleting": "transitioning",
+            "deleted": "inactive",
+            "failed": "error",
+        }
+        return status_map.get(self.state, "unknown")
+
+
+class ElasticIP(Base):
+    """Elastic IP address resource."""
+
+    __tablename__ = "elastic_ips"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    allocation_id: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
+    region_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("regions.id"), nullable=False
+    )
+
+    # Basic info
+    name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    public_ip: Mapped[str] = mapped_column(String(45), nullable=False)
+    private_ip: Mapped[Optional[str]] = mapped_column(String(45), nullable=True)
+
+    # Associations
+    association_id: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    instance_id: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
+    network_interface_id: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
+
+    # Configuration
+    domain: Mapped[str] = mapped_column(
+        String(10), nullable=False
+    )  # vpc, standard
+
+    # Metadata
+    tags: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON string
+
+    # Terraform tracking
+    tf_managed: Mapped[bool] = mapped_column(Boolean, default=False)
+    tf_state_source: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    tf_resource_address: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+
+    # Deletion tracking
+    is_deleted: Mapped[bool] = mapped_column(Boolean, default=False)
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+
+    # Timestamps
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+    # Relationships
+    region: Mapped["Region"] = relationship(back_populates="elastic_ips")
+
+    @property
+    def display_status(self) -> str:
+        """Get normalized display status."""
+        # EIPs don't have states, determine based on association
+        if self.association_id:
+            return "active"
+        return "inactive"
