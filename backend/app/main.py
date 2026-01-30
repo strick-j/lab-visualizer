@@ -21,7 +21,7 @@ from app.api.routes import (
     nat_gateway,
     rds,
     resources,
-    settings,
+    settings as settings_routes,
     subnet,
     terraform,
     vpc,
@@ -116,7 +116,7 @@ app.include_router(
 
 # Settings routes - admin only (auth is handled within the route handlers)
 app.include_router(
-    settings.router, prefix="/api/settings", tags=["Settings"], dependencies=auth_dependency
+    settings_routes.router, prefix="/api/settings", tags=["Settings"], dependencies=auth_dependency
 )
 
 
