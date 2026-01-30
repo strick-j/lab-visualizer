@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { SearchInput, Select, Button } from '@/components/common';
 import { X } from 'lucide-react';
 import type { DisplayStatus, ResourceFilters as Filters } from '@/types';
@@ -25,10 +26,32 @@ export function ResourceFilters({
   onFilterChange,
   showTerraformFilter = true,
 }: ResourceFiltersProps) {
+  // Local state for search input to enable debouncing
+  const [searchValue, setSearchValue] = useState(filters.search || '');
+
+  // Debounce search input - only update filters after user stops typing
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (searchValue !== (filters.search || '')) {
+        onFilterChange({ ...filters, search: searchValue || undefined });
+      }
+    }, 400); // Wait 400ms after user stops typing
+
+    return () => clearTimeout(timer);
+  }, [searchValue]); // Only re-run when searchValue changes
+
+  // Sync external filter changes back to local state
+  useEffect(() => {
+    if (filters.search !== searchValue) {
+      setSearchValue(filters.search || '');
+    }
+  }, [filters.search]);
+
   const hasActiveFilters =
     filters.status || filters.search || filters.tf_managed !== undefined;
 
   const clearFilters = () => {
+    setSearchValue('');
     onFilterChange({});
   };
 
@@ -37,11 +60,9 @@ export function ResourceFilters({
       <div className="w-64">
         <SearchInput
           placeholder="Search by name or ID..."
-          value={filters.search || ''}
-          onChange={(e) =>
-            onFilterChange({ ...filters, search: e.target.value || undefined })
-          }
-          onClear={() => onFilterChange({ ...filters, search: undefined })}
+          value={searchValue}
+          onChange={(e) => setSearchValue(e.target.value)}
+          onClear={() => setSearchValue('')}
         />
       </div>
 
