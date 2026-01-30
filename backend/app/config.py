@@ -50,8 +50,20 @@ class Settings(BaseSettings):
     )
 
     # -------------------------------------------------------------------------
-    # Authentication (OIDC)
+    # Authentication
     # -------------------------------------------------------------------------
+    # Local authentication
+    local_auth_enabled: bool = Field(
+        default=True, description="Enable local username/password authentication"
+    )
+    admin_username: Optional[str] = Field(
+        default=None, description="Initial admin username (created on first startup)"
+    )
+    admin_password: Optional[str] = Field(
+        default=None, description="Initial admin password (created on first startup)"
+    )
+
+    # OIDC authentication
     oidc_issuer: Optional[str] = Field(
         default=None, description="OIDC identity provider issuer URL"
     )
@@ -59,9 +71,32 @@ class Settings(BaseSettings):
     oidc_client_secret: Optional[str] = Field(
         default=None, description="OIDC client secret"
     )
+
+    # SAML authentication
+    saml_enabled: bool = Field(default=False, description="Enable SAML authentication")
+    saml_idp_entity_id: Optional[str] = Field(
+        default=None, description="SAML Identity Provider Entity ID"
+    )
+    saml_idp_sso_url: Optional[str] = Field(
+        default=None, description="SAML Identity Provider SSO URL"
+    )
+    saml_idp_certificate: Optional[str] = Field(
+        default=None, description="SAML Identity Provider X.509 certificate (PEM format)"
+    )
+    saml_sp_entity_id: Optional[str] = Field(
+        default=None, description="SAML Service Provider Entity ID"
+    )
+
+    # Session configuration
     session_secret: str = Field(
         default="change-me-in-production",
         description="Secret key for session signing",
+    )
+    access_token_expire_minutes: int = Field(
+        default=30, description="Access token expiration time in minutes"
+    )
+    refresh_token_expire_days: int = Field(
+        default=7, description="Refresh token expiration time in days"
     )
 
     # -------------------------------------------------------------------------
@@ -85,8 +120,23 @@ class Settings(BaseSettings):
 
     @property
     def auth_enabled(self) -> bool:
-        """Check if authentication is configured."""
+        """Check if any authentication method is configured."""
+        return self.local_auth_enabled or self.oidc_enabled or self.saml_enabled
+
+    @property
+    def oidc_enabled(self) -> bool:
+        """Check if OIDC authentication is configured."""
         return bool(self.oidc_issuer and self.oidc_client_id)
+
+    @property
+    def saml_configured(self) -> bool:
+        """Check if SAML is fully configured."""
+        return bool(
+            self.saml_enabled
+            and self.saml_idp_entity_id
+            and self.saml_idp_sso_url
+            and self.saml_idp_certificate
+        )
 
 
 @lru_cache

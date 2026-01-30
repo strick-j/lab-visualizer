@@ -13,6 +13,12 @@ import type {
   TerraformStatesResponse,
   DriftResponse,
   ResourceFilters,
+  AuthConfig,
+  LoginCredentials,
+  TokenResponse,
+  User,
+  OIDCLoginResponse,
+  SAMLLoginResponse,
 } from '@/types';
 
 // Create axios instance with base configuration
@@ -42,8 +48,15 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Handle unauthorized - redirect to login
-      window.location.href = '/login';
+      // Clear stored tokens on 401
+      localStorage.removeItem('auth_token');
+      localStorage.removeItem('refresh_token');
+
+      // Only redirect if not already on login page or auth routes
+      const currentPath = window.location.pathname;
+      if (!currentPath.startsWith('/login') && !currentPath.startsWith('/auth')) {
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }
@@ -245,6 +258,44 @@ export async function getTerraformStates(): Promise<TerraformStatesResponse> {
 
 export async function getDrift(): Promise<DriftResponse> {
   const response = await api.get('/terraform/drift');
+  return response.data;
+}
+
+// =============================================================================
+// Authentication
+// =============================================================================
+
+export async function getAuthConfig(): Promise<AuthConfig> {
+  const response = await api.get('/auth/config');
+  return response.data;
+}
+
+export async function login(credentials: LoginCredentials): Promise<TokenResponse> {
+  const response = await api.post('/auth/login', credentials);
+  return response.data;
+}
+
+export async function refreshToken(refreshToken: string): Promise<TokenResponse> {
+  const response = await api.post('/auth/refresh', { refresh_token: refreshToken });
+  return response.data;
+}
+
+export async function logout(): Promise<void> {
+  await api.post('/auth/logout');
+}
+
+export async function getCurrentUser(): Promise<User> {
+  const response = await api.get('/auth/me');
+  return response.data;
+}
+
+export async function initiateOIDCLogin(): Promise<OIDCLoginResponse> {
+  const response = await api.get('/auth/oidc/login');
+  return response.data;
+}
+
+export async function initiateSAMLLogin(): Promise<SAMLLoginResponse> {
+  const response = await api.get('/auth/saml/login');
   return response.data;
 }
 

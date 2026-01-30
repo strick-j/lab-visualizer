@@ -7,10 +7,13 @@ This module initializes the FastAPI application and registers all routes.
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.deps import get_current_user
+
 from app.api.routes import (
+    auth,
     ec2,
     eip,
     health,
@@ -37,13 +40,20 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan handler for startup and shutdown events."""
+    from app.models.database import async_session_maker
+    from app.services.auth import ensure_admin_user
+
     # Startup
     logger.info("Starting AWS Infrastructure Visualizer...")
     await init_db()
     logger.info("Database initialized")
-    
+
+    # Ensure admin user exists if configured
+    async with async_session_maker() as session:
+        await ensure_admin_user(session)
+
     yield
-    
+
     # Shutdown
     logger.info("Shutting down AWS Infrastructure Visualizer...")
 
@@ -67,17 +77,41 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Register API routes
+# Authentication dependency for protected routes
+auth_dependency = [Depends(get_current_user)]
+
+# Register API routes - public routes (no auth required)
+app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(health.router, prefix="/api", tags=["Health"])
-app.include_router(resources.router, prefix="/api", tags=["Resources"])
-app.include_router(ec2.router, prefix="/api", tags=["EC2"])
-app.include_router(rds.router, prefix="/api", tags=["RDS"])
-app.include_router(vpc.router, prefix="/api", tags=["VPC"])
-app.include_router(subnet.router, prefix="/api", tags=["Subnets"])
-app.include_router(igw.router, prefix="/api", tags=["Internet Gateways"])
-app.include_router(nat_gateway.router, prefix="/api", tags=["NAT Gateways"])
-app.include_router(eip.router, prefix="/api", tags=["Elastic IPs"])
-app.include_router(terraform.router, prefix="/api/terraform", tags=["Terraform"])
+
+# Register API routes - protected routes (auth required)
+app.include_router(
+    resources.router, prefix="/api", tags=["Resources"], dependencies=auth_dependency
+)
+app.include_router(
+    ec2.router, prefix="/api", tags=["EC2"], dependencies=auth_dependency
+)
+app.include_router(
+    rds.router, prefix="/api", tags=["RDS"], dependencies=auth_dependency
+)
+app.include_router(
+    vpc.router, prefix="/api", tags=["VPC"], dependencies=auth_dependency
+)
+app.include_router(
+    subnet.router, prefix="/api", tags=["Subnets"], dependencies=auth_dependency
+)
+app.include_router(
+    igw.router, prefix="/api", tags=["Internet Gateways"], dependencies=auth_dependency
+)
+app.include_router(
+    nat_gateway.router, prefix="/api", tags=["NAT Gateways"], dependencies=auth_dependency
+)
+app.include_router(
+    eip.router, prefix="/api", tags=["Elastic IPs"], dependencies=auth_dependency
+)
+app.include_router(
+    terraform.router, prefix="/api/terraform", tags=["Terraform"], dependencies=auth_dependency
+)
 
 
 @app.get("/")
