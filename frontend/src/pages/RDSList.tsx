@@ -127,6 +127,10 @@ export function RDSListPage() {
         </div>
       </div>
 
+      <p className="text-sm text-gray-600 dark:text-gray-400">
+        {data?.meta.total || 0} databases found
+      </p>
+
       <ResourceFilters filters={filters} onFilterChange={setFilters} />
 
       {data?.data.length === 0 ? (

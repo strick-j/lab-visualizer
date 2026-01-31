@@ -123,6 +123,10 @@ export function EC2ListPage() {
         </div>
       </div>
 
+      <p className="text-sm text-gray-600 dark:text-gray-400">
+        {data?.meta.total || 0} instances found
+      </p>
+
       <ResourceFilters filters={filters} onFilterChange={setFilters} />
 
       {data?.data.length === 0 ? (
