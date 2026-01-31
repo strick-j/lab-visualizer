@@ -5,3 +5,4 @@ export { VPCPage } from './VPCPage';
 export { TerraformPage } from './Terraform';
 export { LoginPage } from './LoginPage';
 export { SettingsPage } from './SettingsPage';
+export { AuthCallbackPage } from './AuthCallbackPage';

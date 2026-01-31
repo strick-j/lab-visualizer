@@ -9,6 +9,7 @@ import {
   TerraformPage,
   LoginPage,
   SettingsPage,
+  AuthCallbackPage,
 } from '@/pages';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { AuthProvider } from '@/contexts/AuthContext';
@@ -32,8 +33,9 @@ function App() {
         <AuthProvider>
           <BrowserRouter>
             <Routes>
-              {/* Public route - Login page */}
+              {/* Public routes */}
               <Route path="/login" element={<LoginPage />} />
+              <Route path="/auth/callback" element={<AuthCallbackPage />} />
 
               {/* Protected routes - require authentication */}
               <Route

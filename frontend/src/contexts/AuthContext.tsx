@@ -18,6 +18,7 @@ interface AuthContextType {
   logout: () => Promise<void>;
   refreshAuth: () => Promise<void>;
   clearError: () => void;
+  setTokens: (accessToken: string, refreshToken: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -122,6 +123,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [fetchUser]);
 
+  // Set tokens from OIDC/SAML callback and fetch user
+  const setTokensCallback = useCallback(async (accessToken: string, refreshToken: string) => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      // Store tokens
+      localStorage.setItem(TOKEN_KEY, accessToken);
+      localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+
+      // Fetch user data
+      const userData = await getCurrentUser();
+      setUser(userData);
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Authentication failed';
+      setError(errorMessage);
+      clearTokens();
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [clearTokens]);
+
   // Initialize auth state on mount
   useEffect(() => {
     const initAuth = async () => {
@@ -170,6 +194,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         logout,
         refreshAuth,
         clearError,
+        setTokens: setTokensCallback,
       }}
     >
       {children}

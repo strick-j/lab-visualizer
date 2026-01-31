@@ -11,6 +11,7 @@ from urllib.parse import urlencode
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
@@ -349,13 +350,18 @@ async def oidc_callback(
         db, user, user_agent=user_agent, ip_address=ip_address
     )
 
-    # Return tokens (frontend will handle these)
-    return TokenResponse(
-        access_token=access_token,
-        refresh_token=refresh_token,
-        token_type="bearer",
-        expires_in=settings.access_token_expire_minutes * 60,
-    )
+    # Redirect to frontend with tokens in URL fragment
+    # Using fragment (#) instead of query params for security (fragments aren't sent to server)
+    frontend_callback = "/auth/callback"
+    token_params = urlencode({
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "token_type": "bearer",
+        "expires_in": settings.access_token_expire_minutes * 60,
+    })
+    redirect_url = f"{frontend_callback}#{token_params}"
+    logger.info(f"OIDC auth successful for user {user.username}, redirecting to frontend")
+    return RedirectResponse(url=redirect_url, status_code=status.HTTP_302_FOUND)
 
 
 # =============================================================================
