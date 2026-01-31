@@ -23,6 +23,8 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
-    sourcemap: true,
+    // Disable source maps in production to prevent source code exposure
+    // Set VITE_SOURCEMAP=true during development if needed for debugging
+    sourcemap: process.env.VITE_SOURCEMAP === 'true',
   },
 });
