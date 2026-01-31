@@ -2,9 +2,19 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@/test/test-utils';
 import { InfrastructureTopology } from './InfrastructureTopology';
 
+// Mock interfaces for topology components
+interface MockTopologyCanvasProps {
+  data?: { vpcs?: { vpc_id: string }[] };
+  onNodeClick?: (id: string, type: string, data: { label: string; type: string }) => void;
+}
+
+interface MockTopologyLegendProps {
+  stats?: { total_vpcs: number };
+}
+
 // Mock the topology components
 vi.mock('./TopologyCanvas', () => ({
-  TopologyCanvas: ({ data, onNodeClick }: any) => (
+  TopologyCanvas: ({ data, onNodeClick }: MockTopologyCanvasProps) => (
     <div data-testid="topology-canvas">
       <button
         data-testid="test-node"
@@ -18,7 +28,7 @@ vi.mock('./TopologyCanvas', () => ({
 }));
 
 vi.mock('./TopologyLegend', () => ({
-  TopologyLegend: ({ stats }: any) => (
+  TopologyLegend: ({ stats }: MockTopologyLegendProps) => (
     <div data-testid="topology-legend">
       {stats && <span>Stats: {stats.total_vpcs} VPCs</span>}
     </div>

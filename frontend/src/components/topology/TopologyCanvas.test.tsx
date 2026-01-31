@@ -2,9 +2,23 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@/test/test-utils';
 import { TopologyCanvas } from './TopologyCanvas';
 
+// Mock interfaces for ReactFlow
+interface MockReactFlowProps {
+  children?: React.ReactNode;
+  nodes?: unknown[];
+  edges?: unknown[];
+  onNodeClick?: (event: React.MouseEvent, node: { id: string; type: string; data: { label: string } }) => void;
+}
+
+interface MockNode {
+  id: string;
+  position: { x: number; y: number };
+  data: unknown;
+}
+
 // Mock ReactFlow and related imports
 vi.mock('reactflow', () => ({
-  default: ({ children, nodes, edges, onNodeClick }: any) => (
+  default: ({ children, nodes, edges, onNodeClick }: MockReactFlowProps) => (
     <div data-testid="react-flow" data-nodes={JSON.stringify(nodes)} data-edges={JSON.stringify(edges)}>
       <button data-testid="mock-node" onClick={(e) => onNodeClick?.(e, { id: 'node-1', type: 'ec2', data: { label: 'test' } })}>
         Mock Node
@@ -14,8 +28,8 @@ vi.mock('reactflow', () => ({
   ),
   Background: () => <div data-testid="react-flow-background" />,
   Controls: () => <div data-testid="react-flow-controls" />,
-  useNodesState: (initialNodes: any[]) => [initialNodes, vi.fn(), vi.fn()],
-  useEdgesState: (initialEdges: any[]) => [initialEdges, vi.fn(), vi.fn()],
+  useNodesState: (initialNodes: MockNode[]) => [initialNodes, vi.fn(), vi.fn()],
+  useEdgesState: (initialEdges: { id: string; source: string; target: string }[]) => [initialEdges, vi.fn(), vi.fn()],
   BackgroundVariant: { Dots: 'dots' },
 }));
 
