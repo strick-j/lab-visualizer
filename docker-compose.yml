@@ -36,6 +36,8 @@ services:
       - SAML_IDP_SSO_URL=${SAML_IDP_SSO_URL:-}
       - SAML_IDP_CERTIFICATE=${SAML_IDP_CERTIFICATE:-}
       - SAML_SP_ENTITY_ID=${SAML_SP_ENTITY_ID:-}
+      # Frontend URL for SSO redirects (required for OIDC/SAML callbacks)
+      - FRONTEND_URL=${FRONTEND_URL:-}
     volumes:
       - ./backend/app:/app/app:ro
       - ./config:/app/config:ro

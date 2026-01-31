@@ -113,6 +113,12 @@ class Settings(BaseSettings):
         description="Comma-separated list of allowed CORS origins",
     )
 
+    # Frontend URL for SSO callback redirects
+    frontend_url: Optional[str] = Field(
+        default=None,
+        description="Frontend URL for SSO callback redirects (e.g., http://192.168.1.100:3000)",
+    )
+
     @property
     def cors_origins_list(self) -> List[str]:
         """Parse CORS origins string into a list."""

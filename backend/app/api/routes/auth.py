@@ -354,8 +354,8 @@ async def oidc_callback(
 
     # Redirect to frontend with tokens in URL fragment
     # Using fragment (#) instead of query params for security (fragments aren't sent to server)
-    # Use the first CORS origin as the frontend base URL
-    frontend_base = settings.cors_origins_list[0] if settings.cors_origins_list else ""
+    # Use frontend_url if configured, otherwise fall back to first CORS origin
+    frontend_base = settings.frontend_url or (settings.cors_origins_list[0] if settings.cors_origins_list else "")
     frontend_callback = f"{frontend_base}/auth/callback"
     token_params = urlencode({
         "access_token": access_token,
