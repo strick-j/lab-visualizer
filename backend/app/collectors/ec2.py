@@ -70,6 +70,8 @@ class EC2Collector(BaseCollector):
                 "state": state,
                 "private_ip": instance.get("PrivateIpAddress"),
                 "public_ip": instance.get("PublicIpAddress"),
+                "private_dns": instance.get("PrivateDnsName"),
+                "public_dns": instance.get("PublicDnsName"),
                 "vpc_id": instance.get("VpcId"),
                 "subnet_id": instance.get("SubnetId"),
                 "availability_zone": instance.get("Placement", {}).get(

@@ -452,3 +452,124 @@ class RefreshResponse(BaseSchema):
     message: str
     resources_updated: int = 0
     duration_seconds: float = 0.0
+
+
+# =============================================================================
+# Topology Visualization Schemas
+# =============================================================================
+
+
+class TopologyEC2Instance(BaseSchema):
+    """EC2 instance for topology visualization."""
+
+    id: str
+    name: Optional[str] = None
+    instance_type: str
+    state: str
+    display_status: DisplayStatus
+    private_ip: Optional[str] = None
+    public_ip: Optional[str] = None
+    private_dns: Optional[str] = None
+    public_dns: Optional[str] = None
+    tf_managed: bool = True
+    tf_resource_address: Optional[str] = None
+
+
+class TopologyRDSInstance(BaseSchema):
+    """RDS instance for topology visualization."""
+
+    id: str
+    name: Optional[str] = None
+    engine: str
+    instance_class: str
+    status: str
+    display_status: DisplayStatus
+    endpoint: Optional[str] = None
+    port: Optional[int] = None
+    tf_managed: bool = True
+    tf_resource_address: Optional[str] = None
+
+
+class TopologyNATGateway(BaseSchema):
+    """NAT Gateway for topology visualization."""
+
+    id: str
+    name: Optional[str] = None
+    state: str
+    display_status: DisplayStatus
+    primary_public_ip: Optional[str] = None
+    tf_managed: bool = True
+    tf_resource_address: Optional[str] = None
+
+
+class TopologyInternetGateway(BaseSchema):
+    """Internet Gateway for topology visualization."""
+
+    id: str
+    name: Optional[str] = None
+    state: str
+    display_status: DisplayStatus
+    tf_managed: bool = True
+    tf_resource_address: Optional[str] = None
+
+
+class TopologyElasticIP(BaseSchema):
+    """Elastic IP for topology visualization."""
+
+    id: str
+    public_ip: str
+    associated_with: Optional[str] = None
+    association_type: Optional[str] = None  # 'ec2', 'nat_gateway', 'eni'
+    tf_managed: bool = True
+    tf_resource_address: Optional[str] = None
+
+
+class TopologySubnet(BaseSchema):
+    """Subnet with contained resources for topology visualization."""
+
+    id: str
+    name: Optional[str] = None
+    cidr_block: str
+    availability_zone: str
+    subnet_type: str  # public, private, unknown
+    display_status: DisplayStatus
+    tf_managed: bool = True
+    tf_resource_address: Optional[str] = None
+    nat_gateway: Optional[TopologyNATGateway] = None
+    ec2_instances: List[TopologyEC2Instance] = []
+    rds_instances: List[TopologyRDSInstance] = []
+
+
+class TopologyVPC(BaseSchema):
+    """VPC with all nested resources for topology visualization."""
+
+    id: str
+    name: Optional[str] = None
+    cidr_block: str
+    state: str
+    display_status: DisplayStatus
+    tf_managed: bool = True
+    tf_resource_address: Optional[str] = None
+    internet_gateway: Optional[TopologyInternetGateway] = None
+    subnets: List[TopologySubnet] = []
+    elastic_ips: List[TopologyElasticIP] = []
+
+
+class TopologyMeta(BaseSchema):
+    """Metadata for topology response."""
+
+    total_vpcs: int = 0
+    total_subnets: int = 0
+    total_ec2: int = 0
+    total_rds: int = 0
+    total_nat_gateways: int = 0
+    total_internet_gateways: int = 0
+    total_elastic_ips: int = 0
+    last_refreshed: Optional[datetime] = None
+
+
+class TopologyResponse(BaseSchema):
+    """Complete topology response for visualization."""
+
+    vpcs: List[TopologyVPC]
+    meta: TopologyMeta

@@ -273,6 +273,8 @@ async def _sync_ec2_instances(
             existing.state = instance_data["state"]
             existing.private_ip = instance_data.get("private_ip")
             existing.public_ip = instance_data.get("public_ip")
+            existing.private_dns = instance_data.get("private_dns")
+            existing.public_dns = instance_data.get("public_dns")
             existing.vpc_id = instance_data.get("vpc_id")
             existing.subnet_id = instance_data.get("subnet_id")
             existing.availability_zone = instance_data.get("availability_zone")
@@ -290,6 +292,8 @@ async def _sync_ec2_instances(
                 state=instance_data["state"],
                 private_ip=instance_data.get("private_ip"),
                 public_ip=instance_data.get("public_ip"),
+                private_dns=instance_data.get("private_dns"),
+                public_dns=instance_data.get("public_dns"),
                 vpc_id=instance_data.get("vpc_id"),
                 subnet_id=instance_data.get("subnet_id"),
                 availability_zone=instance_data.get("availability_zone"),

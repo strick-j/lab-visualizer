@@ -20,6 +20,7 @@ from app.api.routes import (
     resources,
     subnet,
     terraform,
+    topology,
     vpc,
 )
 from app.config import get_settings
@@ -78,6 +79,7 @@ app.include_router(igw.router, prefix="/api", tags=["Internet Gateways"])
 app.include_router(nat_gateway.router, prefix="/api", tags=["NAT Gateways"])
 app.include_router(eip.router, prefix="/api", tags=["Elastic IPs"])
 app.include_router(terraform.router, prefix="/api/terraform", tags=["Terraform"])
+app.include_router(topology.router, prefix="/api", tags=["Topology"])
 
 
 @app.get("/")

@@ -5,12 +5,14 @@ import {
   Database,
   Network,
   GitBranch,
+  Waypoints,
   Settings,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
+  { name: 'Topology', href: '/topology', icon: Waypoints },
   { name: 'EC2 Instances', href: '/ec2', icon: Server },
   { name: 'RDS Databases', href: '/rds', icon: Database },
   { name: 'VPC Networking', href: '/vpc', icon: Network },
