@@ -1,21 +1,49 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Server, Database, GitBranch, AlertTriangle, CheckCircle, Network } from 'lucide-react';
-import { Card, CardHeader, CardTitle, CardContent, PageLoading, StatusBadge, Select } from '@/components/common';
-import { ResourceSummaryCard } from '@/components/dashboard';
-import { useStatusSummary, useEC2Instances, useRDSInstances, useDrift, useVPCs, useSubnets, useInternetGateways, useNATGateways, useElasticIPs } from '@/hooks';
-import { formatRelativeTime, getResourceName } from '@/lib/utils';
-import type { EC2Instance, RDSInstance, VPC, ResourceFilters } from '@/types';
+import { useState } from "react";
+import { Link } from "react-router-dom";
+import {
+  Server,
+  Database,
+  GitBranch,
+  AlertTriangle,
+  CheckCircle,
+  Network,
+} from "lucide-react";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+  PageLoading,
+  StatusBadge,
+  Select,
+} from "@/components/common";
+import { ResourceSummaryCard } from "@/components/dashboard";
+import {
+  useStatusSummary,
+  useEC2Instances,
+  useRDSInstances,
+  useDrift,
+  useVPCs,
+  useSubnets,
+  useInternetGateways,
+  useNATGateways,
+  useElasticIPs,
+} from "@/hooks";
+import { formatRelativeTime, getResourceName } from "@/lib/utils";
+import type { EC2Instance, RDSInstance, VPC, ResourceFilters } from "@/types";
 
 const terraformOptions = [
-  { value: 'true', label: 'Managed' },
-  { value: 'false', label: 'Unmanaged' },
+  { value: "true", label: "Managed" },
+  { value: "false", label: "Unmanaged" },
 ];
 
 export function DashboardPage() {
-  const [tfManagedFilter, setTfManagedFilter] = useState<boolean | undefined>(undefined);
+  const [tfManagedFilter, setTfManagedFilter] = useState<boolean | undefined>(
+    undefined,
+  );
 
-  const filters: ResourceFilters | undefined = tfManagedFilter !== undefined ? { tf_managed: tfManagedFilter } : undefined;
+  const filters: ResourceFilters | undefined =
+    tfManagedFilter !== undefined ? { tf_managed: tfManagedFilter } : undefined;
 
   const { data: summary, isLoading: summaryLoading } = useStatusSummary();
   const { data: ec2Data, isLoading: ec2Loading } = useEC2Instances(filters);
@@ -37,18 +65,22 @@ export function DashboardPage() {
 
   // Calculate counts from filtered data
   const computeCounts = (data: { display_status: string }[] | undefined) => {
-    if (!data) return { active: 0, inactive: 0, transitioning: 0, error: 0, total: 0 };
+    if (!data)
+      return { active: 0, inactive: 0, transitioning: 0, error: 0, total: 0 };
     return {
-      active: data.filter(d => d.display_status === 'active').length,
-      inactive: data.filter(d => d.display_status === 'inactive').length,
-      transitioning: data.filter(d => d.display_status === 'transitioning').length,
-      error: data.filter(d => d.display_status === 'error').length,
+      active: data.filter((d) => d.display_status === "active").length,
+      inactive: data.filter((d) => d.display_status === "inactive").length,
+      transitioning: data.filter((d) => d.display_status === "transitioning")
+        .length,
+      error: data.filter((d) => d.display_status === "error").length,
       total: data.length,
     };
   };
 
-  const ec2Counts = tfManagedFilter !== undefined ? computeCounts(ec2Data?.data) : summary?.ec2;
-  const rdsCounts = tfManagedFilter !== undefined ? computeCounts(rdsData?.data) : summary?.rds;
+  const ec2Counts =
+    tfManagedFilter !== undefined ? computeCounts(ec2Data?.data) : summary?.ec2;
+  const rdsCounts =
+    tfManagedFilter !== undefined ? computeCounts(rdsData?.data) : summary?.rds;
 
   // Calculate VPC networking totals
   const vpcNetworkingTotal = {
@@ -63,7 +95,9 @@ export function DashboardPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Dashboard</h1>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+            Dashboard
+          </h1>
           <p className="text-gray-500 dark:text-gray-400">
             Overview of your AWS infrastructure
           </p>
@@ -72,10 +106,10 @@ export function DashboardPage() {
           <Select
             placeholder="All resources"
             options={terraformOptions}
-            value={tfManagedFilter === undefined ? '' : String(tfManagedFilter)}
+            value={tfManagedFilter === undefined ? "" : String(tfManagedFilter)}
             onChange={(e) =>
               setTfManagedFilter(
-                e.target.value === '' ? undefined : e.target.value === 'true'
+                e.target.value === "" ? undefined : e.target.value === "true",
               )
             }
           />
@@ -117,20 +151,36 @@ export function DashboardPage() {
               <CardContent>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-700">
-                    <span className="text-sm text-gray-600 dark:text-gray-300">Subnets</span>
-                    <span className="font-semibold text-gray-900 dark:text-gray-100">{vpcNetworkingTotal.subnets}</span>
+                    <span className="text-sm text-gray-600 dark:text-gray-300">
+                      Subnets
+                    </span>
+                    <span className="font-semibold text-gray-900 dark:text-gray-100">
+                      {vpcNetworkingTotal.subnets}
+                    </span>
                   </div>
                   <div className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-700">
-                    <span className="text-sm text-gray-600 dark:text-gray-300">IGWs</span>
-                    <span className="font-semibold text-gray-900 dark:text-gray-100">{vpcNetworkingTotal.igws}</span>
+                    <span className="text-sm text-gray-600 dark:text-gray-300">
+                      IGWs
+                    </span>
+                    <span className="font-semibold text-gray-900 dark:text-gray-100">
+                      {vpcNetworkingTotal.igws}
+                    </span>
                   </div>
                   <div className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-700">
-                    <span className="text-sm text-gray-600 dark:text-gray-300">NAT GWs</span>
-                    <span className="font-semibold text-gray-900 dark:text-gray-100">{vpcNetworkingTotal.natGateways}</span>
+                    <span className="text-sm text-gray-600 dark:text-gray-300">
+                      NAT GWs
+                    </span>
+                    <span className="font-semibold text-gray-900 dark:text-gray-100">
+                      {vpcNetworkingTotal.natGateways}
+                    </span>
                   </div>
                   <div className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-700">
-                    <span className="text-sm text-gray-600 dark:text-gray-300">Elastic IPs</span>
-                    <span className="font-semibold text-gray-900 dark:text-gray-100">{vpcNetworkingTotal.elasticIPs}</span>
+                    <span className="text-sm text-gray-600 dark:text-gray-300">
+                      Elastic IPs
+                    </span>
+                    <span className="font-semibold text-gray-900 dark:text-gray-100">
+                      {vpcNetworkingTotal.elasticIPs}
+                    </span>
                   </div>
                 </div>
                 <Link
@@ -280,7 +330,9 @@ export function DashboardPage() {
           </CardHeader>
           <CardContent>
             {vpcLoading ? (
-              <div className="py-4 text-center text-gray-500 dark:text-gray-400">Loading...</div>
+              <div className="py-4 text-center text-gray-500 dark:text-gray-400">
+                Loading...
+              </div>
             ) : recentVPCs.length === 0 ? (
               <div className="py-4 text-center text-gray-500 dark:text-gray-400">
                 No VPCs found
