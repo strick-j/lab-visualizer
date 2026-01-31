@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/common';
 import { cn, getStatusConfig } from '@/lib/utils';
 import type { ResourceCount, DisplayStatus } from '@/types';
@@ -7,6 +8,7 @@ interface ResourceSummaryCardProps {
   icon: React.ReactNode;
   counts: ResourceCount;
   href?: string;
+  linkText?: string;
 }
 
 const statusOrder: (keyof Omit<ResourceCount, 'total'>)[] = ['active', 'inactive', 'transitioning', 'error'];
@@ -15,6 +17,8 @@ export function ResourceSummaryCard({
   title,
   icon,
   counts,
+  href,
+  linkText = 'View details',
 }: ResourceSummaryCardProps) {
   return (
     <Card>
@@ -46,6 +50,14 @@ export function ResourceSummaryCard({
             );
           })}
         </div>
+        {href && (
+          <Link
+            to={href}
+            className="mt-3 block text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+          >
+            {linkText} →
+          </Link>
+        )}
       </CardContent>
     </Card>
   );

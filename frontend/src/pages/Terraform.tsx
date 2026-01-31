@@ -108,11 +108,16 @@ export function TerraformPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Terraform</h1>
-        <p className="text-gray-500 dark:text-gray-400">
-          Manage and monitor your Terraform state files
-        </p>
+      <div className="flex items-center gap-3">
+        <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-purple-100 dark:bg-purple-900">
+          <GitBranch className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+        </div>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Terraform</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Manage and monitor your Terraform state files
+          </p>
+        </div>
       </div>
 
       {/* Summary */}

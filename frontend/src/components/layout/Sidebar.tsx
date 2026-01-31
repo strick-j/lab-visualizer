@@ -21,7 +21,7 @@ const navigation = [
 
 export function Sidebar() {
   return (
-    <aside className="fixed left-0 top-16 z-10 h-[calc(100vh-4rem)] w-64 border-r border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
+    <aside className="fixed left-0 top-[var(--header-height)] z-10 h-[calc(100vh-var(--header-height))] w-64 border-r border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
       <nav className="flex flex-col gap-1 p-4">
         {navigation.map((item) => (
           <NavLink

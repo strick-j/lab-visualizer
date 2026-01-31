@@ -74,6 +74,8 @@ class EC2InstanceBase(BaseSchema):
     state: str
     private_ip: Optional[str] = None
     public_ip: Optional[str] = None
+    private_dns: Optional[str] = None
+    public_dns: Optional[str] = None
     vpc_id: Optional[str] = None
     subnet_id: Optional[str] = None
     availability_zone: Optional[str] = None
