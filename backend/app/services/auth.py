@@ -127,21 +127,21 @@ async def authenticate_local_user(
     """Authenticate a local user by username and password."""
     user = await get_user_by_username(db, username)
     if not user:
-        logger.debug(f"Auth failed: user '{username}' not found")
+        logger.warning(f"Auth failed: user '{username}' not found")
         return None
     if user.auth_provider != "local":
-        logger.debug(f"Auth failed: user '{username}' is not a local user (provider: {user.auth_provider})")
+        logger.warning(f"Auth failed: user '{username}' is not a local user (provider: {user.auth_provider})")
         return None
     if not user.password_hash:
-        logger.debug(f"Auth failed: user '{username}' has no password hash")
+        logger.warning(f"Auth failed: user '{username}' has no password hash")
         return None
     if not verify_password(password, user.password_hash):
-        logger.debug(f"Auth failed: password verification failed for user '{username}'")
+        logger.warning(f"Auth failed: password verification failed for user '{username}'")
         return None
     if not user.is_active:
-        logger.debug(f"Auth failed: user '{username}' is not active")
+        logger.warning(f"Auth failed: user '{username}' is not active")
         return None
-    logger.debug(f"Auth succeeded for user '{username}'")
+    logger.info(f"Auth succeeded for user '{username}'")
     return user
 
 
