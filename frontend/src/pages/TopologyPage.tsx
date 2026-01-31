@@ -6,16 +6,36 @@ import type { TopologyNodeData } from '@/types/topology';
 function CopyButton({ value }: { value: string }) {
   const [copied, setCopied] = useState(false);
 
-  const handleCopy = async () => {
-    await navigator.clipboard.writeText(value);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const handleCopy = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      // Try modern clipboard API first
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(value);
+      } else {
+        // Fallback for non-secure contexts
+        const textArea = document.createElement('textarea');
+        textArea.value = value;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        textArea.style.top = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        document.execCommand('copy');
+        textArea.remove();
+      }
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
   };
 
   return (
     <button
       onClick={handleCopy}
-      className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+      className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors shrink-0"
       title="Copy to clipboard"
     >
       {copied ? (
@@ -64,6 +84,12 @@ function getResourceDetails(data: TopologyNodeData): { label: string; value: str
       details.push({ label: 'DB Identifier', value: data.dbIdentifier });
       details.push({ label: 'Engine', value: data.engine });
       details.push({ label: 'Instance Class', value: data.instanceClass });
+      if (data.endpoint) {
+        details.push({ label: 'Endpoint', value: data.endpoint });
+      }
+      if (data.port) {
+        details.push({ label: 'Port', value: String(data.port) });
+      }
       details.push({ label: 'Status', value: data.status });
       break;
 

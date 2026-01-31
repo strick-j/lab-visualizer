@@ -231,6 +231,8 @@ async def get_topology(
                         instance_class=rds.db_instance_class,
                         status=rds.status,
                         display_status=_get_display_status(rds.status, "rds"),
+                        endpoint=rds.endpoint,
+                        port=rds.port,
                         tf_managed=True,
                         tf_resource_address=rds.tf_resource_address,
                     ))

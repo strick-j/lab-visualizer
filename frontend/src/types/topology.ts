@@ -29,6 +29,8 @@ export interface TopologyRDSInstance {
   instance_class: string;
   status: string;
   display_status: DisplayStatus;
+  endpoint: string | null;
+  port: number | null;
   tf_managed: boolean;
   tf_resource_address: string | null;
 }
@@ -152,6 +154,8 @@ export interface RDSNodeData extends BaseNodeData {
   engine: string;
   instanceClass: string;
   status: string;
+  endpoint?: string;
+  port?: number;
 }
 
 export interface NATGatewayNodeData extends BaseNodeData {

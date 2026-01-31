@@ -482,6 +482,8 @@ class TopologyRDSInstance(BaseSchema):
     instance_class: str
     status: str
     display_status: DisplayStatus
+    endpoint: Optional[str] = None
+    port: Optional[int] = None
     tf_managed: bool = True
     tf_resource_address: Optional[str] = None
 

@@ -393,6 +393,8 @@ function layoutSubnet(
           engine: rds.engine,
           instanceClass: rds.instance_class,
           status: rds.status,
+          endpoint: rds.endpoint || undefined,
+          port: rds.port || undefined,
         } as RDSNodeData,
       });
     } else if (resource.type === 'nat') {
