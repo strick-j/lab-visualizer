@@ -77,6 +77,12 @@ function getResourceDetails(data: TopologyNodeData): { label: string; value: str
       if (data.publicIp) {
         details.push({ label: 'Public IP', value: data.publicIp });
       }
+      if (data.privateDns) {
+        details.push({ label: 'Private DNS', value: data.privateDns });
+      }
+      if (data.publicDns) {
+        details.push({ label: 'Public DNS', value: data.publicDns });
+      }
       details.push({ label: 'State', value: data.state });
       break;
 

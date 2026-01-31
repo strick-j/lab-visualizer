@@ -469,6 +469,8 @@ class TopologyEC2Instance(BaseSchema):
     display_status: DisplayStatus
     private_ip: Optional[str] = None
     public_ip: Optional[str] = None
+    private_dns: Optional[str] = None
+    public_dns: Optional[str] = None
     tf_managed: bool = True
     tf_resource_address: Optional[str] = None
 

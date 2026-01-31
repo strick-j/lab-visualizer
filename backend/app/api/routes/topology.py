@@ -204,6 +204,8 @@ async def get_topology(
                     display_status=_get_display_status(ec2.state, "ec2"),
                     private_ip=ec2.private_ip,
                     public_ip=ec2.public_ip,
+                    private_dns=ec2.private_dns,
+                    public_dns=ec2.public_dns,
                     tf_managed=True,
                     tf_resource_address=ec2.tf_resource_address,
                 ))

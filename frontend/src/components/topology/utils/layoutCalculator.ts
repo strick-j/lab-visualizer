@@ -371,6 +371,8 @@ function layoutSubnet(
           instanceType: ec2.instance_type,
           privateIp: ec2.private_ip || undefined,
           publicIp: ec2.public_ip || undefined,
+          privateDns: ec2.private_dns || undefined,
+          publicDns: ec2.public_dns || undefined,
           state: ec2.state,
         } as EC2NodeData,
       });

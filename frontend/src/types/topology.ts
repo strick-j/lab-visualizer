@@ -18,6 +18,8 @@ export interface TopologyEC2Instance {
   display_status: DisplayStatus;
   private_ip: string | null;
   public_ip: string | null;
+  private_dns: string | null;
+  public_dns: string | null;
   tf_managed: boolean;
   tf_resource_address: string | null;
 }
@@ -145,6 +147,8 @@ export interface EC2NodeData extends BaseNodeData {
   instanceType: string;
   privateIp?: string;
   publicIp?: string;
+  privateDns?: string;
+  publicDns?: string;
   state: string;
 }
 

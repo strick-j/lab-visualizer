@@ -85,6 +85,8 @@ class EC2Instance(Base):
     # Network
     private_ip: Mapped[Optional[str]] = mapped_column(String(45), nullable=True)
     public_ip: Mapped[Optional[str]] = mapped_column(String(45), nullable=True)
+    private_dns: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    public_dns: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     vpc_id: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
     subnet_id: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
     availability_zone: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
