@@ -1,9 +1,10 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@/test/test-utils';
 import { EC2DetailPanel, RDSDetailPanel } from './ResourceDetailPanel';
 import type { EC2Instance, RDSInstance } from '@/types';
 
 const mockEC2Instance: EC2Instance = {
+  id: 1,
   instance_id: 'i-1234567890abcdef0',
   name: 'Test EC2 Instance',
   instance_type: 't3.micro',
@@ -13,6 +14,8 @@ const mockEC2Instance: EC2Instance = {
   availability_zone: 'us-east-1a',
   private_ip: '10.0.1.100',
   public_ip: '54.123.45.67',
+  private_dns: 'ip-10-0-1-100.ec2.internal',
+  public_dns: 'ec2-54-123-45-67.compute-1.amazonaws.com',
   vpc_id: 'vpc-12345678',
   subnet_id: 'subnet-12345678',
   tf_managed: true,
@@ -20,6 +23,8 @@ const mockEC2Instance: EC2Instance = {
   tf_resource_address: 'aws_instance.web_server',
   launch_time: '2024-01-15T10:30:00Z',
   updated_at: '2024-01-15T12:00:00Z',
+  is_deleted: false,
+  deleted_at: null,
   tags: {
     Environment: 'Production',
     Team: 'DevOps',
@@ -27,6 +32,7 @@ const mockEC2Instance: EC2Instance = {
 };
 
 const mockRDSInstance: RDSInstance = {
+  id: 1,
   db_instance_identifier: 'prod-db-01',
   name: 'Production Database',
   db_instance_class: 'db.t3.micro',
@@ -45,6 +51,9 @@ const mockRDSInstance: RDSInstance = {
   tf_state_source: 'prod/terraform.tfstate',
   tf_resource_address: 'aws_db_instance.main',
   updated_at: '2024-01-15T12:00:00Z',
+  is_deleted: false,
+  deleted_at: null,
+  tags: null,
 };
 
 describe('EC2DetailPanel', () => {

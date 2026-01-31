@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@/test/test-utils';
 import { RDSNode } from './RDSNode';
+import type { RDSNodeData } from '@/types/topology';
 
 // Mock react-flow
 vi.mock('reactflow', () => ({
@@ -15,24 +16,29 @@ vi.mock('reactflow', () => ({
   },
 }));
 
-const defaultData = {
+const defaultData: RDSNodeData = {
+  type: 'rds',
   label: 'prod-database',
+  dbIdentifier: 'prod-db-01',
   engine: 'mysql 8.0',
   instanceClass: 'db.t3.micro',
-  displayStatus: 'active' as const,
+  displayStatus: 'active',
+  status: 'available',
   tfManaged: false,
 };
 
-const createNodeProps = (data: typeof defaultData) => ({
+const createNodeProps = (data: RDSNodeData) => ({
   id: 'test-node',
   data,
-  type: 'rdsNode',
+  type: 'rds',
   selected: false,
   isConnectable: true,
   xPos: 0,
   yPos: 0,
   zIndex: 1,
   dragging: false,
+  positionAbsoluteX: 0,
+  positionAbsoluteY: 0,
 });
 
 describe('RDSNode', () => {

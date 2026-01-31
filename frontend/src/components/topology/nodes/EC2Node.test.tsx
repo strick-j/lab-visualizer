@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@/test/test-utils';
 import { EC2Node } from './EC2Node';
+import type { EC2NodeData } from '@/types/topology';
 
 // Mock react-flow
 vi.mock('reactflow', () => ({
@@ -15,24 +16,29 @@ vi.mock('reactflow', () => ({
   },
 }));
 
-const defaultData = {
+const defaultData: EC2NodeData = {
+  type: 'ec2',
   label: 'web-server-1',
+  instanceId: 'i-1234567890abcdef0',
   instanceType: 't3.micro',
-  displayStatus: 'active' as const,
+  displayStatus: 'active',
   privateIp: '10.0.1.100',
   tfManaged: false,
+  state: 'running',
 };
 
-const createNodeProps = (data: typeof defaultData) => ({
+const createNodeProps = (data: EC2NodeData) => ({
   id: 'test-node',
   data,
-  type: 'ec2Node',
+  type: 'ec2',
   selected: false,
   isConnectable: true,
   xPos: 0,
   yPos: 0,
   zIndex: 1,
   dragging: false,
+  positionAbsoluteX: 0,
+  positionAbsoluteY: 0,
 });
 
 describe('EC2Node', () => {

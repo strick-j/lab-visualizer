@@ -3,13 +3,14 @@ import { render, screen, fireEvent } from '@/test/test-utils';
 import { NATGatewayDetailPanel } from './NATGatewayDetailPanel';
 
 const mockNATGateway = {
+  id: 1,
   nat_gateway_id: 'nat-123456',
   name: 'NAT Gateway 1',
   vpc_id: 'vpc-123',
   subnet_id: 'subnet-123',
   display_status: 'active' as const,
   state: 'available',
-  connectivity_type: 'public',
+  connectivity_type: 'public' as const,
   primary_public_ip: '54.1.2.3',
   primary_private_ip: '10.0.1.100',
   allocation_id: 'eipalloc-123',
@@ -20,6 +21,8 @@ const mockNATGateway = {
   tf_resource_address: 'aws_nat_gateway.main',
   updated_at: '2024-01-15T12:00:00Z',
   created_at: '2024-01-01T00:00:00Z',
+  is_deleted: false,
+  deleted_at: null,
   tags: { Environment: 'production' },
 };
 

@@ -23,10 +23,20 @@ import {
   getTopology,
 } from './client';
 
-// Mock axios
+// Mock axios - type assertion for self-reference
+interface MockAxiosInstance {
+  create: ReturnType<typeof vi.fn>;
+  get: ReturnType<typeof vi.fn>;
+  post: ReturnType<typeof vi.fn>;
+  interceptors: {
+    request: { use: ReturnType<typeof vi.fn> };
+    response: { use: ReturnType<typeof vi.fn> };
+  };
+}
+
 vi.mock('axios', () => {
-  const mockAxios = {
-    create: vi.fn(() => mockAxios),
+  const mockAxios: MockAxiosInstance = {
+    create: vi.fn(),
     get: vi.fn(),
     post: vi.fn(),
     interceptors: {
@@ -34,6 +44,7 @@ vi.mock('axios', () => {
       response: { use: vi.fn() },
     },
   };
+  mockAxios.create.mockReturnValue(mockAxios);
   return { default: mockAxios };
 });
 

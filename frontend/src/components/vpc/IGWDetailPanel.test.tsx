@@ -3,6 +3,7 @@ import { render, screen, fireEvent } from '@/test/test-utils';
 import { IGWDetailPanel } from './IGWDetailPanel';
 
 const mockIGW = {
+  id: 1,
   igw_id: 'igw-123456',
   name: 'Main IGW',
   vpc_id: 'vpc-123',
@@ -14,6 +15,8 @@ const mockIGW = {
   tf_resource_address: 'aws_internet_gateway.main',
   updated_at: '2024-01-15T12:00:00Z',
   created_at: '2024-01-01T00:00:00Z',
+  is_deleted: false,
+  deleted_at: null,
   tags: { Environment: 'production' },
 };
 

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@/test/test-utils';
 import { TopologyCanvas } from './TopologyCanvas';
+import type { TopologyResponse } from '@/types/topology';
 
 // Mock interfaces for ReactFlow
 interface MockReactFlowProps {
@@ -47,32 +48,45 @@ vi.mock('./utils/layoutCalculator', () => ({
   ],
 }));
 
-const mockTopologyData = {
+const mockTopologyData: TopologyResponse = {
   vpcs: [
     {
-      vpc_id: 'vpc-123',
+      id: 'vpc-123',
       name: 'Test VPC',
       cidr_block: '10.0.0.0/16',
-      display_status: 'active' as const,
+      state: 'available',
+      display_status: 'active',
       tf_managed: true,
+      tf_resource_address: null,
+      internet_gateway: null,
+      elastic_ips: [],
+      subnets: [
+        {
+          id: 'subnet-123',
+          name: 'Test Subnet',
+          cidr_block: '10.0.1.0/24',
+          availability_zone: 'us-east-1a',
+          subnet_type: 'public',
+          display_status: 'active',
+          tf_managed: true,
+          tf_resource_address: null,
+          nat_gateway: null,
+          ec2_instances: [],
+          rds_instances: [],
+        },
+      ],
     },
   ],
-  subnets: [
-    {
-      subnet_id: 'subnet-123',
-      vpc_id: 'vpc-123',
-      name: 'Test Subnet',
-      cidr_block: '10.0.1.0/24',
-      availability_zone: 'us-east-1a',
-      subnet_type: 'public' as const,
-      display_status: 'active' as const,
-      tf_managed: true,
-    },
-  ],
-  ec2_instances: [],
-  rds_instances: [],
-  internet_gateways: [],
-  nat_gateways: [],
+  meta: {
+    total_vpcs: 1,
+    total_subnets: 1,
+    total_ec2: 0,
+    total_rds: 0,
+    total_nat_gateways: 0,
+    total_internet_gateways: 0,
+    total_elastic_ips: 0,
+    last_refreshed: '2024-01-15T12:00:00Z',
+  },
 };
 
 describe('TopologyCanvas', () => {

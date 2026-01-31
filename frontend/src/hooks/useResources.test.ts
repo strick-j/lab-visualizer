@@ -20,8 +20,9 @@ import {
   useDrift,
   useTopology,
 } from './useResources';
+import type { DisplayStatus } from '@/types';
 
-// Mock the API module
+// Mock the API module with proper response structures
 vi.mock('@/api', () => ({
   getStatusSummary: vi.fn(() =>
     Promise.resolve({
@@ -30,49 +31,75 @@ vi.mock('@/api', () => ({
     })
   ),
   getEC2Instances: vi.fn(() =>
-    Promise.resolve([{ instance_id: 'i-123', name: 'Test Instance' }])
+    Promise.resolve({
+      data: [{ instance_id: 'i-123', name: 'Test Instance' }],
+      meta: { total: 1, last_refreshed: null },
+    })
   ),
   getEC2Instance: vi.fn((id: string) =>
     Promise.resolve({ instance_id: id, name: 'Test Instance' })
   ),
   getRDSInstances: vi.fn(() =>
-    Promise.resolve([{ db_identifier: 'rds-123', name: 'Test RDS' }])
+    Promise.resolve({
+      data: [{ db_instance_identifier: 'rds-123', name: 'Test RDS' }],
+      meta: { total: 1, last_refreshed: null },
+    })
   ),
   getRDSInstance: vi.fn((id: string) =>
-    Promise.resolve({ db_identifier: id, name: 'Test RDS' })
+    Promise.resolve({ db_instance_identifier: id, name: 'Test RDS' })
   ),
-  getVPCs: vi.fn(() => Promise.resolve([{ vpc_id: 'vpc-123', name: 'Test VPC' }])),
+  getVPCs: vi.fn(() =>
+    Promise.resolve({
+      data: [{ vpc_id: 'vpc-123', name: 'Test VPC' }],
+      meta: { total: 1, last_refreshed: null },
+    })
+  ),
   getVPC: vi.fn((id: string) => Promise.resolve({ vpc_id: id, name: 'Test VPC' })),
   getSubnets: vi.fn(() =>
-    Promise.resolve([{ subnet_id: 'subnet-123', name: 'Test Subnet' }])
+    Promise.resolve({
+      data: [{ subnet_id: 'subnet-123', name: 'Test Subnet' }],
+      meta: { total: 1, last_refreshed: null },
+    })
   ),
   getSubnet: vi.fn((id: string) =>
     Promise.resolve({ subnet_id: id, name: 'Test Subnet' })
   ),
   getInternetGateways: vi.fn(() =>
-    Promise.resolve([{ igw_id: 'igw-123', name: 'Test IGW' }])
+    Promise.resolve({
+      data: [{ igw_id: 'igw-123', name: 'Test IGW' }],
+      meta: { total: 1, last_refreshed: null },
+    })
   ),
   getInternetGateway: vi.fn((id: string) =>
     Promise.resolve({ igw_id: id, name: 'Test IGW' })
   ),
   getNATGateways: vi.fn(() =>
-    Promise.resolve([{ nat_gateway_id: 'nat-123', name: 'Test NAT' }])
+    Promise.resolve({
+      data: [{ nat_gateway_id: 'nat-123', name: 'Test NAT' }],
+      meta: { total: 1, last_refreshed: null },
+    })
   ),
   getNATGateway: vi.fn((id: string) =>
     Promise.resolve({ nat_gateway_id: id, name: 'Test NAT' })
   ),
   getElasticIPs: vi.fn(() =>
-    Promise.resolve([{ allocation_id: 'eip-123', public_ip: '1.2.3.4' }])
+    Promise.resolve({
+      data: [{ allocation_id: 'eip-123', public_ip: '1.2.3.4' }],
+      meta: { total: 1, last_refreshed: null },
+    })
   ),
   getElasticIP: vi.fn((id: string) =>
     Promise.resolve({ allocation_id: id, public_ip: '1.2.3.4' })
   ),
   refreshData: vi.fn(() => Promise.resolve({ success: true })),
   getTerraformStates: vi.fn(() =>
-    Promise.resolve([{ name: 'state-1', resource_count: 5 }])
+    Promise.resolve({
+      states: [{ name: 'state-1', resource_count: 5 }],
+      total_tf_managed_resources: 5,
+    })
   ),
-  getDrift: vi.fn(() => Promise.resolve({ has_drift: false, drifts: [] })),
-  getTopology: vi.fn(() => Promise.resolve({ nodes: [], edges: [] })),
+  getDrift: vi.fn(() => Promise.resolve({ drift_detected: false, items: [], checked_at: '2024-01-15T12:00:00Z' })),
+  getTopology: vi.fn(() => Promise.resolve({ vpcs: [], meta: { total_vpcs: 0, total_subnets: 0, total_ec2: 0, total_rds: 0, total_nat_gateways: 0, total_internet_gateways: 0, total_elastic_ips: 0, last_refreshed: null } })),
 }));
 
 function createWrapper() {
@@ -103,7 +130,7 @@ describe('queryKeys', () => {
   });
 
   it('generates correct rds instances key with filters', () => {
-    const filters = { status: 'active' };
+    const filters = { status: 'active' as DisplayStatus };
     expect(queryKeys.rdsInstances(filters)).toEqual(['rds-instances', filters]);
   });
 
@@ -156,8 +183,8 @@ describe('useEC2Instances', () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
-    expect(result.current.data).toHaveLength(1);
-    expect(result.current.data?.[0].instance_id).toBe('i-123');
+    expect(result.current.data?.data).toHaveLength(1);
+    expect(result.current.data?.data?.[0].instance_id).toBe('i-123');
   });
 
   it('fetches EC2 instances with filters', async () => {
@@ -206,7 +233,7 @@ describe('useRDSInstances', () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
-    expect(result.current.data).toHaveLength(1);
+    expect(result.current.data?.data).toHaveLength(1);
   });
 });
 
@@ -222,7 +249,7 @@ describe('useRDSInstance', () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
-    expect(result.current.data?.db_identifier).toBe('rds-123');
+    expect(result.current.data?.db_instance_identifier).toBe('rds-123');
   });
 });
 
@@ -238,8 +265,8 @@ describe('useVPCs', () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
-    expect(result.current.data).toHaveLength(1);
-    expect(result.current.data?.[0].vpc_id).toBe('vpc-123');
+    expect(result.current.data?.data).toHaveLength(1);
+    expect(result.current.data?.data?.[0].vpc_id).toBe('vpc-123');
   });
 });
 
@@ -271,7 +298,7 @@ describe('useSubnets', () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
-    expect(result.current.data).toHaveLength(1);
+    expect(result.current.data?.data).toHaveLength(1);
   });
 });
 
@@ -303,7 +330,7 @@ describe('useInternetGateways', () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
-    expect(result.current.data).toHaveLength(1);
+    expect(result.current.data?.data).toHaveLength(1);
   });
 });
 
@@ -319,7 +346,7 @@ describe('useNATGateways', () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
-    expect(result.current.data).toHaveLength(1);
+    expect(result.current.data?.data).toHaveLength(1);
   });
 });
 
@@ -335,8 +362,8 @@ describe('useElasticIPs', () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
-    expect(result.current.data).toHaveLength(1);
-    expect(result.current.data?.[0].public_ip).toBe('1.2.3.4');
+    expect(result.current.data?.data).toHaveLength(1);
+    expect(result.current.data?.data?.[0].public_ip).toBe('1.2.3.4');
   });
 });
 
@@ -352,8 +379,8 @@ describe('useTerraformStates', () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
-    expect(result.current.data).toHaveLength(1);
-    expect(result.current.data?.[0].name).toBe('state-1');
+    expect(result.current.data?.states).toHaveLength(1);
+    expect(result.current.data?.states?.[0].name).toBe('state-1');
   });
 });
 
@@ -369,7 +396,7 @@ describe('useDrift', () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
-    expect(result.current.data?.has_drift).toBe(false);
+    expect(result.current.data?.drift_detected).toBe(false);
   });
 });
 
@@ -385,7 +412,7 @@ describe('useTopology', () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
-    expect(result.current.data).toEqual({ nodes: [], edges: [] });
+    expect(result.current.data?.vpcs).toEqual([]);
   });
 
   it('fetches topology with VPC filter', async () => {
