@@ -1,5 +1,5 @@
 import { RefreshCw } from 'lucide-react';
-import { Button, UserMenu } from '@/components/common';
+import { Button } from '@/components/common';
 import { ThemeToggle } from '@/components/common/ThemeToggle';
 import { useRefreshData, useStatusSummary } from '@/hooks';
 import { formatRelativeTime } from '@/lib/utils';
@@ -42,7 +42,6 @@ export function Header() {
           >
             Refresh
           </Button>
-          <UserMenu />
         </div>
       </div>
     </header>
