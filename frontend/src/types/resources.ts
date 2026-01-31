@@ -18,6 +18,8 @@ export interface EC2Instance {
   display_status: DisplayStatus;
   private_ip: string | null;
   public_ip: string | null;
+  private_dns: string | null;
+  public_dns: string | null;
   vpc_id: string | null;
   subnet_id: string | null;
   availability_zone: string | null;

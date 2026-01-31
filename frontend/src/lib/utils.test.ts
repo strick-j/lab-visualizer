@@ -130,7 +130,7 @@ describe('getStatusConfig', () => {
 
   it('returns config for transitioning status', () => {
     const config = getStatusConfig('transitioning');
-    expect(config.label).toBe('Transitioning');
+    expect(config.label).toBe('Transit');
   });
 
   it('returns config for error status', () => {

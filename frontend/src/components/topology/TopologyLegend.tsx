@@ -64,7 +64,7 @@ const legendItems = [
 const statusItems = [
   { label: "Active", color: "bg-green-500" },
   { label: "Inactive", color: "bg-gray-400" },
-  { label: "Transitioning", color: "bg-yellow-500" },
+  { label: "Transit", color: "bg-yellow-500" },
   { label: "Error", color: "bg-red-500" },
 ];
 

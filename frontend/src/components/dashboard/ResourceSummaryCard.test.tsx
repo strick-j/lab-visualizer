@@ -58,7 +58,7 @@ describe('ResourceSummaryCard', () => {
     expect(screen.getByText('Inactive')).toBeInTheDocument();
     // '2' appears twice (inactive and transitioning)
     expect(screen.getAllByText('2')).toHaveLength(2);
-    expect(screen.getByText('Transitioning')).toBeInTheDocument();
+    expect(screen.getByText('Transit')).toBeInTheDocument();
     expect(screen.getByText('Error')).toBeInTheDocument();
     expect(screen.getByText('1')).toBeInTheDocument();
   });
@@ -73,7 +73,7 @@ describe('ResourceSummaryCard', () => {
     );
     expect(screen.getByText('Active')).toBeInTheDocument();
     expect(screen.getByText('Inactive')).toBeInTheDocument();
-    expect(screen.getByText('Transitioning')).toBeInTheDocument();
+    expect(screen.getByText('Transit')).toBeInTheDocument();
     expect(screen.getByText('Error')).toBeInTheDocument();
   });
 

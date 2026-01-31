@@ -53,7 +53,7 @@ describe('TopologyLegend', () => {
 
     expect(screen.getByText('Active')).toBeInTheDocument();
     expect(screen.getByText('Inactive')).toBeInTheDocument();
-    expect(screen.getByText('Transitioning')).toBeInTheDocument();
+    expect(screen.getByText('Transit')).toBeInTheDocument();
     expect(screen.getByText('Error')).toBeInTheDocument();
   });
 

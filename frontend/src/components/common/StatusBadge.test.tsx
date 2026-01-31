@@ -15,7 +15,7 @@ describe('StatusBadge', () => {
 
   it('renders transitioning status correctly', () => {
     render(<StatusBadge status="transitioning" />);
-    expect(screen.getByText('Transitioning')).toBeInTheDocument();
+    expect(screen.getByText('Transit')).toBeInTheDocument();
   });
 
   it('renders error status correctly', () => {

@@ -39,6 +39,10 @@ const mockDrift = {
   items: [],
 };
 
+const mockVPCs = [
+  { vpc_id: 'vpc-123', name: 'main-vpc', cidr_block: '10.0.0.0/16', display_status: 'active' },
+];
+
 let mockSummaryLoading = false;
 let mockEc2Loading = false;
 let mockRdsLoading = false;
@@ -58,6 +62,22 @@ vi.mock('@/hooks', () => ({
   }),
   useDrift: () => ({
     data: mockDrift,
+  }),
+  useVPCs: () => ({
+    data: { data: mockVPCs, meta: { total: 1 } },
+    isLoading: false,
+  }),
+  useSubnets: () => ({
+    data: { data: [], meta: { total: 2 } },
+  }),
+  useInternetGateways: () => ({
+    data: { data: [], meta: { total: 1 } },
+  }),
+  useNATGateways: () => ({
+    data: { data: [], meta: { total: 1 } },
+  }),
+  useElasticIPs: () => ({
+    data: { data: [], meta: { total: 2 } },
   }),
 }));
 
@@ -124,7 +144,8 @@ describe('DashboardPage', () => {
   it('renders view all links', () => {
     render(<DashboardPage />);
     const viewAllLinks = screen.getAllByText('View all →');
-    expect(viewAllLinks).toHaveLength(2);
+    // Now there are 3 "View all" links (EC2, RDS, VPC)
+    expect(viewAllLinks).toHaveLength(3);
   });
 
   it('renders View Terraform details link', () => {

@@ -12,7 +12,7 @@ interface ResourceFiltersProps {
 const statusOptions = [
   { value: "active", label: "Active" },
   { value: "inactive", label: "Inactive" },
-  { value: "transitioning", label: "Transitioning" },
+  { value: "transitioning", label: "Transit" },
   { value: "error", label: "Error" },
 ];
 

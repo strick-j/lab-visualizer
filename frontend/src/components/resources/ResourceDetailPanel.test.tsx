@@ -140,7 +140,9 @@ describe('EC2DetailPanel', () => {
 
   it('calls onClose when close button is clicked', () => {
     render(<EC2DetailPanel instance={mockEC2Instance} onClose={mockOnClose} />);
-    fireEvent.click(screen.getByRole('button'));
+    // Get the first button which is the close button (there are copy buttons too)
+    const buttons = screen.getAllByRole('button');
+    fireEvent.click(buttons[0]);
     expect(mockOnClose).toHaveBeenCalledTimes(1);
   });
 });
@@ -236,7 +238,9 @@ describe('RDSDetailPanel', () => {
 
   it('calls onClose when close button is clicked', () => {
     render(<RDSDetailPanel instance={mockRDSInstance} onClose={mockOnClose} />);
-    fireEvent.click(screen.getByRole('button'));
+    // Get the first button which is the close button (there are copy buttons too)
+    const buttons = screen.getAllByRole('button');
+    fireEvent.click(buttons[0]);
     expect(mockOnClose).toHaveBeenCalledTimes(1);
   });
 });

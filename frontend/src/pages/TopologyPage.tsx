@@ -156,15 +156,14 @@ export function TopologyPage() {
   const details = selectedResource ? getResourceDetails(selectedResource) : [];
 
   return (
-    <div className="h-[calc(100vh-4rem)] flex flex-col">
+    <div className="h-[calc(100vh-4rem-3rem)] -m-6 flex flex-col overflow-hidden">
       {/* Main content - topology visualization */}
       <div className="flex-1 relative bg-gray-50 dark:bg-gray-900">
         <InfrastructureTopology onResourceSelect={handleResourceSelect} />
-      </div>
 
-      {/* Resource detail panel - shows when a resource is clicked */}
-      {selectedResource && (
-        <div className="absolute bottom-4 right-4 z-20 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg w-80">
+        {/* Resource detail panel - shows when a resource is clicked */}
+        {selectedResource && (
+          <div className="absolute bottom-4 right-4 z-20 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg w-80">
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
             <div className="flex items-center gap-2">
@@ -195,8 +194,9 @@ export function TopologyPage() {
               />
             ))}
           </div>
-        </div>
-      )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
