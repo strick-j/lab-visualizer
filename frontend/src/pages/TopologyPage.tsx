@@ -29,10 +29,12 @@ function CopyButton({ value }: { value: string }) {
 
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between gap-2 py-1.5">
-      <span className="text-xs text-gray-500 dark:text-gray-400">{label}</span>
-      <div className="flex items-center gap-1">
-        <span className="text-xs font-mono text-gray-900 dark:text-gray-100">{value}</span>
+    <div className="flex items-center justify-between gap-2 py-1.5 min-w-0">
+      <span className="text-xs text-gray-500 dark:text-gray-400 shrink-0">{label}</span>
+      <div className="flex items-center gap-1 min-w-0">
+        <span className="text-xs font-mono text-gray-900 dark:text-gray-100 truncate" title={value}>
+          {value}
+        </span>
         <CopyButton value={value} />
       </div>
     </div>
@@ -87,11 +89,6 @@ function getResourceDetails(data: TopologyNodeData): { label: string; value: str
       details.push({ label: 'Type', value: data.subnetType });
       details.push({ label: 'AZ', value: data.availabilityZone });
       break;
-  }
-
-  // Add Terraform address if managed
-  if (data.tfManaged && data.tfResourceAddress) {
-    details.push({ label: 'TF Address', value: data.tfResourceAddress });
   }
 
   return details;
