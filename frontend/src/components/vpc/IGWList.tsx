@@ -1,11 +1,16 @@
-import { useState, useMemo } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { PageLoading, StatusBadge, TerraformBadge, EmptyState } from '@/components/common';
-import { ResourceTable, ResourceFilters } from '@/components/resources';
-import { IGWDetailPanel } from './IGWDetailPanel';
-import { useInternetGateways } from '@/hooks';
-import { getResourceName } from '@/lib/utils';
-import type { ResourceFilters as Filters, InternetGateway } from '@/types';
+import { useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
+import {
+  PageLoading,
+  StatusBadge,
+  TerraformBadge,
+  EmptyState,
+} from "@/components/common";
+import { ResourceTable, ResourceFilters } from "@/components/resources";
+import { IGWDetailPanel } from "./IGWDetailPanel";
+import { useInternetGateways } from "@/hooks";
+import { getResourceName } from "@/lib/utils";
+import type { ResourceFilters as Filters, InternetGateway } from "@/types";
 
 interface IGWListProps {
   filters: Filters;
@@ -14,7 +19,7 @@ interface IGWListProps {
 
 export function IGWList({ filters, onFilterChange }: IGWListProps) {
   const [searchParams, setSearchParams] = useSearchParams();
-  const selectedId = searchParams.get('selected');
+  const selectedId = searchParams.get("selected");
 
   const { data, isLoading, error } = useInternetGateways(filters);
 
@@ -33,42 +38,50 @@ export function IGWList({ filters, onFilterChange }: IGWListProps) {
 
   const columns = [
     {
-      key: 'name',
-      header: 'Name',
+      key: "name",
+      header: "Name",
       render: (igw: InternetGateway) => (
         <div>
           <p className="font-medium text-gray-900 dark:text-gray-100">
             {getResourceName(igw.name, igw.igw_id)}
           </p>
-          <p className="text-xs text-gray-500 dark:text-gray-400">{igw.igw_id}</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            {igw.igw_id}
+          </p>
         </div>
       ),
     },
     {
-      key: 'status',
-      header: 'Status',
-      render: (igw: InternetGateway) => <StatusBadge status={igw.display_status} size="sm" />,
-    },
-    {
-      key: 'state',
-      header: 'State',
+      key: "status",
+      header: "Status",
       render: (igw: InternetGateway) => (
-        <span className="text-gray-700 dark:text-gray-300 capitalize">{igw.state}</span>
+        <StatusBadge status={igw.display_status} size="sm" />
       ),
     },
     {
-      key: 'vpc',
-      header: 'VPC',
+      key: "state",
+      header: "State",
       render: (igw: InternetGateway) => (
-        <span className="text-xs text-gray-600 dark:text-gray-400">
-          {igw.vpc_id || 'Detached'}
+        <span className="text-gray-700 dark:text-gray-300 capitalize">
+          {igw.state}
         </span>
       ),
     },
     {
-      key: 'terraform',
-      header: 'Terraform',
-      render: (igw: InternetGateway) => <TerraformBadge managed={igw.tf_managed} />,
+      key: "vpc",
+      header: "VPC",
+      render: (igw: InternetGateway) => (
+        <span className="text-xs text-gray-600 dark:text-gray-400">
+          {igw.vpc_id || "Detached"}
+        </span>
+      ),
+    },
+    {
+      key: "terraform",
+      header: "Terraform",
+      render: (igw: InternetGateway) => (
+        <TerraformBadge managed={igw.tf_managed} />
+      ),
     },
   ];
 

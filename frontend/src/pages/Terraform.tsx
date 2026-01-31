@@ -1,14 +1,29 @@
-import { GitBranch, FileText, AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
-import { Card, CardHeader, CardTitle, CardContent, PageLoading, EmptyState, Button } from '@/components/common';
-import { useTerraformStates, useDrift } from '@/hooks';
-import { formatRelativeTime, cn } from '@/lib/utils';
-import type { TerraformStateInfo, DriftItem } from '@/types';
+import {
+  GitBranch,
+  FileText,
+  AlertTriangle,
+  CheckCircle,
+  XCircle,
+} from "lucide-react";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+  PageLoading,
+  EmptyState,
+  Button,
+} from "@/components/common";
+import { useTerraformStates, useDrift } from "@/hooks";
+import { formatRelativeTime, cn } from "@/lib/utils";
+import type { TerraformStateInfo, DriftItem } from "@/types";
 
 function StateFileCard({ state }: { state: TerraformStateInfo }) {
   const statusColors = {
-    synced: 'text-green-600 bg-green-50 dark:text-green-400 dark:bg-green-900/30',
-    error: 'text-red-600 bg-red-50 dark:text-red-400 dark:bg-red-900/30',
-    unknown: 'text-gray-600 bg-gray-50 dark:text-gray-400 dark:bg-gray-700',
+    synced:
+      "text-green-600 bg-green-50 dark:text-green-400 dark:bg-green-900/30",
+    error: "text-red-600 bg-red-50 dark:text-red-400 dark:bg-red-900/30",
+    unknown: "text-gray-600 bg-gray-50 dark:text-gray-400 dark:bg-gray-700",
   };
 
   const statusIcons = {
@@ -17,19 +32,27 @@ function StateFileCard({ state }: { state: TerraformStateInfo }) {
     unknown: <FileText className="h-4 w-4" />,
   };
 
-  const statusConfig = statusColors[state.status as keyof typeof statusColors] || statusColors.unknown;
-  const StatusIcon = statusIcons[state.status as keyof typeof statusIcons] || statusIcons.unknown;
+  const statusConfig =
+    statusColors[state.status as keyof typeof statusColors] ||
+    statusColors.unknown;
+  const StatusIcon =
+    statusIcons[state.status as keyof typeof statusIcons] ||
+    statusIcons.unknown;
 
   return (
     <div className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
       <div className="flex items-start justify-between gap-4">
         <div className="flex min-w-0 flex-1 items-center gap-3">
-          <div className={cn('flex-shrink-0 rounded-lg p-2', statusConfig)}>
+          <div className={cn("flex-shrink-0 rounded-lg p-2", statusConfig)}>
             {StatusIcon}
           </div>
           <div className="min-w-0 flex-1">
-            <h4 className="font-medium text-gray-900 dark:text-gray-100">{state.name}</h4>
-            <p className="break-all text-sm text-gray-500 dark:text-gray-400">{state.key}</p>
+            <h4 className="font-medium text-gray-900 dark:text-gray-100">
+              {state.name}
+            </h4>
+            <p className="break-all text-sm text-gray-500 dark:text-gray-400">
+              {state.key}
+            </p>
           </div>
         </div>
         <span className="flex-shrink-0 whitespace-nowrap rounded-full bg-purple-100 px-2.5 py-0.5 text-sm font-medium text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
@@ -37,7 +60,9 @@ function StateFileCard({ state }: { state: TerraformStateInfo }) {
         </span>
       </div>
       {state.description && (
-        <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">{state.description}</p>
+        <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+          {state.description}
+        </p>
       )}
       <p className="mt-2 text-xs text-gray-400 dark:text-gray-500">
         Last modified: {formatRelativeTime(state.last_modified)}
@@ -49,26 +74,29 @@ function StateFileCard({ state }: { state: TerraformStateInfo }) {
 function DriftItemCard({ item }: { item: DriftItem }) {
   const driftConfig = {
     unmanaged: {
-      color: 'text-amber-700 bg-amber-50 border-amber-200 dark:text-amber-300 dark:bg-amber-900/30 dark:border-amber-800',
+      color:
+        "text-amber-700 bg-amber-50 border-amber-200 dark:text-amber-300 dark:bg-amber-900/30 dark:border-amber-800",
       icon: <AlertTriangle className="h-4 w-4" />,
-      label: 'Unmanaged',
+      label: "Unmanaged",
     },
     orphaned: {
-      color: 'text-red-700 bg-red-50 border-red-200 dark:text-red-300 dark:bg-red-900/30 dark:border-red-800',
+      color:
+        "text-red-700 bg-red-50 border-red-200 dark:text-red-300 dark:bg-red-900/30 dark:border-red-800",
       icon: <XCircle className="h-4 w-4" />,
-      label: 'Orphaned',
+      label: "Orphaned",
     },
     modified: {
-      color: 'text-blue-700 bg-blue-50 border-blue-200 dark:text-blue-300 dark:bg-blue-900/30 dark:border-blue-800',
+      color:
+        "text-blue-700 bg-blue-50 border-blue-200 dark:text-blue-300 dark:bg-blue-900/30 dark:border-blue-800",
       icon: <FileText className="h-4 w-4" />,
-      label: 'Modified',
+      label: "Modified",
     },
   };
 
   const config = driftConfig[item.drift_type] || driftConfig.unmanaged;
 
   return (
-    <div className={cn('rounded-lg border p-4', config.color)}>
+    <div className={cn("rounded-lg border p-4", config.color)}>
       <div className="flex items-start gap-3">
         <div className="mt-0.5">{config.icon}</div>
         <div className="flex-1">
@@ -89,8 +117,16 @@ function DriftItemCard({ item }: { item: DriftItem }) {
 }
 
 export function TerraformPage() {
-  const { data: statesData, isLoading: statesLoading, error: statesError } = useTerraformStates();
-  const { data: driftData, isLoading: driftLoading, refetch: refetchDrift } = useDrift();
+  const {
+    data: statesData,
+    isLoading: statesLoading,
+    error: statesError,
+  } = useTerraformStates();
+  const {
+    data: driftData,
+    isLoading: driftLoading,
+    refetch: refetchDrift,
+  } = useDrift();
 
   if (statesLoading) {
     return <PageLoading />;
@@ -128,7 +164,9 @@ export function TerraformPage() {
               <FileText className="h-6 w-6 text-purple-600" />
             </div>
             <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">State Files</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                State Files
+              </p>
               <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
                 {statesData?.states.length || 0}
               </p>
@@ -142,7 +180,9 @@ export function TerraformPage() {
               <CheckCircle className="h-6 w-6 text-green-600" />
             </div>
             <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Managed Resources</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Managed Resources
+              </p>
               <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
                 {statesData?.total_tf_managed_resources || 0}
               </p>
@@ -152,10 +192,12 @@ export function TerraformPage() {
 
         <Card>
           <CardContent className="flex items-center gap-4 py-4">
-            <div className={cn(
-              'rounded-lg p-3',
-              driftData?.drift_detected ? 'bg-amber-100' : 'bg-green-100'
-            )}>
+            <div
+              className={cn(
+                "rounded-lg p-3",
+                driftData?.drift_detected ? "bg-amber-100" : "bg-green-100",
+              )}
+            >
               {driftData?.drift_detected ? (
                 <AlertTriangle className="h-6 w-6 text-amber-600" />
               ) : (
@@ -163,7 +205,9 @@ export function TerraformPage() {
               )}
             </div>
             <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Drift Items</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Drift Items
+              </p>
               <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
                 {driftData?.items.length || 0}
               </p>
@@ -218,7 +262,10 @@ export function TerraformPage() {
           ) : (
             <div className="space-y-3">
               {driftData.items.map((item, index) => (
-                <DriftItemCard key={`${item.resource_id}-${index}`} item={item} />
+                <DriftItemCard
+                  key={`${item.resource_id}-${index}`}
+                  item={item}
+                />
               ))}
             </div>
           )}

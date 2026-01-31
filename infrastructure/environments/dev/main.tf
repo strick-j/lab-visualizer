@@ -142,17 +142,17 @@ module "secrets" {
 module "alb" {
   source = "../../modules/alb"
 
-  project_name       = var.project_name
-  environment        = var.environment
-  vpc_id             = module.networking.vpc_id
-  public_subnet_ids  = module.networking.public_subnet_ids
-  security_group_id  = module.networking.alb_security_group_id
-  container_port     = var.container_port
-  health_check_path  = var.health_check_path
-  domain_name        = var.domain_name
-  route53_zone_id    = var.route53_zone_id
-  certificate_arn    = var.certificate_arn
-  tags               = local.common_tags
+  project_name      = var.project_name
+  environment       = var.environment
+  vpc_id            = module.networking.vpc_id
+  public_subnet_ids = module.networking.public_subnet_ids
+  security_group_id = module.networking.alb_security_group_id
+  container_port    = var.container_port
+  health_check_path = var.health_check_path
+  domain_name       = var.domain_name
+  route53_zone_id   = var.route53_zone_id
+  certificate_arn   = var.certificate_arn
+  tags              = local.common_tags
 
   enable_deletion_protection = false # Allow deletion in dev
 }
@@ -173,14 +173,14 @@ module "ecs" {
   alb_listener_arn   = module.alb.http_listener_arn
 
   # Container configuration
-  container_name  = "app"
-  container_image = local.container_image
-  container_port  = var.container_port
+  container_name    = "app"
+  container_image   = local.container_image
+  container_port    = var.container_port
   health_check_path = var.health_check_path
 
   # Task sizing (small for dev)
-  task_cpu     = 512  # 0.5 vCPU
-  task_memory  = 1024 # 1 GB
+  task_cpu      = 512  # 0.5 vCPU
+  task_memory   = 1024 # 1 GB
   desired_count = 1
 
   # Environment and secrets
@@ -192,11 +192,11 @@ module "ecs" {
   tf_state_bucket_arn = var.tf_state_bucket != "" ? "arn:aws:s3:::${var.tf_state_bucket}" : ""
 
   # Logging
-  log_retention_days = 7 # Shorter retention for dev
+  log_retention_days        = 7 # Shorter retention for dev
   enable_container_insights = false
 
   # Cost optimization
-  use_fargate_spot  = true
+  use_fargate_spot   = true
   enable_autoscaling = false
 
   tags = local.common_tags

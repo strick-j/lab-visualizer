@@ -1,6 +1,6 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState } from "react";
 
-type Theme = 'light' | 'dark';
+type Theme = "light" | "dark";
 
 interface ThemeContextType {
   theme: Theme;
@@ -9,31 +9,31 @@ interface ThemeContextType {
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
-const THEME_STORAGE_KEY = 'aws-visualizer-theme';
+const THEME_STORAGE_KEY = "aws-visualizer-theme";
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<Theme>(() => {
     // Check localStorage first
     const stored = localStorage.getItem(THEME_STORAGE_KEY);
-    if (stored === 'light' || stored === 'dark') {
+    if (stored === "light" || stored === "dark") {
       return stored;
     }
 
     // Fall back to system preference
-    if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-      return 'dark';
+    if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
+      return "dark";
     }
 
-    return 'light';
+    return "light";
   });
 
   useEffect(() => {
     const root = document.documentElement;
 
-    if (theme === 'dark') {
-      root.classList.add('dark');
+    if (theme === "dark") {
+      root.classList.add("dark");
     } else {
-      root.classList.remove('dark');
+      root.classList.remove("dark");
     }
 
     // Persist to localStorage
@@ -41,7 +41,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   }, [theme]);
 
   const toggleTheme = () => {
-    setTheme((prevTheme) => (prevTheme === 'light' ? 'dark' : 'light'));
+    setTheme((prevTheme) => (prevTheme === "light" ? "dark" : "light"));
   };
 
   return (
@@ -51,10 +51,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useTheme() {
   const context = useContext(ThemeContext);
   if (context === undefined) {
-    throw new Error('useTheme must be used within a ThemeProvider');
+    throw new Error("useTheme must be used within a ThemeProvider");
   }
   return context;
 }

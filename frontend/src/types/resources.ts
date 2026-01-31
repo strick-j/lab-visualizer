@@ -2,7 +2,12 @@
 // Resource Types
 // =============================================================================
 
-export type DisplayStatus = 'active' | 'inactive' | 'transitioning' | 'error' | 'unknown';
+export type DisplayStatus =
+  | "active"
+  | "inactive"
+  | "transitioning"
+  | "error"
+  | "unknown";
 
 export interface EC2Instance {
   id: number;
@@ -77,7 +82,7 @@ export interface VPC {
   created_at?: string;
 }
 
-export type SubnetType = 'public' | 'private' | 'unknown';
+export type SubnetType = "public" | "private" | "unknown";
 
 export interface Subnet {
   id: number;
@@ -120,7 +125,7 @@ export interface InternetGateway {
   created_at?: string;
 }
 
-export type ConnectivityType = 'public' | 'private';
+export type ConnectivityType = "public" | "private";
 
 export interface NATGateway {
   id: number;
@@ -225,7 +230,7 @@ export interface TerraformStatesResponse {
 export interface DriftItem {
   resource_type: string;
   resource_id: string;
-  drift_type: 'unmanaged' | 'orphaned' | 'modified';
+  drift_type: "unmanaged" | "orphaned" | "modified";
   details: string | null;
 }
 
@@ -256,4 +261,9 @@ export interface ResourceFilters {
 // VPC Page Types
 // =============================================================================
 
-export type VPCResourceType = 'vpcs' | 'subnets' | 'internet-gateways' | 'nat-gateways' | 'elastic-ips';
+export type VPCResourceType =
+  | "vpcs"
+  | "subnets"
+  | "internet-gateways"
+  | "nat-gateways"
+  | "elastic-ips";

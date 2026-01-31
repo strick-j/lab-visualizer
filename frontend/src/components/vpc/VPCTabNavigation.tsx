@@ -1,5 +1,5 @@
-import { Network, GitBranch, Globe, Router, MapPin, Route } from 'lucide-react';
-import type { VPCResourceType } from '@/types';
+import { Network, GitBranch, Globe, Router, MapPin } from "lucide-react";
+import type { VPCResourceType } from "@/types";
 
 interface Tab {
   key: VPCResourceType;
@@ -8,11 +8,11 @@ interface Tab {
 }
 
 const tabs: Tab[] = [
-  { key: 'vpcs', label: 'VPCs', icon: Network },
-  { key: 'subnets', label: 'Subnets', icon: GitBranch },
-  { key: 'internet-gateways', label: 'Internet Gateways', icon: Globe },
-  { key: 'nat-gateways', label: 'NAT Gateways', icon: Router },
-  { key: 'elastic-ips', label: 'Elastic IPs', icon: MapPin },
+  { key: "vpcs", label: "VPCs", icon: Network },
+  { key: "subnets", label: "Subnets", icon: GitBranch },
+  { key: "internet-gateways", label: "Internet Gateways", icon: Globe },
+  { key: "nat-gateways", label: "NAT Gateways", icon: Router },
+  { key: "elastic-ips", label: "Elastic IPs", icon: MapPin },
 ];
 
 interface VPCTabNavigationProps {
@@ -20,7 +20,10 @@ interface VPCTabNavigationProps {
   onTabChange: (tab: VPCResourceType) => void;
 }
 
-export function VPCTabNavigation({ activeTab, onTabChange }: VPCTabNavigationProps) {
+export function VPCTabNavigation({
+  activeTab,
+  onTabChange,
+}: VPCTabNavigationProps) {
   return (
     <div className="border-b border-gray-200 dark:border-gray-700">
       <nav className="-mb-px flex space-x-8" aria-label="Tabs">
@@ -37,8 +40,8 @@ export function VPCTabNavigation({ activeTab, onTabChange }: VPCTabNavigationPro
                 transition-colors
                 ${
                   isActive
-                    ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                    : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+                    ? "border-blue-500 text-blue-600 dark:text-blue-400"
+                    : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
                 }
               `}
             >

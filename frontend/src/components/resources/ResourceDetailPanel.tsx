@@ -50,8 +50,12 @@ interface DetailRowProps {
 function DetailRow({ label, value }: DetailRowProps) {
   return (
     <div className="flex justify-between gap-4 py-2">
-      <span className="flex-shrink-0 text-sm text-gray-500 dark:text-gray-400">{label}</span>
-      <span className="break-all text-right text-sm font-medium text-gray-900 dark:text-gray-100">{value || '-'}</span>
+      <span className="flex-shrink-0 text-sm text-gray-500 dark:text-gray-400">
+        {label}
+      </span>
+      <span className="break-all text-right text-sm font-medium text-gray-900 dark:text-gray-100">
+        {value || "-"}
+      </span>
     </div>
   );
 }
@@ -88,7 +92,9 @@ export function EC2DetailPanel({ instance, onClose }: EC2DetailPanelProps) {
   return (
     <div className="fixed top-16 right-0 bottom-0 z-50 !mt-0 w-96 overflow-y-auto border-l border-gray-200 bg-white shadow-xl dark:border-gray-700 dark:bg-gray-800">
       <div className="sticky top-0 flex items-center justify-between border-b border-gray-200 bg-white px-4 py-3 dark:border-gray-700 dark:bg-gray-800">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Instance Details</h2>
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+          Instance Details
+        </h2>
         <Button variant="ghost" size="sm" onClick={onClose}>
           <X className="h-5 w-5" />
         </Button>
@@ -138,8 +144,14 @@ export function EC2DetailPanel({ instance, onClose }: EC2DetailPanelProps) {
                 Terraform
               </h4>
               <div className="divide-y divide-gray-100 rounded-lg border border-gray-200 bg-gray-50 px-3 dark:divide-gray-700 dark:border-gray-700 dark:bg-gray-700">
-                <DetailRow label="State File" value={instance.tf_state_source} />
-                <DetailRow label="Address" value={instance.tf_resource_address} />
+                <DetailRow
+                  label="State File"
+                  value={instance.tf_state_source}
+                />
+                <DetailRow
+                  label="Address"
+                  value={instance.tf_resource_address}
+                />
               </div>
             </section>
           )}
@@ -149,8 +161,14 @@ export function EC2DetailPanel({ instance, onClose }: EC2DetailPanelProps) {
               Timestamps
             </h4>
             <div className="divide-y divide-gray-100 rounded-lg border border-gray-200 bg-gray-50 px-3 dark:divide-gray-700 dark:border-gray-700 dark:bg-gray-700">
-              <DetailRow label="Launched" value={formatDateTime(instance.launch_time)} />
-              <DetailRow label="Last Updated" value={formatDateTime(instance.updated_at)} />
+              <DetailRow
+                label="Launched"
+                value={formatDateTime(instance.launch_time)}
+              />
+              <DetailRow
+                label="Last Updated"
+                value={formatDateTime(instance.updated_at)}
+              />
             </div>
           </section>
 
@@ -181,7 +199,9 @@ export function RDSDetailPanel({ instance, onClose }: RDSDetailPanelProps) {
   return (
     <div className="fixed top-16 right-0 bottom-0 z-50 !mt-0 w-96 overflow-y-auto border-l border-gray-200 bg-white shadow-xl dark:border-gray-700 dark:bg-gray-800">
       <div className="sticky top-0 flex items-center justify-between border-b border-gray-200 bg-white px-4 py-3 dark:border-gray-700 dark:bg-gray-800">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Database Details</h2>
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+          Database Details
+        </h2>
         <Button variant="ghost" size="sm" onClick={onClose}>
           <X className="h-5 w-5" />
         </Button>
@@ -203,7 +223,10 @@ export function RDSDetailPanel({ instance, onClose }: RDSDetailPanelProps) {
               Basic Info
             </h4>
             <div className="divide-y divide-gray-100 rounded-lg border border-gray-200 bg-gray-50 px-3 dark:divide-gray-700 dark:border-gray-700 dark:bg-gray-700">
-              <DetailRow label="Identifier" value={instance.db_instance_identifier} />
+              <DetailRow
+                label="Identifier"
+                value={instance.db_instance_identifier}
+              />
               <DetailRow label="Class" value={instance.db_instance_class} />
               <DetailRow label="Status" value={instance.status} />
               <DetailRow label="Region" value={instance.region_name} />
@@ -215,9 +238,18 @@ export function RDSDetailPanel({ instance, onClose }: RDSDetailPanelProps) {
               Database
             </h4>
             <div className="divide-y divide-gray-100 rounded-lg border border-gray-200 bg-gray-50 px-3 dark:divide-gray-700 dark:border-gray-700 dark:bg-gray-700">
-              <DetailRow label="Engine" value={`${instance.engine} ${instance.engine_version}`} />
-              <DetailRow label="Storage" value={`${instance.allocated_storage} GB`} />
-              <DetailRow label="Multi-AZ" value={instance.multi_az ? 'Yes' : 'No'} />
+              <DetailRow
+                label="Engine"
+                value={`${instance.engine} ${instance.engine_version}`}
+              />
+              <DetailRow
+                label="Storage"
+                value={`${instance.allocated_storage} GB`}
+              />
+              <DetailRow
+                label="Multi-AZ"
+                value={instance.multi_az ? "Yes" : "No"}
+              />
             </div>
           </section>
 
@@ -239,8 +271,14 @@ export function RDSDetailPanel({ instance, onClose }: RDSDetailPanelProps) {
                 Terraform
               </h4>
               <div className="divide-y divide-gray-100 rounded-lg border border-gray-200 bg-gray-50 px-3 dark:divide-gray-700 dark:border-gray-700 dark:bg-gray-700">
-                <DetailRow label="State File" value={instance.tf_state_source} />
-                <DetailRow label="Address" value={instance.tf_resource_address} />
+                <DetailRow
+                  label="State File"
+                  value={instance.tf_state_source}
+                />
+                <DetailRow
+                  label="Address"
+                  value={instance.tf_resource_address}
+                />
               </div>
             </section>
           )}
@@ -250,7 +288,10 @@ export function RDSDetailPanel({ instance, onClose }: RDSDetailPanelProps) {
               Timestamps
             </h4>
             <div className="divide-y divide-gray-100 rounded-lg border border-gray-200 bg-gray-50 px-3 dark:divide-gray-700 dark:border-gray-700 dark:bg-gray-700">
-              <DetailRow label="Last Updated" value={formatDateTime(instance.updated_at)} />
+              <DetailRow
+                label="Last Updated"
+                value={formatDateTime(instance.updated_at)}
+              />
             </div>
           </section>
         </div>

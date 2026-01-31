@@ -1,6 +1,6 @@
-import { Moon, Sun } from 'lucide-react';
-import { useTheme } from '../../contexts/ThemeContext';
-import { Button } from './Button';
+import { Moon, Sun } from "lucide-react";
+import { useTheme } from "../../contexts/ThemeContext";
+import { Button } from "./Button";
 
 export function ThemeToggle() {
   const { theme, toggleTheme } = useTheme();
@@ -10,10 +10,16 @@ export function ThemeToggle() {
       variant="outline"
       size="sm"
       onClick={toggleTheme}
-      icon={theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-      aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+      icon={
+        theme === "dark" ? (
+          <Sun className="h-4 w-4" />
+        ) : (
+          <Moon className="h-4 w-4" />
+        )
+      }
+      aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
     >
-      {theme === 'dark' ? 'Light' : 'Dark'}
+      {theme === "dark" ? "Light" : "Dark"}
     </Button>
   );
 }

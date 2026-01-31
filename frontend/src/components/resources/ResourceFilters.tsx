@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
-import { SearchInput, Select, Button } from '@/components/common';
-import { X } from 'lucide-react';
-import type { DisplayStatus, ResourceFilters as Filters } from '@/types';
+import { useState, useEffect, useRef, useCallback } from "react";
+import { SearchInput, Select, Button } from "@/components/common";
+import { X } from "lucide-react";
+import type { DisplayStatus, ResourceFilters as Filters } from "@/types";
 
 interface ResourceFiltersProps {
   filters: Filters;
@@ -10,15 +10,15 @@ interface ResourceFiltersProps {
 }
 
 const statusOptions = [
-  { value: 'active', label: 'Active' },
-  { value: 'inactive', label: 'Inactive' },
-  { value: 'transitioning', label: 'Transitioning' },
-  { value: 'error', label: 'Error' },
+  { value: "active", label: "Active" },
+  { value: "inactive", label: "Inactive" },
+  { value: "transitioning", label: "Transit" },
+  { value: "error", label: "Error" },
 ];
 
 const terraformOptions = [
-  { value: 'true', label: 'Managed' },
-  { value: 'false', label: 'Unmanaged' },
+  { value: "true", label: "Managed" },
+  { value: "false", label: "Unmanaged" },
 ];
 
 export function ResourceFilters({
@@ -27,31 +27,47 @@ export function ResourceFilters({
   showTerraformFilter = true,
 }: ResourceFiltersProps) {
   // Local state for search input to enable debouncing
-  const [searchValue, setSearchValue] = useState(filters.search || '');
+  const [searchValue, setSearchValue] = useState(filters.search || "");
+
+  // Use refs to access latest values in debounce effect without triggering re-runs
+  const filtersRef = useRef(filters);
+  const onFilterChangeRef = useRef(onFilterChange);
+
+  // Keep refs updated
+  useEffect(() => {
+    filtersRef.current = filters;
+    onFilterChangeRef.current = onFilterChange;
+  }, [filters, onFilterChange]);
 
   // Debounce search input - only update filters after user stops typing
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (searchValue !== (filters.search || '')) {
-        onFilterChange({ ...filters, search: searchValue || undefined });
+      const currentFilters = filtersRef.current;
+      if (searchValue !== (currentFilters.search || "")) {
+        onFilterChangeRef.current({
+          ...currentFilters,
+          search: searchValue || undefined,
+        });
       }
     }, 400); // Wait 400ms after user stops typing
 
     return () => clearTimeout(timer);
-  }, [searchValue]); // Only re-run when searchValue changes
+  }, [searchValue]);
 
   // Sync external filter changes back to local state
+  const syncSearch = useCallback((externalSearch: string | undefined) => {
+    setSearchValue(externalSearch || "");
+  }, []);
+
   useEffect(() => {
-    if (filters.search !== searchValue) {
-      setSearchValue(filters.search || '');
-    }
-  }, [filters.search]);
+    syncSearch(filters.search);
+  }, [filters.search, syncSearch]);
 
   const hasActiveFilters =
     filters.status || filters.search || filters.tf_managed !== undefined;
 
   const clearFilters = () => {
-    setSearchValue('');
+    setSearchValue("");
     onFilterChange({});
   };
 
@@ -62,7 +78,7 @@ export function ResourceFilters({
           placeholder="Search by name or ID..."
           value={searchValue}
           onChange={(e) => setSearchValue(e.target.value)}
-          onClear={() => setSearchValue('')}
+          onClear={() => setSearchValue("")}
         />
       </div>
 
@@ -70,7 +86,7 @@ export function ResourceFilters({
         <Select
           placeholder="All statuses"
           options={statusOptions}
-          value={filters.status || ''}
+          value={filters.status || ""}
           onChange={(e) =>
             onFilterChange({
               ...filters,
@@ -85,12 +101,14 @@ export function ResourceFilters({
           <Select
             placeholder="All resources"
             options={terraformOptions}
-            value={filters.tf_managed === undefined ? '' : String(filters.tf_managed)}
+            value={
+              filters.tf_managed === undefined ? "" : String(filters.tf_managed)
+            }
             onChange={(e) =>
               onFilterChange({
                 ...filters,
                 tf_managed:
-                  e.target.value === '' ? undefined : e.target.value === 'true',
+                  e.target.value === "" ? undefined : e.target.value === "true",
               })
             }
           />

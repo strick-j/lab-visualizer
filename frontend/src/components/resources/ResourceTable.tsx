@@ -1,5 +1,5 @@
-import { cn } from '@/lib/utils';
-import type { ReactNode } from 'react';
+import { cn } from "@/lib/utils";
+import type { ReactNode } from "react";
 
 interface Column<T> {
   key: string;
@@ -21,7 +21,7 @@ export function ResourceTable<T>({
   data,
   keyExtractor,
   onRowClick,
-  emptyMessage = 'No data available',
+  emptyMessage = "No data available",
 }: ResourceTableProps<T>) {
   if (data.length === 0) {
     return (
@@ -40,8 +40,8 @@ export function ResourceTable<T>({
               <th
                 key={column.key}
                 className={cn(
-                  'px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300',
-                  column.className
+                  "px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300",
+                  column.className,
                 )}
               >
                 {column.header}
@@ -54,8 +54,9 @@ export function ResourceTable<T>({
             <tr
               key={keyExtractor(item)}
               className={cn(
-                'transition-colors',
-                onRowClick && 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700'
+                "transition-colors",
+                onRowClick &&
+                  "cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700",
               )}
               onClick={() => onRowClick?.(item)}
             >
@@ -63,8 +64,8 @@ export function ResourceTable<T>({
                 <td
                   key={column.key}
                   className={cn(
-                    'whitespace-nowrap px-4 py-3 text-sm',
-                    column.className
+                    "whitespace-nowrap px-4 py-3 text-sm",
+                    column.className,
                   )}
                 >
                   {column.render(item)}

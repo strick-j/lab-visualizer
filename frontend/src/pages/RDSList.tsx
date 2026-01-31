@@ -1,23 +1,34 @@
-import { useState, useMemo } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { Database } from 'lucide-react';
-import { PageLoading, StatusBadge, TerraformBadge, EmptyState } from '@/components/common';
-import { ResourceTable, ResourceFilters, RDSDetailPanel } from '@/components/resources';
-import { useRDSInstances } from '@/hooks';
-import { getResourceName, formatRelativeTime } from '@/lib/utils';
-import type { ResourceFilters as Filters, RDSInstance } from '@/types';
+import { useState, useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
+import { Database } from "lucide-react";
+import {
+  PageLoading,
+  StatusBadge,
+  TerraformBadge,
+  EmptyState,
+} from "@/components/common";
+import {
+  ResourceTable,
+  ResourceFilters,
+  RDSDetailPanel,
+} from "@/components/resources";
+import { useRDSInstances } from "@/hooks";
+import { getResourceName, formatRelativeTime } from "@/lib/utils";
+import type { ResourceFilters as Filters, RDSInstance } from "@/types";
 
 export function RDSListPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [filters, setFilters] = useState<Filters>({});
 
-  const selectedId = searchParams.get('selected');
+  const selectedId = searchParams.get("selected");
 
   const { data, isLoading, error } = useRDSInstances(filters);
 
   const selectedInstance = useMemo(() => {
     if (!selectedId || !data?.data) return null;
-    return data.data.find((i) => i.db_instance_identifier === selectedId) || null;
+    return (
+      data.data.find((i) => i.db_instance_identifier === selectedId) || null
+    );
   }, [selectedId, data?.data]);
 
   const handleRowClick = (instance: RDSInstance) => {
@@ -30,67 +41,81 @@ export function RDSListPage() {
 
   const columns = [
     {
-      key: 'name',
-      header: 'Name',
+      key: "name",
+      header: "Name",
       render: (instance: RDSInstance) => (
         <div>
           <p className="font-medium text-gray-900 dark:text-gray-100">
             {getResourceName(instance.name, instance.db_instance_identifier)}
           </p>
-          <p className="text-xs text-gray-500 dark:text-gray-400">{instance.db_instance_identifier}</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            {instance.db_instance_identifier}
+          </p>
         </div>
       ),
     },
     {
-      key: 'status',
-      header: 'Status',
+      key: "status",
+      header: "Status",
       render: (instance: RDSInstance) => (
         <StatusBadge status={instance.display_status} size="sm" />
       ),
     },
     {
-      key: 'engine',
-      header: 'Engine',
+      key: "engine",
+      header: "Engine",
       render: (instance: RDSInstance) => (
         <div>
           <p className="text-gray-700 dark:text-gray-300">{instance.engine}</p>
-          <p className="text-xs text-gray-500 dark:text-gray-400">{instance.engine_version}</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            {instance.engine_version}
+          </p>
         </div>
       ),
     },
     {
-      key: 'class',
-      header: 'Class',
+      key: "class",
+      header: "Class",
       render: (instance: RDSInstance) => (
-        <span className="text-gray-700 dark:text-gray-300">{instance.db_instance_class}</span>
-      ),
-    },
-    {
-      key: 'storage',
-      header: 'Storage',
-      render: (instance: RDSInstance) => (
-        <span className="text-gray-700 dark:text-gray-300">{instance.allocated_storage} GB</span>
-      ),
-    },
-    {
-      key: 'multiaz',
-      header: 'Multi-AZ',
-      render: (instance: RDSInstance) => (
-        <span className={instance.multi_az ? 'text-green-600 dark:text-green-400' : 'text-gray-400 dark:text-gray-500'}>
-          {instance.multi_az ? 'Yes' : 'No'}
+        <span className="text-gray-700 dark:text-gray-300">
+          {instance.db_instance_class}
         </span>
       ),
     },
     {
-      key: 'terraform',
-      header: 'Terraform',
+      key: "storage",
+      header: "Storage",
+      render: (instance: RDSInstance) => (
+        <span className="text-gray-700 dark:text-gray-300">
+          {instance.allocated_storage} GB
+        </span>
+      ),
+    },
+    {
+      key: "multiaz",
+      header: "Multi-AZ",
+      render: (instance: RDSInstance) => (
+        <span
+          className={
+            instance.multi_az
+              ? "text-green-600 dark:text-green-400"
+              : "text-gray-400 dark:text-gray-500"
+          }
+        >
+          {instance.multi_az ? "Yes" : "No"}
+        </span>
+      ),
+    },
+    {
+      key: "terraform",
+      header: "Terraform",
       render: (instance: RDSInstance) => (
         <TerraformBadge managed={instance.tf_managed} />
       ),
     },
     {
-      key: 'updated',
-      header: 'Updated',
+      key: "updated",
+      header: "Updated",
       render: (instance: RDSInstance) => (
         <span className="text-sm text-gray-500 dark:text-gray-400">
           {formatRelativeTime(instance.updated_at)}
@@ -139,8 +164,8 @@ export function RDSListPage() {
           title="No RDS databases found"
           description={
             Object.keys(filters).length > 0
-              ? 'Try adjusting your filters'
-              : 'No RDS databases are available in your account'
+              ? "Try adjusting your filters"
+              : "No RDS databases are available in your account"
           }
         />
       ) : (

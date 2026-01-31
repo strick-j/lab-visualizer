@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios from "axios";
 import type {
   ListResponse,
   EC2Instance,
@@ -13,14 +13,14 @@ import type {
   TerraformStatesResponse,
   DriftResponse,
   ResourceFilters,
-} from '@/types';
+} from "@/types";
 
 // Create axios instance with base configuration
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || '/api',
+  baseURL: import.meta.env.VITE_API_URL || "/api",
   timeout: 30000,
   headers: {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
   },
 });
 
@@ -28,13 +28,13 @@ const api = axios.create({
 api.interceptors.request.use(
   (config) => {
     // Add auth token if available
-    const token = localStorage.getItem('auth_token');
+    const token = localStorage.getItem("auth_token");
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => Promise.reject(error),
 );
 
 // Response interceptor for error handling
@@ -43,23 +43,26 @@ api.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       // Handle unauthorized - redirect to login
-      window.location.href = '/login';
+      window.location.href = "/login";
     }
     return Promise.reject(error);
-  }
+  },
 );
 
 // =============================================================================
 // Health & Status
 // =============================================================================
 
-export async function getHealthStatus(): Promise<{ status: string; timestamp: string }> {
-  const response = await api.get('/health');
+export async function getHealthStatus(): Promise<{
+  status: string;
+  timestamp: string;
+}> {
+  const response = await api.get("/health");
   return response.data;
 }
 
 export async function getStatusSummary(): Promise<StatusSummary> {
-  const response = await api.get('/status/summary');
+  const response = await api.get("/status/summary");
   return response.data;
 }
 
@@ -68,15 +71,16 @@ export async function getStatusSummary(): Promise<StatusSummary> {
 // =============================================================================
 
 export async function getEC2Instances(
-  filters?: ResourceFilters
+  filters?: ResourceFilters,
 ): Promise<ListResponse<EC2Instance>> {
   const params = new URLSearchParams();
-  if (filters?.status) params.append('status', filters.status);
-  if (filters?.region) params.append('region', filters.region);
-  if (filters?.search) params.append('search', filters.search);
-  if (filters?.tf_managed !== undefined) params.append('tf_managed', String(filters.tf_managed));
+  if (filters?.status) params.append("status", filters.status);
+  if (filters?.region) params.append("region", filters.region);
+  if (filters?.search) params.append("search", filters.search);
+  if (filters?.tf_managed !== undefined)
+    params.append("tf_managed", String(filters.tf_managed));
 
-  const response = await api.get('/ec2', { params });
+  const response = await api.get("/ec2", { params });
   return response.data;
 }
 
@@ -90,19 +94,22 @@ export async function getEC2Instance(instanceId: string): Promise<EC2Instance> {
 // =============================================================================
 
 export async function getRDSInstances(
-  filters?: ResourceFilters
+  filters?: ResourceFilters,
 ): Promise<ListResponse<RDSInstance>> {
   const params = new URLSearchParams();
-  if (filters?.status) params.append('status', filters.status);
-  if (filters?.region) params.append('region', filters.region);
-  if (filters?.search) params.append('search', filters.search);
-  if (filters?.tf_managed !== undefined) params.append('tf_managed', String(filters.tf_managed));
+  if (filters?.status) params.append("status", filters.status);
+  if (filters?.region) params.append("region", filters.region);
+  if (filters?.search) params.append("search", filters.search);
+  if (filters?.tf_managed !== undefined)
+    params.append("tf_managed", String(filters.tf_managed));
 
-  const response = await api.get('/rds', { params });
+  const response = await api.get("/rds", { params });
   return response.data;
 }
 
-export async function getRDSInstance(dbIdentifier: string): Promise<RDSInstance> {
+export async function getRDSInstance(
+  dbIdentifier: string,
+): Promise<RDSInstance> {
   const response = await api.get(`/rds/${dbIdentifier}`);
   return response.data;
 }
@@ -112,15 +119,16 @@ export async function getRDSInstance(dbIdentifier: string): Promise<RDSInstance>
 // =============================================================================
 
 export async function getVPCs(
-  filters?: ResourceFilters
+  filters?: ResourceFilters,
 ): Promise<ListResponse<VPC>> {
   const params = new URLSearchParams();
-  if (filters?.status) params.append('status', filters.status);
-  if (filters?.region) params.append('region', filters.region);
-  if (filters?.search) params.append('search', filters.search);
-  if (filters?.tf_managed !== undefined) params.append('tf_managed', String(filters.tf_managed));
+  if (filters?.status) params.append("status", filters.status);
+  if (filters?.region) params.append("region", filters.region);
+  if (filters?.search) params.append("search", filters.search);
+  if (filters?.tf_managed !== undefined)
+    params.append("tf_managed", String(filters.tf_managed));
 
-  const response = await api.get('/vpcs', { params });
+  const response = await api.get("/vpcs", { params });
   return response.data;
 }
 
@@ -134,17 +142,18 @@ export async function getVPC(vpcId: string): Promise<VPC> {
 // =============================================================================
 
 export async function getSubnets(
-  filters?: ResourceFilters
+  filters?: ResourceFilters,
 ): Promise<ListResponse<Subnet>> {
   const params = new URLSearchParams();
-  if (filters?.status) params.append('status', filters.status);
-  if (filters?.region) params.append('region', filters.region);
-  if (filters?.search) params.append('search', filters.search);
-  if (filters?.tf_managed !== undefined) params.append('tf_managed', String(filters.tf_managed));
-  if (filters?.vpc_id) params.append('vpc_id', filters.vpc_id);
-  if (filters?.subnet_type) params.append('subnet_type', filters.subnet_type);
+  if (filters?.status) params.append("status", filters.status);
+  if (filters?.region) params.append("region", filters.region);
+  if (filters?.search) params.append("search", filters.search);
+  if (filters?.tf_managed !== undefined)
+    params.append("tf_managed", String(filters.tf_managed));
+  if (filters?.vpc_id) params.append("vpc_id", filters.vpc_id);
+  if (filters?.subnet_type) params.append("subnet_type", filters.subnet_type);
 
-  const response = await api.get('/subnets', { params });
+  const response = await api.get("/subnets", { params });
   return response.data;
 }
 
@@ -158,20 +167,23 @@ export async function getSubnet(subnetId: string): Promise<Subnet> {
 // =============================================================================
 
 export async function getInternetGateways(
-  filters?: ResourceFilters
+  filters?: ResourceFilters,
 ): Promise<ListResponse<InternetGateway>> {
   const params = new URLSearchParams();
-  if (filters?.status) params.append('status', filters.status);
-  if (filters?.region) params.append('region', filters.region);
-  if (filters?.search) params.append('search', filters.search);
-  if (filters?.tf_managed !== undefined) params.append('tf_managed', String(filters.tf_managed));
-  if (filters?.vpc_id) params.append('vpc_id', filters.vpc_id);
+  if (filters?.status) params.append("status", filters.status);
+  if (filters?.region) params.append("region", filters.region);
+  if (filters?.search) params.append("search", filters.search);
+  if (filters?.tf_managed !== undefined)
+    params.append("tf_managed", String(filters.tf_managed));
+  if (filters?.vpc_id) params.append("vpc_id", filters.vpc_id);
 
-  const response = await api.get('/internet-gateways', { params });
+  const response = await api.get("/internet-gateways", { params });
   return response.data;
 }
 
-export async function getInternetGateway(igwId: string): Promise<InternetGateway> {
+export async function getInternetGateway(
+  igwId: string,
+): Promise<InternetGateway> {
   const response = await api.get(`/internet-gateways/${igwId}`);
   return response.data;
 }
@@ -181,18 +193,20 @@ export async function getInternetGateway(igwId: string): Promise<InternetGateway
 // =============================================================================
 
 export async function getNATGateways(
-  filters?: ResourceFilters
+  filters?: ResourceFilters,
 ): Promise<ListResponse<NATGateway>> {
   const params = new URLSearchParams();
-  if (filters?.status) params.append('status', filters.status);
-  if (filters?.region) params.append('region', filters.region);
-  if (filters?.search) params.append('search', filters.search);
-  if (filters?.tf_managed !== undefined) params.append('tf_managed', String(filters.tf_managed));
-  if (filters?.vpc_id) params.append('vpc_id', filters.vpc_id);
-  if (filters?.subnet_id) params.append('subnet_id', filters.subnet_id);
-  if (filters?.connectivity_type) params.append('connectivity_type', filters.connectivity_type);
+  if (filters?.status) params.append("status", filters.status);
+  if (filters?.region) params.append("region", filters.region);
+  if (filters?.search) params.append("search", filters.search);
+  if (filters?.tf_managed !== undefined)
+    params.append("tf_managed", String(filters.tf_managed));
+  if (filters?.vpc_id) params.append("vpc_id", filters.vpc_id);
+  if (filters?.subnet_id) params.append("subnet_id", filters.subnet_id);
+  if (filters?.connectivity_type)
+    params.append("connectivity_type", filters.connectivity_type);
 
-  const response = await api.get('/nat-gateways', { params });
+  const response = await api.get("/nat-gateways", { params });
   return response.data;
 }
 
@@ -206,17 +220,19 @@ export async function getNATGateway(natGatewayId: string): Promise<NATGateway> {
 // =============================================================================
 
 export async function getElasticIPs(
-  filters?: ResourceFilters
+  filters?: ResourceFilters,
 ): Promise<ListResponse<ElasticIP>> {
   const params = new URLSearchParams();
-  if (filters?.status) params.append('status', filters.status);
-  if (filters?.region) params.append('region', filters.region);
-  if (filters?.search) params.append('search', filters.search);
-  if (filters?.tf_managed !== undefined) params.append('tf_managed', String(filters.tf_managed));
-  if (filters?.instance_id) params.append('instance_id', filters.instance_id);
-  if (filters?.associated !== undefined) params.append('associated', String(filters.associated));
+  if (filters?.status) params.append("status", filters.status);
+  if (filters?.region) params.append("region", filters.region);
+  if (filters?.search) params.append("search", filters.search);
+  if (filters?.tf_managed !== undefined)
+    params.append("tf_managed", String(filters.tf_managed));
+  if (filters?.instance_id) params.append("instance_id", filters.instance_id);
+  if (filters?.associated !== undefined)
+    params.append("associated", String(filters.associated));
 
-  const response = await api.get('/elastic-ips', { params });
+  const response = await api.get("/elastic-ips", { params });
   return response.data;
 }
 
@@ -230,7 +246,7 @@ export async function getElasticIP(allocationId: string): Promise<ElasticIP> {
 // =============================================================================
 
 export async function refreshData(force = false): Promise<RefreshResponse> {
-  const response = await api.post('/refresh', { force });
+  const response = await api.post("/refresh", { force });
   return response.data;
 }
 
@@ -239,12 +255,12 @@ export async function refreshData(force = false): Promise<RefreshResponse> {
 // =============================================================================
 
 export async function getTerraformStates(): Promise<TerraformStatesResponse> {
-  const response = await api.get('/terraform/states');
+  const response = await api.get("/terraform/states");
   return response.data;
 }
 
 export async function getDrift(): Promise<DriftResponse> {
-  const response = await api.get('/terraform/drift');
+  const response = await api.get("/terraform/drift");
   return response.data;
 }
 
@@ -252,15 +268,15 @@ export async function getDrift(): Promise<DriftResponse> {
 // Topology
 // =============================================================================
 
-import type { TopologyResponse } from '@/types/topology';
+import type { TopologyResponse } from "@/types/topology";
 
-export async function getTopology(
-  filters?: { vpc_id?: string }
-): Promise<TopologyResponse> {
+export async function getTopology(filters?: {
+  vpc_id?: string;
+}): Promise<TopologyResponse> {
   const params = new URLSearchParams();
-  if (filters?.vpc_id) params.append('vpc_id', filters.vpc_id);
+  if (filters?.vpc_id) params.append("vpc_id", filters.vpc_id);
 
-  const response = await api.get('/topology', { params });
+  const response = await api.get("/topology", { params });
   return response.data;
 }
 

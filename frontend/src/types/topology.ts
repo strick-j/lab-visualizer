@@ -4,7 +4,7 @@
  * Types for the infrastructure topology API and React Flow visualization.
  */
 
-import { DisplayStatus } from './resources';
+import { DisplayStatus } from "./resources";
 
 // =============================================================================
 // API Response Types
@@ -60,7 +60,7 @@ export interface TopologyElasticIP {
   id: string;
   public_ip: string;
   associated_with: string | null;
-  association_type: 'ec2' | 'nat_gateway' | 'eni' | null;
+  association_type: "ec2" | "nat_gateway" | "eni" | null;
   tf_managed: boolean;
   tf_resource_address: string | null;
 }
@@ -70,7 +70,7 @@ export interface TopologySubnet {
   name: string | null;
   cidr_block: string;
   availability_zone: string;
-  subnet_type: 'public' | 'private' | 'unknown';
+  subnet_type: "public" | "private" | "unknown";
   display_status: DisplayStatus;
   tf_managed: boolean;
   tf_resource_address: string | null;
@@ -113,12 +113,12 @@ export interface TopologyResponse {
 // =============================================================================
 
 export type TopologyNodeType =
-  | 'vpc'
-  | 'subnet'
-  | 'ec2'
-  | 'rds'
-  | 'nat-gateway'
-  | 'internet-gateway';
+  | "vpc"
+  | "subnet"
+  | "ec2"
+  | "rds"
+  | "nat-gateway"
+  | "internet-gateway";
 
 interface BaseNodeData {
   label: string;
@@ -128,21 +128,21 @@ interface BaseNodeData {
 }
 
 export interface VPCNodeData extends BaseNodeData {
-  type: 'vpc';
+  type: "vpc";
   vpcId: string;
   cidrBlock: string;
 }
 
 export interface SubnetNodeData extends BaseNodeData {
-  type: 'subnet';
+  type: "subnet";
   subnetId: string;
   cidrBlock: string;
-  subnetType: 'public' | 'private' | 'unknown';
+  subnetType: "public" | "private" | "unknown";
   availabilityZone: string;
 }
 
 export interface EC2NodeData extends BaseNodeData {
-  type: 'ec2';
+  type: "ec2";
   instanceId: string;
   instanceType: string;
   privateIp?: string;
@@ -153,7 +153,7 @@ export interface EC2NodeData extends BaseNodeData {
 }
 
 export interface RDSNodeData extends BaseNodeData {
-  type: 'rds';
+  type: "rds";
   dbIdentifier: string;
   engine: string;
   instanceClass: string;
@@ -163,13 +163,13 @@ export interface RDSNodeData extends BaseNodeData {
 }
 
 export interface NATGatewayNodeData extends BaseNodeData {
-  type: 'nat-gateway';
+  type: "nat-gateway";
   natGatewayId: string;
   publicIp?: string;
 }
 
 export interface InternetGatewayNodeData extends BaseNodeData {
-  type: 'internet-gateway';
+  type: "internet-gateway";
   igwId: string;
 }
 
@@ -185,7 +185,7 @@ export type TopologyNodeData =
 // React Flow Edge Types
 // =============================================================================
 
-export type TopologyEdgeType = 'contains' | 'routes-to' | 'associated-with';
+export type TopologyEdgeType = "contains" | "routes-to" | "associated-with";
 
 // =============================================================================
 // Layout Configuration

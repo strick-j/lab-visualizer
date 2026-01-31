@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   getStatusSummary,
   getEC2Instances,
@@ -19,32 +19,36 @@ import {
   getTerraformStates,
   getDrift,
   getTopology,
-} from '@/api';
-import type { ResourceFilters } from '@/types';
+} from "@/api";
+import type { ResourceFilters } from "@/types";
 
 // =============================================================================
 // Query Keys
 // =============================================================================
 
 export const queryKeys = {
-  statusSummary: ['status-summary'] as const,
-  ec2Instances: (filters?: ResourceFilters) => ['ec2-instances', filters] as const,
-  ec2Instance: (id: string) => ['ec2-instance', id] as const,
-  rdsInstances: (filters?: ResourceFilters) => ['rds-instances', filters] as const,
-  rdsInstance: (id: string) => ['rds-instance', id] as const,
-  vpcs: (filters?: ResourceFilters) => ['vpcs', filters] as const,
-  vpc: (id: string) => ['vpc', id] as const,
-  subnets: (filters?: ResourceFilters) => ['subnets', filters] as const,
-  subnet: (id: string) => ['subnet', id] as const,
-  internetGateways: (filters?: ResourceFilters) => ['internet-gateways', filters] as const,
-  internetGateway: (id: string) => ['internet-gateway', id] as const,
-  natGateways: (filters?: ResourceFilters) => ['nat-gateways', filters] as const,
-  natGateway: (id: string) => ['nat-gateway', id] as const,
-  elasticIPs: (filters?: ResourceFilters) => ['elastic-ips', filters] as const,
-  elasticIP: (id: string) => ['elastic-ip', id] as const,
-  terraformStates: ['terraform-states'] as const,
-  drift: ['drift'] as const,
-  topology: (filters?: { vpc_id?: string }) => ['topology', filters] as const,
+  statusSummary: ["status-summary"] as const,
+  ec2Instances: (filters?: ResourceFilters) =>
+    ["ec2-instances", filters] as const,
+  ec2Instance: (id: string) => ["ec2-instance", id] as const,
+  rdsInstances: (filters?: ResourceFilters) =>
+    ["rds-instances", filters] as const,
+  rdsInstance: (id: string) => ["rds-instance", id] as const,
+  vpcs: (filters?: ResourceFilters) => ["vpcs", filters] as const,
+  vpc: (id: string) => ["vpc", id] as const,
+  subnets: (filters?: ResourceFilters) => ["subnets", filters] as const,
+  subnet: (id: string) => ["subnet", id] as const,
+  internetGateways: (filters?: ResourceFilters) =>
+    ["internet-gateways", filters] as const,
+  internetGateway: (id: string) => ["internet-gateway", id] as const,
+  natGateways: (filters?: ResourceFilters) =>
+    ["nat-gateways", filters] as const,
+  natGateway: (id: string) => ["nat-gateway", id] as const,
+  elasticIPs: (filters?: ResourceFilters) => ["elastic-ips", filters] as const,
+  elasticIP: (id: string) => ["elastic-ip", id] as const,
+  terraformStates: ["terraform-states"] as const,
+  drift: ["drift"] as const,
+  topology: (filters?: { vpc_id?: string }) => ["topology", filters] as const,
 };
 
 // =============================================================================
@@ -203,17 +207,17 @@ export function useRefreshData() {
     mutationFn: (force?: boolean) => refreshData(force),
     onSuccess: () => {
       // Invalidate all resource queries after refresh
-      queryClient.invalidateQueries({ queryKey: ['status-summary'] });
-      queryClient.invalidateQueries({ queryKey: ['ec2-instances'] });
-      queryClient.invalidateQueries({ queryKey: ['rds-instances'] });
-      queryClient.invalidateQueries({ queryKey: ['vpcs'] });
-      queryClient.invalidateQueries({ queryKey: ['subnets'] });
-      queryClient.invalidateQueries({ queryKey: ['internet-gateways'] });
-      queryClient.invalidateQueries({ queryKey: ['nat-gateways'] });
-      queryClient.invalidateQueries({ queryKey: ['elastic-ips'] });
-      queryClient.invalidateQueries({ queryKey: ['terraform-states'] });
-      queryClient.invalidateQueries({ queryKey: ['drift'] });
-      queryClient.invalidateQueries({ queryKey: ['topology'] });
+      queryClient.invalidateQueries({ queryKey: ["status-summary"] });
+      queryClient.invalidateQueries({ queryKey: ["ec2-instances"] });
+      queryClient.invalidateQueries({ queryKey: ["rds-instances"] });
+      queryClient.invalidateQueries({ queryKey: ["vpcs"] });
+      queryClient.invalidateQueries({ queryKey: ["subnets"] });
+      queryClient.invalidateQueries({ queryKey: ["internet-gateways"] });
+      queryClient.invalidateQueries({ queryKey: ["nat-gateways"] });
+      queryClient.invalidateQueries({ queryKey: ["elastic-ips"] });
+      queryClient.invalidateQueries({ queryKey: ["terraform-states"] });
+      queryClient.invalidateQueries({ queryKey: ["drift"] });
+      queryClient.invalidateQueries({ queryKey: ["topology"] });
     },
   });
 }

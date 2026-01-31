@@ -1,8 +1,11 @@
-import { Search, X } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import type { InputHTMLAttributes } from 'react';
+import { Search, X } from "lucide-react";
+import { cn } from "@/lib/utils";
+import type { InputHTMLAttributes } from "react";
 
-interface SearchInputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'type'> {
+interface SearchInputProps extends Omit<
+  InputHTMLAttributes<HTMLInputElement>,
+  "type"
+> {
   onClear?: () => void;
 }
 
@@ -18,8 +21,8 @@ export function SearchInput({
       <input
         type="text"
         className={cn(
-          'w-full rounded-lg border border-gray-300 bg-white py-2 pl-10 pr-10 text-sm placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:placeholder:text-gray-500',
-          className
+          "w-full rounded-lg border border-gray-300 bg-white py-2 pl-10 pr-10 text-sm placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:placeholder:text-gray-500",
+          className,
         )}
         value={value}
         {...props}
