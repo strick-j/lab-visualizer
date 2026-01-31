@@ -179,6 +179,34 @@ async def get_current_user(
 # OIDC Authentication
 # =============================================================================
 
+# Cache for OIDC discovery documents
+_oidc_discovery_cache: dict[str, dict] = {}
+
+
+async def get_oidc_discovery(issuer: str) -> dict:
+    """Fetch OIDC discovery document from issuer's well-known endpoint."""
+    if issuer in _oidc_discovery_cache:
+        return _oidc_discovery_cache[issuer]
+
+    # Normalize issuer URL (remove trailing slash)
+    issuer = issuer.rstrip("/")
+    discovery_url = f"{issuer}/.well-known/openid-configuration"
+
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.get(discovery_url, timeout=10.0)
+            response.raise_for_status()
+            discovery = response.json()
+            _oidc_discovery_cache[issuer] = discovery
+            logger.info(f"Fetched OIDC discovery from {discovery_url}")
+            return discovery
+        except httpx.HTTPError as e:
+            logger.error(f"Failed to fetch OIDC discovery from {discovery_url}: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=f"Failed to fetch OIDC configuration from {discovery_url}",
+            )
+
 
 @router.get("/oidc/login")
 async def oidc_login(request: Request, db: AsyncSession = Depends(get_db)):
@@ -191,11 +219,20 @@ async def oidc_login(request: Request, db: AsyncSession = Depends(get_db)):
             detail="OIDC authentication is not configured",
         )
 
+    # Fetch OIDC discovery document
+    discovery = await get_oidc_discovery(oidc_config["issuer"])
+    authorization_endpoint = discovery.get("authorization_endpoint")
+    if not authorization_endpoint:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="OIDC discovery document missing authorization_endpoint",
+        )
+
     # Generate state for CSRF protection
     state = secrets.token_urlsafe(32)
     _state_store[state] = {"type": "oidc"}
 
-    # Construct authorization URL
+    # Construct authorization URL using discovered endpoint
     redirect_uri = str(request.url_for("oidc_callback"))
     params = {
         "response_type": "code",
@@ -205,7 +242,8 @@ async def oidc_login(request: Request, db: AsyncSession = Depends(get_db)):
         "state": state,
     }
 
-    auth_url = f"{oidc_config['issuer']}/authorize?{urlencode(params)}"
+    auth_url = f"{authorization_endpoint}?{urlencode(params)}"
+    logger.info(f"OIDC login redirecting to: {authorization_endpoint}")
     return {"auth_url": auth_url, "state": state}
 
 
@@ -233,12 +271,23 @@ async def oidc_callback(
         )
     del _state_store[state]
 
+    # Fetch OIDC discovery document for endpoints
+    discovery = await get_oidc_discovery(oidc_config["issuer"])
+    token_endpoint = discovery.get("token_endpoint")
+    userinfo_endpoint = discovery.get("userinfo_endpoint")
+
+    if not token_endpoint:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="OIDC discovery document missing token_endpoint",
+        )
+
     # Exchange code for tokens
     redirect_uri = str(request.url_for("oidc_callback"))
-    token_endpoint = f"{oidc_config['issuer']}/token"
 
     async with httpx.AsyncClient() as client:
         try:
+            logger.info(f"Exchanging code at token endpoint: {token_endpoint}")
             token_response = await client.post(
                 token_endpoint,
                 data={
@@ -258,21 +307,20 @@ async def oidc_callback(
                 detail="Failed to exchange authorization code",
             )
 
-        # Get user info
-        userinfo_endpoint = f"{oidc_config['issuer']}/userinfo"
-        try:
-            userinfo_response = await client.get(
-                userinfo_endpoint,
-                headers={"Authorization": f"Bearer {tokens['access_token']}"},
-            )
-            userinfo_response.raise_for_status()
-            userinfo = userinfo_response.json()
-        except httpx.HTTPError as e:
-            logger.error(f"OIDC userinfo fetch failed: {e}")
-            raise HTTPException(
-                status_code=status.HTTP_502_BAD_GATEWAY,
-                detail="Failed to fetch user information",
-            )
+        # Get user info if endpoint is available
+        userinfo = {}
+        if userinfo_endpoint:
+            try:
+                logger.info(f"Fetching userinfo from: {userinfo_endpoint}")
+                userinfo_response = await client.get(
+                    userinfo_endpoint,
+                    headers={"Authorization": f"Bearer {tokens['access_token']}"},
+                )
+                userinfo_response.raise_for_status()
+                userinfo = userinfo_response.json()
+            except httpx.HTTPError as e:
+                logger.warning(f"OIDC userinfo fetch failed: {e}")
+                # Continue without userinfo - we can still use id_token claims
 
     # Find or create user
     external_id = userinfo.get("sub")
