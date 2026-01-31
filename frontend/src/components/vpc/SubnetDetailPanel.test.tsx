@@ -3,6 +3,7 @@ import { render, screen, fireEvent } from '@/test/test-utils';
 import { SubnetDetailPanel } from './SubnetDetailPanel';
 
 const mockSubnet = {
+  id: 1,
   subnet_id: 'subnet-123456',
   vpc_id: 'vpc-123',
   name: 'Public Subnet 1',
@@ -14,12 +15,13 @@ const mockSubnet = {
   region_name: 'us-east-1',
   available_ip_count: 251,
   map_public_ip_on_launch: true,
-  default_for_az: false,
   tf_managed: true,
   tf_state_source: 'prod/terraform.tfstate',
   tf_resource_address: 'aws_subnet.public',
   updated_at: '2024-01-15T12:00:00Z',
   created_at: '2024-01-01T00:00:00Z',
+  is_deleted: false,
+  deleted_at: null,
   tags: { Environment: 'production' },
 };
 

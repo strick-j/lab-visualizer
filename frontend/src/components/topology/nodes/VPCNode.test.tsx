@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@/test/test-utils';
 import { VPCNode } from './VPCNode';
+import type { VPCNodeData } from '@/types/topology';
 
 // Mock react-flow
 vi.mock('reactflow', () => ({
@@ -15,24 +16,27 @@ vi.mock('reactflow', () => ({
   },
 }));
 
-const defaultData = {
+const defaultData: VPCNodeData = {
+  type: 'vpc',
   label: 'main-vpc',
   vpcId: 'vpc-12345',
   cidrBlock: '10.0.0.0/16',
-  displayStatus: 'active' as const,
+  displayStatus: 'active',
   tfManaged: false,
 };
 
-const createNodeProps = (data: typeof defaultData) => ({
+const createNodeProps = (data: VPCNodeData) => ({
   id: 'test-node',
   data,
-  type: 'vpcNode',
+  type: 'vpc',
   selected: false,
   isConnectable: true,
   xPos: 0,
   yPos: 0,
   zIndex: 1,
   dragging: false,
+  positionAbsoluteX: 0,
+  positionAbsoluteY: 0,
 });
 
 describe('VPCNode', () => {

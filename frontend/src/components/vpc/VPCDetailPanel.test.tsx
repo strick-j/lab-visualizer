@@ -3,6 +3,7 @@ import { render, screen, fireEvent } from '@/test/test-utils';
 import { VPCDetailPanel } from './VPCDetailPanel';
 
 const mockVPC = {
+  id: 1,
   vpc_id: 'vpc-123456',
   name: 'Production VPC',
   cidr_block: '10.0.0.0/16',
@@ -17,7 +18,8 @@ const mockVPC = {
   tf_resource_address: 'aws_vpc.main',
   updated_at: '2024-01-15T12:00:00Z',
   created_at: '2024-01-01T00:00:00Z',
-  instance_tenancy: 'default',
+  is_deleted: false,
+  deleted_at: null,
   tags: { Environment: 'production', Project: 'main' },
 };
 

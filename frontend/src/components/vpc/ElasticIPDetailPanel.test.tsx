@@ -3,6 +3,7 @@ import { render, screen, fireEvent } from '@/test/test-utils';
 import { ElasticIPDetailPanel } from './ElasticIPDetailPanel';
 
 const mockElasticIP = {
+  id: 1,
   allocation_id: 'eipalloc-123456',
   name: 'Web Server EIP',
   public_ip: '54.1.2.3',
@@ -18,6 +19,8 @@ const mockElasticIP = {
   tf_resource_address: 'aws_eip.web',
   updated_at: '2024-01-15T12:00:00Z',
   created_at: '2024-01-01T00:00:00Z',
+  is_deleted: false,
+  deleted_at: null,
   tags: { Environment: 'production' },
 };
 

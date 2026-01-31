@@ -69,7 +69,8 @@ class Settings(BaseSettings):
     # -------------------------------------------------------------------------
     debug: bool = Field(default=False, description="Enable debug mode")
     log_level: str = Field(default="INFO", description="Logging level")
-    api_host: str = Field(default="0.0.0.0", description="API host")
+    # nosec B104 - Binding to 0.0.0.0 is intentional for containerized deployment
+    api_host: str = Field(default="0.0.0.0", description="API host")  # nosec B104
     api_port: int = Field(default=8000, description="API port")
 
     # CORS

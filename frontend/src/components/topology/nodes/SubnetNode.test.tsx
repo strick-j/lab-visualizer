@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@/test/test-utils';
 import { SubnetNode } from './SubnetNode';
+import type { SubnetNodeData } from '@/types/topology';
 
 // Mock react-flow
 vi.mock('reactflow', () => ({
@@ -15,24 +16,29 @@ vi.mock('reactflow', () => ({
   },
 }));
 
-const defaultData = {
+const defaultData: SubnetNodeData = {
+  type: 'subnet',
   label: 'public-subnet-1',
-  subnetType: 'public' as const,
+  subnetId: 'subnet-12345',
+  subnetType: 'public',
   cidrBlock: '10.0.1.0/24',
   availabilityZone: 'us-east-1a',
+  displayStatus: 'active',
   tfManaged: false,
 };
 
-const createNodeProps = (data: typeof defaultData) => ({
+const createNodeProps = (data: SubnetNodeData) => ({
   id: 'test-node',
   data,
-  type: 'subnetNode',
+  type: 'subnet',
   selected: false,
   isConnectable: true,
   xPos: 0,
   yPos: 0,
   zIndex: 1,
   dragging: false,
+  positionAbsoluteX: 0,
+  positionAbsoluteY: 0,
 });
 
 describe('SubnetNode', () => {
