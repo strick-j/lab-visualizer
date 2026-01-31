@@ -73,7 +73,9 @@ class AuthConfigResponse(BaseModel):
     oidc_enabled: bool
     saml_enabled: bool
     oidc_issuer: Optional[str] = None
+    oidc_display_name: Optional[str] = None
     saml_idp_entity_id: Optional[str] = None
+    saml_display_name: Optional[str] = None
 
 
 class OIDCCallbackRequest(BaseModel):

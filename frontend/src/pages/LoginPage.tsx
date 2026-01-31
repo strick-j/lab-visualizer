@@ -180,7 +180,7 @@ export function LoginPage() {
                 <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M12 0C5.372 0 0 5.372 0 12s5.372 12 12 12 12-5.372 12-12S18.628 0 12 0zm0 2.18c5.416 0 9.82 4.404 9.82 9.82s-4.404 9.82-9.82 9.82-9.82-4.404-9.82-9.82S6.584 2.18 12 2.18zm0 2.545a7.275 7.275 0 100 14.55 7.275 7.275 0 000-14.55zm0 2.182a5.093 5.093 0 110 10.186 5.093 5.093 0 010-10.186z" />
                 </svg>
-                Sign in with OIDC
+                Sign in with {authConfig.oidc_display_name || 'OIDC'}
               </button>
             )}
 
@@ -193,7 +193,7 @@ export function LoginPage() {
                 <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z" />
                 </svg>
-                Sign in with SAML
+                Sign in with {authConfig.saml_display_name || 'SAML'}
               </button>
             )}
           </div>

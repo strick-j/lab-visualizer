@@ -66,7 +66,9 @@ async def get_auth_config(db: AsyncSession = Depends(get_db)):
         oidc_enabled=oidc_config["enabled"] and bool(oidc_config["issuer"]),
         saml_enabled=saml_config["enabled"] and bool(saml_config["idp_sso_url"]),
         oidc_issuer=oidc_config["issuer"] if oidc_config["enabled"] else None,
+        oidc_display_name=oidc_config.get("display_name") if oidc_config["enabled"] else None,
         saml_idp_entity_id=saml_config["idp_entity_id"] if saml_config["enabled"] else None,
+        saml_display_name=saml_config.get("display_name") if saml_config["enabled"] else None,
     )
 
 

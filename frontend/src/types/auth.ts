@@ -27,7 +27,9 @@ export interface AuthConfig {
   oidc_enabled: boolean;
   saml_enabled: boolean;
   oidc_issuer: string | null;
+  oidc_display_name: string | null;
   saml_idp_entity_id: string | null;
+  saml_display_name: string | null;
 }
 
 export interface OIDCLoginResponse {
