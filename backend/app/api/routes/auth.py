@@ -354,7 +354,9 @@ async def oidc_callback(
 
     # Redirect to frontend with tokens in URL fragment
     # Using fragment (#) instead of query params for security (fragments aren't sent to server)
-    frontend_callback = "/auth/callback"
+    # Use the first CORS origin as the frontend base URL
+    frontend_base = settings.cors_origins_list[0] if settings.cors_origins_list else ""
+    frontend_callback = f"{frontend_base}/auth/callback"
     token_params = urlencode({
         "access_token": access_token,
         "refresh_token": refresh_token,
@@ -362,7 +364,7 @@ async def oidc_callback(
         "expires_in": settings.access_token_expire_minutes * 60,
     })
     redirect_url = f"{frontend_callback}#{token_params}"
-    logger.info(f"OIDC auth successful for user {user.username}, redirecting to frontend")
+    logger.info(f"OIDC auth successful for user {user.username}, redirecting to {frontend_base}")
     return RedirectResponse(url=redirect_url, status_code=status.HTTP_302_FOUND)
 
 
