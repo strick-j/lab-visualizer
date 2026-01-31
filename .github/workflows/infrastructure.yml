@@ -1,0 +1,191 @@
+name: Infrastructure Validation
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'infrastructure/**'
+      - '.github/workflows/infrastructure.yml'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'infrastructure/**'
+      - '.github/workflows/infrastructure.yml'
+  workflow_dispatch:
+
+env:
+  TF_VERSION: '1.6.0'
+
+jobs:
+  terraform-fmt:
+    name: Terraform Format Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Check Terraform formatting
+        run: terraform fmt -check -recursive -diff infrastructure/
+
+  terraform-validate-modules:
+    name: Validate Terraform Modules
+    runs-on: ubuntu-latest
+    needs: [terraform-fmt]
+
+    strategy:
+      fail-fast: false
+      matrix:
+        module:
+          - alb
+          - ecr
+          - ecs
+          - networking
+          - secrets
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Terraform Init - ${{ matrix.module }}
+        run: terraform -chdir=infrastructure/modules/${{ matrix.module }} init -backend=false
+
+      - name: Terraform Validate - ${{ matrix.module }}
+        run: terraform -chdir=infrastructure/modules/${{ matrix.module }} validate
+
+  tflint:
+    name: TFLint Analysis
+    runs-on: ubuntu-latest
+    needs: [terraform-fmt]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup TFLint
+        uses: terraform-linters/setup-tflint@v4
+        with:
+          tflint_version: latest
+
+      - name: Init TFLint
+        run: tflint --init
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Run TFLint on modules
+        run: |
+          for dir in infrastructure/modules/*/; do
+            echo "Linting $dir..."
+            tflint --chdir="$dir" --format=compact || true
+          done
+
+      - name: Run TFLint on environments
+        run: |
+          for dir in infrastructure/environments/*/; do
+            echo "Linting $dir..."
+            tflint --chdir="$dir" --format=compact || true
+          done
+
+  checkov:
+    name: Checkov Security Scan
+    runs-on: ubuntu-latest
+    needs: [terraform-fmt]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Checkov
+        uses: bridgecrewio/checkov-action@v12
+        with:
+          directory: infrastructure/
+          framework: terraform
+          output_format: cli,sarif
+          output_file_path: console,checkov-results.sarif
+          soft_fail: true
+          skip_check: CKV_AWS_144,CKV_AWS_145  # Skip S3 cross-region replication checks if not needed
+
+      - name: Upload Checkov results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: checkov-results.sarif
+          category: 'checkov-terraform'
+        continue-on-error: true
+
+  tfsec:
+    name: tfsec Security Scan
+    runs-on: ubuntu-latest
+    needs: [terraform-fmt]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run tfsec
+        uses: aquasecurity/tfsec-action@v1.0.3
+        with:
+          working_directory: infrastructure/
+          soft_fail: true
+          format: lovely,sarif
+          sarif_file: tfsec-results.sarif
+
+      - name: Upload tfsec results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: tfsec-results.sarif
+          category: 'tfsec-terraform'
+        continue-on-error: true
+
+  terraform-docs:
+    name: Terraform Docs Check
+    runs-on: ubuntu-latest
+    needs: [terraform-fmt]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run terraform-docs
+        uses: terraform-docs/gh-actions@v1.2.0
+        with:
+          working-dir: infrastructure/modules/alb,infrastructure/modules/ecr,infrastructure/modules/ecs,infrastructure/modules/networking,infrastructure/modules/secrets
+          output-file: README.md
+          output-method: inject
+          fail-on-diff: false
+
+  infracost:
+    name: Infrastructure Cost Estimation
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    needs: [terraform-validate-modules]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Infracost
+        uses: infracost/actions/setup@v3
+        with:
+          api-key: ${{ secrets.INFRACOST_API_KEY }}
+        continue-on-error: true
+
+      - name: Run Infracost
+        run: |
+          if [ -n "${{ secrets.INFRACOST_API_KEY }}" ]; then
+            infracost breakdown --path infrastructure/environments/dev \
+              --format json \
+              --out-file /tmp/infracost.json || true
+          else
+            echo "INFRACOST_API_KEY not set, skipping cost estimation"
+          fi
+        continue-on-error: true
