@@ -4,11 +4,15 @@ Application configuration using Pydantic Settings.
 Loads configuration from environment variables and .env files.
 """
 
+import logging
+import warnings
 from functools import lru_cache
 from typing import List, Optional
 
-from pydantic import Field
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+logger = logging.getLogger(__name__)
 
 
 class Settings(BaseSettings):
@@ -88,6 +92,29 @@ class Settings(BaseSettings):
     def auth_enabled(self) -> bool:
         """Check if authentication is configured."""
         return bool(self.oidc_issuer and self.oidc_client_id)
+
+    @model_validator(mode="after")
+    def validate_security_settings(self) -> "Settings":
+        """Validate security-sensitive settings."""
+        # Warn about default session secret
+        if self.session_secret == "change-me-in-production":
+            if not self.debug:
+                # In production mode, log a critical warning
+                warnings.warn(
+                    "SECURITY WARNING: Using default session_secret. "
+                    "Set SESSION_SECRET environment variable to a secure random value.",
+                    UserWarning,
+                    stacklevel=2,
+                )
+                logger.warning(
+                    "SECURITY WARNING: Using default session_secret in non-debug mode. "
+                    "Set SESSION_SECRET environment variable to a secure random value."
+                )
+            else:
+                logger.debug(
+                    "Using default session_secret (acceptable in debug mode)"
+                )
+        return self
 
 
 @lru_cache
