@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { SearchInput, Select, Button } from '@/components/common';
 import { X } from 'lucide-react';
 import type { DisplayStatus, ResourceFilters as Filters } from '@/types';
@@ -29,23 +29,36 @@ export function ResourceFilters({
   // Local state for search input to enable debouncing
   const [searchValue, setSearchValue] = useState(filters.search || '');
 
+  // Use refs to access latest values in debounce effect without triggering re-runs
+  const filtersRef = useRef(filters);
+  const onFilterChangeRef = useRef(onFilterChange);
+
+  // Keep refs updated
+  useEffect(() => {
+    filtersRef.current = filters;
+    onFilterChangeRef.current = onFilterChange;
+  }, [filters, onFilterChange]);
+
   // Debounce search input - only update filters after user stops typing
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (searchValue !== (filters.search || '')) {
-        onFilterChange({ ...filters, search: searchValue || undefined });
+      const currentFilters = filtersRef.current;
+      if (searchValue !== (currentFilters.search || '')) {
+        onFilterChangeRef.current({ ...currentFilters, search: searchValue || undefined });
       }
     }, 400); // Wait 400ms after user stops typing
 
     return () => clearTimeout(timer);
-  }, [searchValue]); // Only re-run when searchValue changes
+  }, [searchValue]);
 
   // Sync external filter changes back to local state
+  const syncSearch = useCallback((externalSearch: string | undefined) => {
+    setSearchValue(externalSearch || '');
+  }, []);
+
   useEffect(() => {
-    if (filters.search !== searchValue) {
-      setSearchValue(filters.search || '');
-    }
-  }, [filters.search]);
+    syncSearch(filters.search);
+  }, [filters.search, syncSearch]);
 
   const hasActiveFilters =
     filters.status || filters.search || filters.tf_managed !== undefined;
