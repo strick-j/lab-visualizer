@@ -92,29 +92,7 @@ export function InfrastructureTopology({
   return (
     <div className="relative w-full h-full">
       <TopologyCanvas data={data} onNodeClick={handleNodeClick} />
-      <TopologyLegend />
-
-      {/* Stats overlay */}
-      <div className="absolute top-4 right-4 z-10 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-3 shadow-lg">
-        <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-xs">
-          <div className="flex justify-between">
-            <span className="text-gray-500 dark:text-gray-400">VPCs:</span>
-            <span className="font-medium text-gray-900 dark:text-gray-100">{data.meta.total_vpcs}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-gray-500 dark:text-gray-400">Subnets:</span>
-            <span className="font-medium text-gray-900 dark:text-gray-100">{data.meta.total_subnets}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-gray-500 dark:text-gray-400">EC2:</span>
-            <span className="font-medium text-gray-900 dark:text-gray-100">{data.meta.total_ec2}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-gray-500 dark:text-gray-400">RDS:</span>
-            <span className="font-medium text-gray-900 dark:text-gray-100">{data.meta.total_rds}</span>
-          </div>
-        </div>
-      </div>
+      <TopologyLegend stats={data.meta} />
     </div>
   );
 }

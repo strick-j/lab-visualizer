@@ -2,6 +2,17 @@ import { useState } from 'react';
 import { Network, Boxes, Server, Database, Globe, ArrowUpDown, ChevronDown, ChevronUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
+interface TopologyStats {
+  total_vpcs: number;
+  total_subnets: number;
+  total_ec2: number;
+  total_rds: number;
+}
+
+interface TopologyLegendProps {
+  stats?: TopologyStats;
+}
+
 const legendItems = [
   { icon: Network, label: 'VPC', color: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-100 dark:bg-purple-900/50' },
   { icon: Boxes, label: 'Subnet', color: 'text-gray-600 dark:text-gray-400', bg: 'bg-gray-100 dark:bg-gray-700' },
@@ -23,25 +34,49 @@ const subnetTypes = [
   { label: 'Private', color: 'border-blue-400 bg-blue-50 dark:bg-blue-950/20' },
 ];
 
-export function TopologyLegend() {
-  const [isExpanded, setIsExpanded] = useState(true);
+export function TopologyLegend({ stats }: TopologyLegendProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
 
   return (
-    <div className="absolute bottom-4 left-4 z-10 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg overflow-hidden">
-      {/* Header - always visible */}
+    <div className="absolute top-4 right-4 z-10 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg overflow-hidden min-w-[200px]">
+      {/* Stats - always visible */}
+      {stats && (
+        <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+          <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-xs">
+            <div className="flex justify-between">
+              <span className="text-gray-500 dark:text-gray-400">VPCs:</span>
+              <span className="font-medium text-gray-900 dark:text-gray-100">{stats.total_vpcs}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-500 dark:text-gray-400">Subnets:</span>
+              <span className="font-medium text-gray-900 dark:text-gray-100">{stats.total_subnets}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-500 dark:text-gray-400">EC2:</span>
+              <span className="font-medium text-gray-900 dark:text-gray-100">{stats.total_ec2}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-500 dark:text-gray-400">RDS:</span>
+              <span className="font-medium text-gray-900 dark:text-gray-100">{stats.total_rds}</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Legend header - collapsible */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+        className="w-full flex items-center justify-between px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
       >
-        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Legend</h3>
+        <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Legend</h3>
         {isExpanded ? (
-          <ChevronDown className="h-4 w-4 text-gray-500" />
-        ) : (
           <ChevronUp className="h-4 w-4 text-gray-500" />
+        ) : (
+          <ChevronDown className="h-4 w-4 text-gray-500" />
         )}
       </button>
 
-      {/* Collapsible content */}
+      {/* Collapsible legend content */}
       <div
         className={cn(
           'transition-all duration-200 ease-in-out',
