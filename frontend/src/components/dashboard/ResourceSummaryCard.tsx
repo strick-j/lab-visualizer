@@ -1,7 +1,7 @@
-import { Link } from 'react-router-dom';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/common';
-import { cn, getStatusConfig } from '@/lib/utils';
-import type { ResourceCount, DisplayStatus } from '@/types';
+import { Link } from "react-router-dom";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/common";
+import { cn, getStatusConfig } from "@/lib/utils";
+import type { ResourceCount, DisplayStatus } from "@/types";
 
 interface ResourceSummaryCardProps {
   title: string;
@@ -23,7 +23,7 @@ export function ResourceSummaryCard({
   icon,
   counts,
   href,
-  linkText = 'View details',
+  linkText = "View details",
 }: ResourceSummaryCardProps) {
   return (
     <Card>

@@ -40,8 +40,6 @@ jobs:
 
       - name: Run ESLint
         run: npm run lint
-        env:
-          ESLINT_USE_FLAT_CONFIG: false
 
       - name: Check code formatting with Prettier
         run: npx prettier --check "src/**/*.{ts,tsx,css}"

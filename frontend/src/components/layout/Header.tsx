@@ -1,8 +1,8 @@
-import { RefreshCw, ScanEye } from 'lucide-react';
-import { Button } from '@/components/common';
-import { ThemeToggle } from '@/components/common/ThemeToggle';
-import { useRefreshData, useStatusSummary } from '@/hooks';
-import { formatRelativeTime } from '@/lib/utils';
+import { RefreshCw, ScanEye } from "lucide-react";
+import { Button } from "@/components/common";
+import { ThemeToggle } from "@/components/common/ThemeToggle";
+import { useRefreshData, useStatusSummary } from "@/hooks";
+import { formatRelativeTime } from "@/lib/utils";
 
 export function Header() {
   const { data: summary } = useStatusSummary();

@@ -133,7 +133,9 @@ export function EC2ListPage() {
           <Server className="h-6 w-6 text-orange-600 dark:text-orange-400" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">EC2 Instances</h1>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+            EC2 Instances
+          </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400">
             Amazon Elastic Compute Cloud virtual servers
           </p>

@@ -164,36 +164,36 @@ export function TopologyPage() {
         {/* Resource detail panel - shows when a resource is clicked */}
         {selectedResource && (
           <div className="absolute bottom-4 right-4 z-20 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg w-80">
-          {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                {getResourceTypeLabel(selectedResource.type)}
-              </span>
-              {selectedResource.tfManaged && (
-                <span className="px-1.5 py-0.5 text-xs font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300 rounded">
-                  TF
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                  {getResourceTypeLabel(selectedResource.type)}
                 </span>
-              )}
+                {selectedResource.tfManaged && (
+                  <span className="px-1.5 py-0.5 text-xs font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300 rounded">
+                    TF
+                  </span>
+                )}
+              </div>
+              <button
+                onClick={() => setSelectedResource(null)}
+                className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              >
+                <X className="h-4 w-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" />
+              </button>
             </div>
-            <button
-              onClick={() => setSelectedResource(null)}
-              className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-            >
-              <X className="h-4 w-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" />
-            </button>
-          </div>
 
-          {/* Details */}
-          <div className="px-4 py-2 divide-y divide-gray-100 dark:divide-gray-700">
-            {details.map((detail) => (
-              <DetailRow
-                key={detail.label}
-                label={detail.label}
-                value={detail.value}
-              />
-            ))}
-          </div>
+            {/* Details */}
+            <div className="px-4 py-2 divide-y divide-gray-100 dark:divide-gray-700">
+              {details.map((detail) => (
+                <DetailRow
+                  key={detail.label}
+                  label={detail.label}
+                  value={detail.value}
+                />
+              ))}
+            </div>
           </div>
         )}
       </div>
