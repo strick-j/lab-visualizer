@@ -111,11 +111,16 @@ export function EC2ListPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">EC2 Instances</h1>
-        <p className="text-gray-500 dark:text-gray-400">
-          {data?.meta.total || 0} instances found
-        </p>
+      <div className="flex items-center gap-3">
+        <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-orange-100 dark:bg-orange-900">
+          <Server className="h-6 w-6 text-orange-600 dark:text-orange-400" />
+        </div>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">EC2 Instances</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Amazon Elastic Compute Cloud virtual servers
+          </p>
+        </div>
       </div>
 
       <ResourceFilters filters={filters} onFilterChange={setFilters} />
