@@ -3,8 +3,15 @@ import { render, screen, fireEvent } from '@/test/test-utils';
 import { TopologyPage } from './TopologyPage';
 
 // Mock the InfrastructureTopology component
+interface TopologyNodeData {
+  type: string;
+  label: string;
+  tfManaged?: boolean;
+  [key: string]: unknown;
+}
+
 vi.mock('@/components/topology', () => ({
-  InfrastructureTopology: ({ onResourceSelect }: { onResourceSelect: (data: any) => void }) => (
+  InfrastructureTopology: ({ onResourceSelect }: { onResourceSelect: (data: TopologyNodeData) => void }) => (
     <div data-testid="infrastructure-topology">
       <button
         data-testid="ec2-node"
