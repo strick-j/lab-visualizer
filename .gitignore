@@ -11,6 +11,7 @@ Thumbs.db
 # IDE and Editor Files
 .vscode/
 .idea/
+.claude/
 *.swp
 *.swo
 *.swn
@@ -101,6 +102,7 @@ docker-compose.override.yml
 *.tfstate
 *.tfstate.*
 *.tfvars
+backend.tf
 !example.tfvars
 .terraform/
 .terraform.lock.hcl
@@ -140,6 +142,8 @@ secrets/
 *.crt
 !backend/tests/**/*.key
 !backend/tests/**/*.cert
+!infrastructure/modules/secrets
+!infrastructure/modules/secrets/**.tf
 
 # Build and Deployment
 *.tar.gz
