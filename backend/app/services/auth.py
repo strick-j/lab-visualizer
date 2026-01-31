@@ -127,15 +127,21 @@ async def authenticate_local_user(
     """Authenticate a local user by username and password."""
     user = await get_user_by_username(db, username)
     if not user:
+        logger.debug(f"Auth failed: user '{username}' not found")
         return None
     if user.auth_provider != "local":
+        logger.debug(f"Auth failed: user '{username}' is not a local user (provider: {user.auth_provider})")
         return None
     if not user.password_hash:
+        logger.debug(f"Auth failed: user '{username}' has no password hash")
         return None
     if not verify_password(password, user.password_hash):
+        logger.debug(f"Auth failed: password verification failed for user '{username}'")
         return None
     if not user.is_active:
+        logger.debug(f"Auth failed: user '{username}' is not active")
         return None
+    logger.debug(f"Auth succeeded for user '{username}'")
     return user
 
 
@@ -278,7 +284,9 @@ async def revoke_all_user_sessions(db: AsyncSession, user_id: int) -> int:
 
 async def ensure_admin_user(db: AsyncSession) -> None:
     """Ensure an admin user exists on startup if configured."""
+    logger.info(f"ensure_admin_user: checking config (username={settings.admin_username!r}, password_set={bool(settings.admin_password)})")
     if not settings.admin_username or not settings.admin_password:
+        logger.info("ensure_admin_user: skipping - admin credentials not fully configured")
         return
 
     existing = await get_user_by_username(db, settings.admin_username)
