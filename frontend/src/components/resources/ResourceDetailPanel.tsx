@@ -24,7 +24,7 @@ interface EC2DetailPanelProps {
 
 export function EC2DetailPanel({ instance, onClose }: EC2DetailPanelProps) {
   return (
-    <div className="fixed top-16 bottom-0 right-0 z-50 w-96 overflow-y-auto border-l border-gray-200 bg-white shadow-xl dark:border-gray-700 dark:bg-gray-800">
+    <div className="fixed inset-y-0 right-0 z-50 w-96 overflow-y-auto border-l border-gray-200 bg-white shadow-xl dark:border-gray-700 dark:bg-gray-800">
       <div className="sticky top-0 flex items-center justify-between border-b border-gray-200 bg-white px-4 py-3 dark:border-gray-700 dark:bg-gray-800">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Instance Details</h2>
         <Button variant="ghost" size="sm" onClick={onClose}>
@@ -115,7 +115,7 @@ interface RDSDetailPanelProps {
 
 export function RDSDetailPanel({ instance, onClose }: RDSDetailPanelProps) {
   return (
-    <div className="fixed top-16 bottom-0 right-0 z-50 w-96 overflow-y-auto border-l border-gray-200 bg-white shadow-xl dark:border-gray-700 dark:bg-gray-800">
+    <div className="fixed inset-y-0 right-0 z-50 w-96 overflow-y-auto border-l border-gray-200 bg-white shadow-xl dark:border-gray-700 dark:bg-gray-800">
       <div className="sticky top-0 flex items-center justify-between border-b border-gray-200 bg-white px-4 py-3 dark:border-gray-700 dark:bg-gray-800">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Database Details</h2>
         <Button variant="ghost" size="sm" onClick={onClose}>
