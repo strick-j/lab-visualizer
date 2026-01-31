@@ -5,7 +5,7 @@
 /* Custom base styles */
 @layer base {
   :root {
-    --header-height: calc(4rem + 1px);
+    --header-height: 4rem;
   }
 
   body {
