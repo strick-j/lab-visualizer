@@ -19,7 +19,7 @@ import {
   NATGatewayNode,
 } from './nodes';
 import { calculateTopologyLayout, createEdges } from './utils/layoutCalculator';
-import type { TopologyResponse } from '@/types/topology';
+import type { TopologyResponse, TopologyNodeData } from '@/types/topology';
 
 // Register custom node types
 const nodeTypes: NodeTypes = {
@@ -33,7 +33,7 @@ const nodeTypes: NodeTypes = {
 
 interface TopologyCanvasProps {
   data: TopologyResponse;
-  onNodeClick?: (nodeId: string, nodeType: string) => void;
+  onNodeClick?: (nodeId: string, nodeType: string, nodeData: TopologyNodeData) => void;
 }
 
 export function TopologyCanvas({ data, onNodeClick }: TopologyCanvasProps) {
@@ -51,9 +51,9 @@ export function TopologyCanvas({ data, onNodeClick }: TopologyCanvasProps) {
   const [edges, , onEdgesChange] = useEdgesState(initialEdges);
 
   const handleNodeClick = useCallback(
-    (_event: React.MouseEvent, node: Node) => {
-      if (onNodeClick && node.type) {
-        onNodeClick(node.id, node.type);
+    (_event: React.MouseEvent, node: Node<TopologyNodeData>) => {
+      if (onNodeClick && node.type && node.data) {
+        onNodeClick(node.id, node.type, node.data);
       }
     },
     [onNodeClick]

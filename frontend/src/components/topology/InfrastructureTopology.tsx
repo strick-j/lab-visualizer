@@ -4,10 +4,11 @@ import { useTopology, useRefreshData } from '@/hooks/useResources';
 import { TopologyCanvas } from './TopologyCanvas';
 import { TopologyLegend } from './TopologyLegend';
 import { Loading } from '@/components/common';
+import type { TopologyNodeData } from '@/types/topology';
 
 interface InfrastructureTopologyProps {
   vpcId?: string;
-  onResourceSelect?: (resourceId: string, resourceType: string) => void;
+  onResourceSelect?: (nodeData: TopologyNodeData) => void;
 }
 
 export function InfrastructureTopology({
@@ -25,10 +26,8 @@ export function InfrastructureTopology({
   }, [refreshMutation, refetch]);
 
   const handleNodeClick = useCallback(
-    (nodeId: string, nodeType: string) => {
-      // Extract the actual resource ID from the node ID (e.g., "ec2-i-xxx" -> "i-xxx")
-      const resourceId = nodeId.replace(/^(vpc|subnet|ec2|rds|igw|nat)-/, '');
-      onResourceSelect?.(resourceId, nodeType);
+    (_nodeId: string, _nodeType: string, nodeData: TopologyNodeData) => {
+      onResourceSelect?.(nodeData);
     },
     [onResourceSelect]
   );
