@@ -82,6 +82,7 @@ frontend/out/
 frontend/.cache/
 frontend/.parcel-cache/
 frontend/.vite/
+frontend/coverage/
 
 # Environment Variables
 .env
