@@ -4,6 +4,10 @@
 
 /* Custom base styles */
 @layer base {
+  :root {
+    --header-height: calc(4rem + 1px);
+  }
+
   body {
     @apply antialiased bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-gray-100;
   }
