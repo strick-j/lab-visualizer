@@ -92,6 +92,7 @@ export function DashboardPage() {
                 icon={<Server className="h-5 w-5 text-blue-600" />}
                 counts={ec2Counts}
                 href="/ec2"
+                linkText="View EC2 details"
               />
             )}
             {rdsCounts && (
@@ -100,6 +101,7 @@ export function DashboardPage() {
                 icon={<Database className="h-5 w-5 text-green-600" />}
                 counts={rdsCounts}
                 href="/rds"
+                linkText="View RDS details"
               />
             )}
             <Card>
