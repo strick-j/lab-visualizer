@@ -1,16 +1,21 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Server, Database, GitBranch, AlertTriangle, CheckCircle, Network } from 'lucide-react';
-import { Card, CardHeader, CardTitle, CardContent, PageLoading, StatusBadge, Button } from '@/components/common';
+import { Card, CardHeader, CardTitle, CardContent, PageLoading, StatusBadge, Select } from '@/components/common';
 import { ResourceSummaryCard } from '@/components/dashboard';
 import { useStatusSummary, useEC2Instances, useRDSInstances, useDrift, useVPCs, useSubnets, useInternetGateways, useNATGateways, useElasticIPs } from '@/hooks';
 import { formatRelativeTime, getResourceName } from '@/lib/utils';
 import type { EC2Instance, RDSInstance, VPC, ResourceFilters } from '@/types';
 
-export function DashboardPage() {
-  const [showManagedOnly, setShowManagedOnly] = useState(false);
+const terraformOptions = [
+  { value: 'true', label: 'Managed' },
+  { value: 'false', label: 'Unmanaged' },
+];
 
-  const filters: ResourceFilters | undefined = showManagedOnly ? { tf_managed: true } : undefined;
+export function DashboardPage() {
+  const [tfManagedFilter, setTfManagedFilter] = useState<boolean | undefined>(undefined);
+
+  const filters: ResourceFilters | undefined = tfManagedFilter !== undefined ? { tf_managed: tfManagedFilter } : undefined;
 
   const { data: summary, isLoading: summaryLoading } = useStatusSummary();
   const { data: ec2Data, isLoading: ec2Loading } = useEC2Instances(filters);
@@ -42,8 +47,8 @@ export function DashboardPage() {
     };
   };
 
-  const ec2Counts = showManagedOnly ? computeCounts(ec2Data?.data) : summary?.ec2;
-  const rdsCounts = showManagedOnly ? computeCounts(rdsData?.data) : summary?.rds;
+  const ec2Counts = tfManagedFilter !== undefined ? computeCounts(ec2Data?.data) : summary?.ec2;
+  const rdsCounts = tfManagedFilter !== undefined ? computeCounts(rdsData?.data) : summary?.rds;
 
   // Calculate VPC networking totals
   const vpcNetworkingTotal = {
@@ -63,18 +68,23 @@ export function DashboardPage() {
             Overview of your AWS infrastructure
           </p>
         </div>
-        <Button
-          variant={showManagedOnly ? 'primary' : 'outline'}
-          size="sm"
-          onClick={() => setShowManagedOnly(!showManagedOnly)}
-        >
-          {showManagedOnly ? 'Showing Managed Only' : 'Show All Resources'}
-        </Button>
+        <div className="w-40">
+          <Select
+            placeholder="All resources"
+            options={terraformOptions}
+            value={tfManagedFilter === undefined ? '' : String(tfManagedFilter)}
+            onChange={(e) =>
+              setTfManagedFilter(
+                e.target.value === '' ? undefined : e.target.value === 'true'
+              )
+            }
+          />
+        </div>
       </div>
 
       {/* Summary Cards */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        {(summary || showManagedOnly) && (
+        {(summary || tfManagedFilter !== undefined) && (
           <>
             {ec2Counts && (
               <ResourceSummaryCard
