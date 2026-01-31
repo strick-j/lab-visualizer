@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { PageLoading, StatusBadge, TerraformBadge, EmptyState } from '@/components/common';
 import { ResourceTable, ResourceFilters } from '@/components/resources';

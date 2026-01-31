@@ -1,4 +1,4 @@
-import { Network, GitBranch, Globe, Router, MapPin, Route } from 'lucide-react';
+import { Network, GitBranch, Globe, Router, MapPin } from 'lucide-react';
 import type { VPCResourceType } from '@/types';
 
 interface Tab {
