@@ -1,11 +1,16 @@
-import { useMemo } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { PageLoading, StatusBadge, TerraformBadge, EmptyState } from '@/components/common';
-import { ResourceTable, ResourceFilters } from '@/components/resources';
-import { ElasticIPDetailPanel } from './ElasticIPDetailPanel';
-import { useElasticIPs } from '@/hooks';
-import { getResourceName } from '@/lib/utils';
-import type { ResourceFilters as Filters, ElasticIP } from '@/types';
+import { useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
+import {
+  PageLoading,
+  StatusBadge,
+  TerraformBadge,
+  EmptyState,
+} from "@/components/common";
+import { ResourceTable, ResourceFilters } from "@/components/resources";
+import { ElasticIPDetailPanel } from "./ElasticIPDetailPanel";
+import { useElasticIPs } from "@/hooks";
+import { getResourceName } from "@/lib/utils";
+import type { ResourceFilters as Filters, ElasticIP } from "@/types";
 
 interface ElasticIPListProps {
   filters: Filters;
@@ -14,7 +19,7 @@ interface ElasticIPListProps {
 
 export function ElasticIPList({ filters, onFilterChange }: ElasticIPListProps) {
   const [searchParams, setSearchParams] = useSearchParams();
-  const selectedId = searchParams.get('selected');
+  const selectedId = searchParams.get("selected");
 
   const { data, isLoading, error } = useElasticIPs(filters);
 
@@ -33,25 +38,29 @@ export function ElasticIPList({ filters, onFilterChange }: ElasticIPListProps) {
 
   const columns = [
     {
-      key: 'name',
-      header: 'Name',
+      key: "name",
+      header: "Name",
       render: (eip: ElasticIP) => (
         <div>
           <p className="font-medium text-gray-900 dark:text-gray-100">
             {getResourceName(eip.name, eip.allocation_id)}
           </p>
-          <p className="text-xs text-gray-500 dark:text-gray-400">{eip.allocation_id}</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            {eip.allocation_id}
+          </p>
         </div>
       ),
     },
     {
-      key: 'status',
-      header: 'Status',
-      render: (eip: ElasticIP) => <StatusBadge status={eip.display_status} size="sm" />,
+      key: "status",
+      header: "Status",
+      render: (eip: ElasticIP) => (
+        <StatusBadge status={eip.display_status} size="sm" />
+      ),
     },
     {
-      key: 'public_ip',
-      header: 'Public IP',
+      key: "public_ip",
+      header: "Public IP",
       render: (eip: ElasticIP) => (
         <span className="font-mono text-sm font-medium text-gray-900 dark:text-gray-100">
           {eip.public_ip}
@@ -59,21 +68,23 @@ export function ElasticIPList({ filters, onFilterChange }: ElasticIPListProps) {
       ),
     },
     {
-      key: 'private_ip',
-      header: 'Private IP',
+      key: "private_ip",
+      header: "Private IP",
       render: (eip: ElasticIP) => (
         <span className="font-mono text-sm text-gray-700 dark:text-gray-300">
-          {eip.private_ip || '-'}
+          {eip.private_ip || "-"}
         </span>
       ),
     },
     {
-      key: 'association',
-      header: 'Association',
+      key: "association",
+      header: "Association",
       render: (eip: ElasticIP) => {
         if (!eip.association_id) {
           return (
-            <span className="text-sm text-gray-500 dark:text-gray-400">Unassociated</span>
+            <span className="text-sm text-gray-500 dark:text-gray-400">
+              Unassociated
+            </span>
           );
         }
         if (eip.instance_id) {
@@ -82,7 +93,9 @@ export function ElasticIPList({ filters, onFilterChange }: ElasticIPListProps) {
               <p className="text-xs font-medium text-gray-700 dark:text-gray-300">
                 Instance
               </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">{eip.instance_id}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                {eip.instance_id}
+              </p>
             </div>
           );
         }
@@ -99,13 +112,15 @@ export function ElasticIPList({ filters, onFilterChange }: ElasticIPListProps) {
           );
         }
         return (
-          <span className="text-sm text-gray-700 dark:text-gray-300">Associated</span>
+          <span className="text-sm text-gray-700 dark:text-gray-300">
+            Associated
+          </span>
         );
       },
     },
     {
-      key: 'domain',
-      header: 'Domain',
+      key: "domain",
+      header: "Domain",
       render: (eip: ElasticIP) => (
         <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
           {eip.domain}
@@ -113,8 +128,8 @@ export function ElasticIPList({ filters, onFilterChange }: ElasticIPListProps) {
       ),
     },
     {
-      key: 'terraform',
-      header: 'Terraform',
+      key: "terraform",
+      header: "Terraform",
       render: (eip: ElasticIP) => <TerraformBadge managed={eip.tf_managed} />,
     },
   ];
@@ -157,7 +172,10 @@ export function ElasticIPList({ filters, onFilterChange }: ElasticIPListProps) {
       )}
 
       {selectedElasticIP && (
-        <ElasticIPDetailPanel elasticIP={selectedElasticIP} onClose={handleCloseDetail} />
+        <ElasticIPDetailPanel
+          elasticIP={selectedElasticIP}
+          onClose={handleCloseDetail}
+        />
       )}
     </div>
   );

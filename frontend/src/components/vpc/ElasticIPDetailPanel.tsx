@@ -1,7 +1,7 @@
-import { X } from 'lucide-react';
-import { Button, StatusBadge, TerraformBadge } from '@/components/common';
-import { formatDateTime } from '@/lib/utils';
-import type { ElasticIP } from '@/types';
+import { X } from "lucide-react";
+import { Button, StatusBadge, TerraformBadge } from "@/components/common";
+import { formatDateTime } from "@/lib/utils";
+import type { ElasticIP } from "@/types";
 
 interface DetailRowProps {
   label: string;
@@ -11,9 +11,11 @@ interface DetailRowProps {
 function DetailRow({ label, value }: DetailRowProps) {
   return (
     <div className="flex justify-between gap-4 py-2">
-      <span className="flex-shrink-0 text-sm text-gray-500 dark:text-gray-400">{label}</span>
+      <span className="flex-shrink-0 text-sm text-gray-500 dark:text-gray-400">
+        {label}
+      </span>
       <span className="break-all text-right text-sm font-medium text-gray-900 dark:text-gray-100">
-        {value || '-'}
+        {value || "-"}
       </span>
     </div>
   );
@@ -24,18 +26,24 @@ interface ElasticIPDetailPanelProps {
   onClose: () => void;
 }
 
-export function ElasticIPDetailPanel({ elasticIP, onClose }: ElasticIPDetailPanelProps) {
+export function ElasticIPDetailPanel({
+  elasticIP,
+  onClose,
+}: ElasticIPDetailPanelProps) {
   const getAssociationStatus = () => {
     if (!elasticIP.association_id) {
-      return { type: 'Unassociated', target: null };
+      return { type: "Unassociated", target: null };
     }
     if (elasticIP.instance_id) {
-      return { type: 'Instance', target: elasticIP.instance_id };
+      return { type: "Instance", target: elasticIP.instance_id };
     }
     if (elasticIP.network_interface_id) {
-      return { type: 'Network Interface', target: elasticIP.network_interface_id };
+      return {
+        type: "Network Interface",
+        target: elasticIP.network_interface_id,
+      };
     }
-    return { type: 'Associated', target: elasticIP.association_id };
+    return { type: "Associated", target: elasticIP.association_id };
   };
 
   const association = getAssociationStatus();
@@ -43,7 +51,9 @@ export function ElasticIPDetailPanel({ elasticIP, onClose }: ElasticIPDetailPane
   return (
     <div className="fixed inset-y-0 right-0 z-50 w-96 overflow-y-auto border-l border-gray-200 bg-white shadow-xl dark:border-gray-700 dark:bg-gray-800">
       <div className="sticky top-0 flex items-center justify-between border-b border-gray-200 bg-white px-4 py-3 dark:border-gray-700 dark:bg-gray-800">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Elastic IP Details</h2>
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+          Elastic IP Details
+        </h2>
         <Button variant="ghost" size="sm" onClick={onClose}>
           <X className="h-5 w-5" />
         </Button>
@@ -68,16 +78,27 @@ export function ElasticIPDetailPanel({ elasticIP, onClose }: ElasticIPDetailPane
               Basic Info
             </h4>
             <div className="divide-y divide-gray-100 rounded-lg border border-gray-200 bg-gray-50 px-3 dark:divide-gray-700 dark:border-gray-700 dark:bg-gray-700">
-              <DetailRow label="Allocation ID" value={elasticIP.allocation_id} />
+              <DetailRow
+                label="Allocation ID"
+                value={elasticIP.allocation_id}
+              />
               <DetailRow
                 label="Public IP"
-                value={<span className="font-mono font-bold">{elasticIP.public_ip}</span>}
+                value={
+                  <span className="font-mono font-bold">
+                    {elasticIP.public_ip}
+                  </span>
+                }
               />
               <DetailRow
                 label="Private IP"
-                value={elasticIP.private_ip ? (
-                  <span className="font-mono">{elasticIP.private_ip}</span>
-                ) : '-'}
+                value={
+                  elasticIP.private_ip ? (
+                    <span className="font-mono">{elasticIP.private_ip}</span>
+                  ) : (
+                    "-"
+                  )
+                }
               />
               <DetailRow label="Domain" value={elasticIP.domain} />
             </div>
@@ -104,8 +125,14 @@ export function ElasticIPDetailPanel({ elasticIP, onClose }: ElasticIPDetailPane
               />
               {elasticIP.association_id && (
                 <>
-                  <DetailRow label="Association ID" value={elasticIP.association_id} />
-                  <DetailRow label="Association Type" value={association.type} />
+                  <DetailRow
+                    label="Association ID"
+                    value={elasticIP.association_id}
+                  />
+                  <DetailRow
+                    label="Association Type"
+                    value={association.type}
+                  />
                   {association.target && (
                     <DetailRow label="Target" value={association.target} />
                   )}
@@ -121,7 +148,10 @@ export function ElasticIPDetailPanel({ elasticIP, onClose }: ElasticIPDetailPane
             <div className="divide-y divide-gray-100 rounded-lg border border-gray-200 bg-gray-50 px-3 dark:divide-gray-700 dark:border-gray-700 dark:bg-gray-700">
               <DetailRow label="Region" value={elasticIP.region_name} />
               {elasticIP.network_interface_id && (
-                <DetailRow label="Network Interface" value={elasticIP.network_interface_id} />
+                <DetailRow
+                  label="Network Interface"
+                  value={elasticIP.network_interface_id}
+                />
               )}
               {elasticIP.instance_id && (
                 <DetailRow label="Instance ID" value={elasticIP.instance_id} />
@@ -135,8 +165,18 @@ export function ElasticIPDetailPanel({ elasticIP, onClose }: ElasticIPDetailPane
                 Terraform
               </h4>
               <div className="divide-y divide-gray-100 rounded-lg border border-gray-200 bg-gray-50 px-3 dark:divide-gray-700 dark:border-gray-700 dark:bg-gray-700">
-                <DetailRow label="State File" value={elasticIP.tf_state_source} />
-                <DetailRow label="Address" value={<span className="font-mono text-xs">{elasticIP.tf_resource_address}</span>} />
+                <DetailRow
+                  label="State File"
+                  value={elasticIP.tf_state_source}
+                />
+                <DetailRow
+                  label="Address"
+                  value={
+                    <span className="font-mono text-xs">
+                      {elasticIP.tf_resource_address}
+                    </span>
+                  }
+                />
               </div>
             </section>
           )}
@@ -146,8 +186,16 @@ export function ElasticIPDetailPanel({ elasticIP, onClose }: ElasticIPDetailPane
               Timestamps
             </h4>
             <div className="divide-y divide-gray-100 rounded-lg border border-gray-200 bg-gray-50 px-3 dark:divide-gray-700 dark:border-gray-700 dark:bg-gray-700">
-              <DetailRow label="Last Updated" value={formatDateTime(elasticIP.updated_at)} />
-              {elasticIP.created_at && <DetailRow label="Created" value={formatDateTime(elasticIP.created_at)} />}
+              <DetailRow
+                label="Last Updated"
+                value={formatDateTime(elasticIP.updated_at)}
+              />
+              {elasticIP.created_at && (
+                <DetailRow
+                  label="Created"
+                  value={formatDateTime(elasticIP.created_at)}
+                />
+              )}
             </div>
           </section>
 

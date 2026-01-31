@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo } from "react";
 import ReactFlow, {
   Background,
   Controls,
@@ -7,8 +7,8 @@ import ReactFlow, {
   BackgroundVariant,
   type NodeTypes,
   type Node,
-} from 'reactflow';
-import 'reactflow/dist/style.css';
+} from "reactflow";
+import "reactflow/dist/style.css";
 
 import {
   VPCNode,
@@ -17,9 +17,9 @@ import {
   RDSNode,
   InternetGatewayNode,
   NATGatewayNode,
-} from './nodes';
-import { calculateTopologyLayout, createEdges } from './utils/layoutCalculator';
-import type { TopologyResponse, TopologyNodeData } from '@/types/topology';
+} from "./nodes";
+import { calculateTopologyLayout, createEdges } from "./utils/layoutCalculator";
+import type { TopologyResponse, TopologyNodeData } from "@/types/topology";
 
 // Register custom node types
 const nodeTypes: NodeTypes = {
@@ -27,13 +27,17 @@ const nodeTypes: NodeTypes = {
   subnet: SubnetNode,
   ec2: EC2Node,
   rds: RDSNode,
-  'internet-gateway': InternetGatewayNode,
-  'nat-gateway': NATGatewayNode,
+  "internet-gateway": InternetGatewayNode,
+  "nat-gateway": NATGatewayNode,
 };
 
 interface TopologyCanvasProps {
   data: TopologyResponse;
-  onNodeClick?: (nodeId: string, nodeType: string, nodeData: TopologyNodeData) => void;
+  onNodeClick?: (
+    nodeId: string,
+    nodeType: string,
+    nodeData: TopologyNodeData,
+  ) => void;
 }
 
 export function TopologyCanvas({ data, onNodeClick }: TopologyCanvasProps) {
@@ -56,7 +60,7 @@ export function TopologyCanvas({ data, onNodeClick }: TopologyCanvasProps) {
         onNodeClick(node.id, node.type, node.data);
       }
     },
-    [onNodeClick]
+    [onNodeClick],
   );
 
   return (
@@ -77,7 +81,7 @@ export function TopologyCanvas({ data, onNodeClick }: TopologyCanvasProps) {
         minZoom={0.1}
         maxZoom={2}
         defaultEdgeOptions={{
-          type: 'smoothstep',
+          type: "smoothstep",
           animated: false,
         }}
         proOptions={{ hideAttribution: true }}

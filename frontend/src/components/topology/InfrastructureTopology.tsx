@@ -1,10 +1,10 @@
-import { useCallback } from 'react';
-import { AlertCircle, RefreshCw, Waypoints } from 'lucide-react';
-import { useTopology, useRefreshData } from '@/hooks/useResources';
-import { TopologyCanvas } from './TopologyCanvas';
-import { TopologyLegend } from './TopologyLegend';
-import { Loading } from '@/components/common';
-import type { TopologyNodeData } from '@/types/topology';
+import { useCallback } from "react";
+import { AlertCircle, RefreshCw, Waypoints } from "lucide-react";
+import { useTopology, useRefreshData } from "@/hooks/useResources";
+import { TopologyCanvas } from "./TopologyCanvas";
+import { TopologyLegend } from "./TopologyLegend";
+import { Loading } from "@/components/common";
+import type { TopologyNodeData } from "@/types/topology";
 
 interface InfrastructureTopologyProps {
   vpcId?: string;
@@ -16,7 +16,7 @@ export function InfrastructureTopology({
   onResourceSelect,
 }: InfrastructureTopologyProps) {
   const { data, isLoading, isError, error, refetch } = useTopology(
-    vpcId ? { vpc_id: vpcId } : undefined
+    vpcId ? { vpc_id: vpcId } : undefined,
   );
   const refreshMutation = useRefreshData();
 
@@ -29,7 +29,7 @@ export function InfrastructureTopology({
     (_nodeId: string, _nodeType: string, nodeData: TopologyNodeData) => {
       onResourceSelect?.(nodeData);
     },
-    [onResourceSelect]
+    [onResourceSelect],
   );
 
   if (isLoading) {
@@ -49,7 +49,7 @@ export function InfrastructureTopology({
             Failed to load topology
           </h3>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            {error instanceof Error ? error.message : 'An error occurred'}
+            {error instanceof Error ? error.message : "An error occurred"}
           </p>
         </div>
         <button
@@ -72,8 +72,9 @@ export function InfrastructureTopology({
             No Terraform-managed infrastructure found
           </h3>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
-            This visualization only shows resources that are managed by Terraform.
-            Make sure your Terraform state files are configured and resources have been refreshed.
+            This visualization only shows resources that are managed by
+            Terraform. Make sure your Terraform state files are configured and
+            resources have been refreshed.
           </p>
         </div>
         <button
@@ -81,8 +82,10 @@ export function InfrastructureTopology({
           disabled={refreshMutation.isPending}
           className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
-          <RefreshCw className={`h-4 w-4 ${refreshMutation.isPending ? 'animate-spin' : ''}`} />
-          {refreshMutation.isPending ? 'Refreshing...' : 'Refresh Data'}
+          <RefreshCw
+            className={`h-4 w-4 ${refreshMutation.isPending ? "animate-spin" : ""}`}
+          />
+          {refreshMutation.isPending ? "Refreshing..." : "Refresh Data"}
         </button>
       </div>
     );

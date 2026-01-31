@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom';
+import { NavLink } from "react-router-dom";
 import {
   LayoutDashboard,
   Server,
@@ -7,16 +7,16 @@ import {
   GitBranch,
   Waypoints,
   Settings,
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
+} from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const navigation = [
-  { name: 'Dashboard', href: '/', icon: LayoutDashboard },
-  { name: 'Topology', href: '/topology', icon: Waypoints },
-  { name: 'EC2 Instances', href: '/ec2', icon: Server },
-  { name: 'RDS Databases', href: '/rds', icon: Database },
-  { name: 'VPC Networking', href: '/vpc', icon: Network },
-  { name: 'Terraform', href: '/terraform', icon: GitBranch },
+  { name: "Dashboard", href: "/", icon: LayoutDashboard },
+  { name: "Topology", href: "/topology", icon: Waypoints },
+  { name: "EC2 Instances", href: "/ec2", icon: Server },
+  { name: "RDS Databases", href: "/rds", icon: Database },
+  { name: "VPC Networking", href: "/vpc", icon: Network },
+  { name: "Terraform", href: "/terraform", icon: GitBranch },
 ];
 
 export function Sidebar() {
@@ -29,10 +29,10 @@ export function Sidebar() {
             to={item.href}
             className={({ isActive }) =>
               cn(
-                'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
                 isActive
-                  ? 'bg-blue-50 text-blue-700 dark:bg-gray-700 dark:text-white'
-                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white'
+                  ? "bg-blue-50 text-blue-700 dark:bg-gray-700 dark:text-white"
+                  : "text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white",
               )
             }
           >
@@ -47,10 +47,10 @@ export function Sidebar() {
           to="/settings"
           className={({ isActive }) =>
             cn(
-              'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+              "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
               isActive
-                ? 'bg-blue-50 text-blue-700 dark:bg-gray-700 dark:text-white'
-                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white'
+                ? "bg-blue-50 text-blue-700 dark:bg-gray-700 dark:text-white"
+                : "text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white",
             )
           }
         >

@@ -1,31 +1,31 @@
-import { memo } from 'react';
-import { NodeProps, Handle, Position } from 'reactflow';
-import { Database } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import type { RDSNodeData } from '@/types/topology';
+import { memo } from "react";
+import { NodeProps, Handle, Position } from "reactflow";
+import { Database } from "lucide-react";
+import { cn } from "@/lib/utils";
+import type { RDSNodeData } from "@/types/topology";
 
 const statusColors = {
-  active: 'border-green-500 bg-white dark:bg-gray-900',
-  inactive: 'border-gray-400 bg-gray-50 dark:bg-gray-800',
-  transitioning: 'border-yellow-500 bg-white dark:bg-gray-900',
-  error: 'border-red-500 bg-white dark:bg-gray-900',
-  unknown: 'border-gray-300 bg-white dark:bg-gray-900',
+  active: "border-green-500 bg-white dark:bg-gray-900",
+  inactive: "border-gray-400 bg-gray-50 dark:bg-gray-800",
+  transitioning: "border-yellow-500 bg-white dark:bg-gray-900",
+  error: "border-red-500 bg-white dark:bg-gray-900",
+  unknown: "border-gray-300 bg-white dark:bg-gray-900",
 };
 
 const statusDot = {
-  active: 'bg-green-500',
-  inactive: 'bg-gray-400',
-  transitioning: 'bg-yellow-500 animate-pulse',
-  error: 'bg-red-500',
-  unknown: 'bg-gray-300',
+  active: "bg-green-500",
+  inactive: "bg-gray-400",
+  transitioning: "bg-yellow-500 animate-pulse",
+  error: "bg-red-500",
+  unknown: "bg-gray-300",
 };
 
 function RDSNodeComponent({ data }: NodeProps<RDSNodeData>) {
   return (
     <div
       className={cn(
-        'w-[170px] rounded-lg border-2 p-2.5 shadow-sm',
-        statusColors[data.displayStatus]
+        "w-[170px] rounded-lg border-2 p-2.5 shadow-sm",
+        statusColors[data.displayStatus],
       )}
     >
       <Handle type="target" position={Position.Top} className="opacity-0" />
@@ -36,9 +36,14 @@ function RDSNodeComponent({ data }: NodeProps<RDSNodeData>) {
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5">
-            <span className={cn('w-2 h-2 rounded-full shrink-0', statusDot[data.displayStatus])} />
+            <span
+              className={cn(
+                "w-2 h-2 rounded-full shrink-0",
+                statusDot[data.displayStatus],
+              )}
+            />
             <span className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
-              {data.label || 'RDS'}
+              {data.label || "RDS"}
             </span>
           </div>
           <div className="text-xs text-gray-500 dark:text-gray-400 truncate">

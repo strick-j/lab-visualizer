@@ -1,7 +1,7 @@
-import { useState, useCallback } from 'react';
-import { X, Copy, Check } from 'lucide-react';
-import { InfrastructureTopology } from '@/components/topology';
-import type { TopologyNodeData } from '@/types/topology';
+import { useState, useCallback } from "react";
+import { X, Copy, Check } from "lucide-react";
+import { InfrastructureTopology } from "@/components/topology";
+import type { TopologyNodeData } from "@/types/topology";
 
 function CopyButton({ value }: { value: string }) {
   const [copied, setCopied] = useState(false);
@@ -14,21 +14,21 @@ function CopyButton({ value }: { value: string }) {
         await navigator.clipboard.writeText(value);
       } else {
         // Fallback for non-secure contexts
-        const textArea = document.createElement('textarea');
+        const textArea = document.createElement("textarea");
         textArea.value = value;
-        textArea.style.position = 'fixed';
-        textArea.style.left = '-999999px';
-        textArea.style.top = '-999999px';
+        textArea.style.position = "fixed";
+        textArea.style.left = "-999999px";
+        textArea.style.top = "-999999px";
         document.body.appendChild(textArea);
         textArea.focus();
         textArea.select();
-        document.execCommand('copy');
+        document.execCommand("copy");
         textArea.remove();
       }
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
-      console.error('Failed to copy:', err);
+      console.error("Failed to copy:", err);
     }
   };
 
@@ -50,9 +50,14 @@ function CopyButton({ value }: { value: string }) {
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between gap-2 py-1.5 min-w-0">
-      <span className="text-xs text-gray-500 dark:text-gray-400 shrink-0">{label}</span>
+      <span className="text-xs text-gray-500 dark:text-gray-400 shrink-0">
+        {label}
+      </span>
       <div className="flex items-center gap-1 min-w-0">
-        <span className="text-xs font-mono text-gray-900 dark:text-gray-100 truncate" title={value}>
+        <span
+          className="text-xs font-mono text-gray-900 dark:text-gray-100 truncate"
+          title={value}
+        >
           {value}
         </span>
         <CopyButton value={value} />
@@ -61,85 +66,88 @@ function DetailRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-function getResourceDetails(data: TopologyNodeData): { label: string; value: string }[] {
+function getResourceDetails(
+  data: TopologyNodeData,
+): { label: string; value: string }[] {
   const details: { label: string; value: string }[] = [];
 
   // Always add the name/label
-  details.push({ label: 'Name', value: data.label });
+  details.push({ label: "Name", value: data.label });
 
   switch (data.type) {
-    case 'ec2':
-      details.push({ label: 'Instance ID', value: data.instanceId });
-      details.push({ label: 'Type', value: data.instanceType });
+    case "ec2":
+      details.push({ label: "Instance ID", value: data.instanceId });
+      details.push({ label: "Type", value: data.instanceType });
       if (data.privateIp) {
-        details.push({ label: 'Private IP', value: data.privateIp });
+        details.push({ label: "Private IP", value: data.privateIp });
       }
       if (data.publicIp) {
-        details.push({ label: 'Public IP', value: data.publicIp });
+        details.push({ label: "Public IP", value: data.publicIp });
       }
       if (data.privateDns) {
-        details.push({ label: 'Private DNS', value: data.privateDns });
+        details.push({ label: "Private DNS", value: data.privateDns });
       }
       if (data.publicDns) {
-        details.push({ label: 'Public DNS', value: data.publicDns });
+        details.push({ label: "Public DNS", value: data.publicDns });
       }
-      details.push({ label: 'State', value: data.state });
+      details.push({ label: "State", value: data.state });
       break;
 
-    case 'rds':
-      details.push({ label: 'DB Identifier', value: data.dbIdentifier });
-      details.push({ label: 'Engine', value: data.engine });
-      details.push({ label: 'Instance Class', value: data.instanceClass });
+    case "rds":
+      details.push({ label: "DB Identifier", value: data.dbIdentifier });
+      details.push({ label: "Engine", value: data.engine });
+      details.push({ label: "Instance Class", value: data.instanceClass });
       if (data.endpoint) {
-        details.push({ label: 'Endpoint', value: data.endpoint });
+        details.push({ label: "Endpoint", value: data.endpoint });
       }
       if (data.port) {
-        details.push({ label: 'Port', value: String(data.port) });
+        details.push({ label: "Port", value: String(data.port) });
       }
-      details.push({ label: 'Status', value: data.status });
+      details.push({ label: "Status", value: data.status });
       break;
 
-    case 'nat-gateway':
-      details.push({ label: 'NAT Gateway ID', value: data.natGatewayId });
+    case "nat-gateway":
+      details.push({ label: "NAT Gateway ID", value: data.natGatewayId });
       if (data.publicIp) {
-        details.push({ label: 'Public IP', value: data.publicIp });
+        details.push({ label: "Public IP", value: data.publicIp });
       }
       break;
 
-    case 'internet-gateway':
-      details.push({ label: 'IGW ID', value: data.igwId });
+    case "internet-gateway":
+      details.push({ label: "IGW ID", value: data.igwId });
       break;
 
-    case 'vpc':
-      details.push({ label: 'VPC ID', value: data.vpcId });
-      details.push({ label: 'CIDR Block', value: data.cidrBlock });
+    case "vpc":
+      details.push({ label: "VPC ID", value: data.vpcId });
+      details.push({ label: "CIDR Block", value: data.cidrBlock });
       break;
 
-    case 'subnet':
-      details.push({ label: 'Subnet ID', value: data.subnetId });
-      details.push({ label: 'CIDR Block', value: data.cidrBlock });
-      details.push({ label: 'Type', value: data.subnetType });
-      details.push({ label: 'AZ', value: data.availabilityZone });
+    case "subnet":
+      details.push({ label: "Subnet ID", value: data.subnetId });
+      details.push({ label: "CIDR Block", value: data.cidrBlock });
+      details.push({ label: "Type", value: data.subnetType });
+      details.push({ label: "AZ", value: data.availabilityZone });
       break;
   }
 
   return details;
 }
 
-function getResourceTypeLabel(type: TopologyNodeData['type']): string {
-  const labels: Record<TopologyNodeData['type'], string> = {
-    ec2: 'EC2 Instance',
-    rds: 'RDS Database',
-    'nat-gateway': 'NAT Gateway',
-    'internet-gateway': 'Internet Gateway',
-    vpc: 'VPC',
-    subnet: 'Subnet',
+function getResourceTypeLabel(type: TopologyNodeData["type"]): string {
+  const labels: Record<TopologyNodeData["type"], string> = {
+    ec2: "EC2 Instance",
+    rds: "RDS Database",
+    "nat-gateway": "NAT Gateway",
+    "internet-gateway": "Internet Gateway",
+    vpc: "VPC",
+    subnet: "Subnet",
   };
   return labels[type];
 }
 
 export function TopologyPage() {
-  const [selectedResource, setSelectedResource] = useState<TopologyNodeData | null>(null);
+  const [selectedResource, setSelectedResource] =
+    useState<TopologyNodeData | null>(null);
 
   const handleResourceSelect = useCallback((nodeData: TopologyNodeData) => {
     setSelectedResource(nodeData);
@@ -180,7 +188,11 @@ export function TopologyPage() {
           {/* Details */}
           <div className="px-4 py-2 divide-y divide-gray-100 dark:divide-gray-700">
             {details.map((detail) => (
-              <DetailRow key={detail.label} label={detail.label} value={detail.value} />
+              <DetailRow
+                key={detail.label}
+                label={detail.label}
+                value={detail.value}
+              />
             ))}
           </div>
         </div>

@@ -1,12 +1,17 @@
-import { useMemo } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { PageLoading, StatusBadge, TerraformBadge, EmptyState } from '@/components/common';
-import { ResourceTable, ResourceFilters } from '@/components/resources';
-import { SubnetDetailPanel } from './SubnetDetailPanel';
-import { SubnetTypeBadge } from './SubnetTypeBadge';
-import { useSubnets } from '@/hooks';
-import { getResourceName } from '@/lib/utils';
-import type { ResourceFilters as Filters, Subnet } from '@/types';
+import { useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
+import {
+  PageLoading,
+  StatusBadge,
+  TerraformBadge,
+  EmptyState,
+} from "@/components/common";
+import { ResourceTable, ResourceFilters } from "@/components/resources";
+import { SubnetDetailPanel } from "./SubnetDetailPanel";
+import { SubnetTypeBadge } from "./SubnetTypeBadge";
+import { useSubnets } from "@/hooks";
+import { getResourceName } from "@/lib/utils";
+import type { ResourceFilters as Filters, Subnet } from "@/types";
 
 interface SubnetListProps {
   filters: Filters;
@@ -15,7 +20,7 @@ interface SubnetListProps {
 
 export function SubnetList({ filters, onFilterChange }: SubnetListProps) {
   const [searchParams, setSearchParams] = useSearchParams();
-  const selectedId = searchParams.get('selected');
+  const selectedId = searchParams.get("selected");
 
   const { data, isLoading, error } = useSubnets(filters);
 
@@ -34,30 +39,34 @@ export function SubnetList({ filters, onFilterChange }: SubnetListProps) {
 
   const columns = [
     {
-      key: 'name',
-      header: 'Name',
+      key: "name",
+      header: "Name",
       render: (subnet: Subnet) => (
         <div>
           <p className="font-medium text-gray-900 dark:text-gray-100">
             {getResourceName(subnet.name, subnet.subnet_id)}
           </p>
-          <p className="text-xs text-gray-500 dark:text-gray-400">{subnet.subnet_id}</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            {subnet.subnet_id}
+          </p>
         </div>
       ),
     },
     {
-      key: 'type',
-      header: 'Type',
+      key: "type",
+      header: "Type",
       render: (subnet: Subnet) => <SubnetTypeBadge type={subnet.subnet_type} />,
     },
     {
-      key: 'status',
-      header: 'Status',
-      render: (subnet: Subnet) => <StatusBadge status={subnet.display_status} size="sm" />,
+      key: "status",
+      header: "Status",
+      render: (subnet: Subnet) => (
+        <StatusBadge status={subnet.display_status} size="sm" />
+      ),
     },
     {
-      key: 'cidr',
-      header: 'CIDR Block',
+      key: "cidr",
+      header: "CIDR Block",
       render: (subnet: Subnet) => (
         <span className="font-mono text-sm text-gray-700 dark:text-gray-300">
           {subnet.cidr_block}
@@ -65,22 +74,26 @@ export function SubnetList({ filters, onFilterChange }: SubnetListProps) {
       ),
     },
     {
-      key: 'vpc',
-      header: 'VPC',
+      key: "vpc",
+      header: "VPC",
       render: (subnet: Subnet) => (
-        <span className="text-xs text-gray-600 dark:text-gray-400">{subnet.vpc_id}</span>
+        <span className="text-xs text-gray-600 dark:text-gray-400">
+          {subnet.vpc_id}
+        </span>
       ),
     },
     {
-      key: 'az',
-      header: 'Availability Zone',
+      key: "az",
+      header: "Availability Zone",
       render: (subnet: Subnet) => (
-        <span className="text-gray-700 dark:text-gray-300">{subnet.availability_zone}</span>
+        <span className="text-gray-700 dark:text-gray-300">
+          {subnet.availability_zone}
+        </span>
       ),
     },
     {
-      key: 'ips',
-      header: 'Available IPs',
+      key: "ips",
+      header: "Available IPs",
       render: (subnet: Subnet) => (
         <span className="text-gray-700 dark:text-gray-300">
           {subnet.available_ip_count.toLocaleString()}
@@ -88,9 +101,11 @@ export function SubnetList({ filters, onFilterChange }: SubnetListProps) {
       ),
     },
     {
-      key: 'terraform',
-      header: 'Terraform',
-      render: (subnet: Subnet) => <TerraformBadge managed={subnet.tf_managed} />,
+      key: "terraform",
+      header: "Terraform",
+      render: (subnet: Subnet) => (
+        <TerraformBadge managed={subnet.tf_managed} />
+      ),
     },
   ];
 
@@ -132,7 +147,10 @@ export function SubnetList({ filters, onFilterChange }: SubnetListProps) {
       )}
 
       {selectedSubnet && (
-        <SubnetDetailPanel subnet={selectedSubnet} onClose={handleCloseDetail} />
+        <SubnetDetailPanel
+          subnet={selectedSubnet}
+          onClose={handleCloseDetail}
+        />
       )}
     </div>
   );

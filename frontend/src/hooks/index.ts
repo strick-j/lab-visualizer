@@ -1,1 +1,1 @@
-export * from './useResources';
+export * from "./useResources";

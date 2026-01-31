@@ -1,10 +1,28 @@
-import { Link } from 'react-router-dom';
-import { Server, Database, GitBranch, AlertTriangle, CheckCircle } from 'lucide-react';
-import { Card, CardHeader, CardTitle, CardContent, PageLoading, StatusBadge } from '@/components/common';
-import { ResourceSummaryCard } from '@/components/dashboard';
-import { useStatusSummary, useEC2Instances, useRDSInstances, useDrift } from '@/hooks';
-import { formatRelativeTime, getResourceName } from '@/lib/utils';
-import type { EC2Instance, RDSInstance } from '@/types';
+import { Link } from "react-router-dom";
+import {
+  Server,
+  Database,
+  GitBranch,
+  AlertTriangle,
+  CheckCircle,
+} from "lucide-react";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+  PageLoading,
+  StatusBadge,
+} from "@/components/common";
+import { ResourceSummaryCard } from "@/components/dashboard";
+import {
+  useStatusSummary,
+  useEC2Instances,
+  useRDSInstances,
+  useDrift,
+} from "@/hooks";
+import { formatRelativeTime, getResourceName } from "@/lib/utils";
+import type { EC2Instance, RDSInstance } from "@/types";
 
 export function DashboardPage() {
   const { data: summary, isLoading: summaryLoading } = useStatusSummary();
@@ -22,7 +40,9 @@ export function DashboardPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Dashboard</h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+          Dashboard
+        </h1>
         <p className="text-gray-500 dark:text-gray-400">
           Overview of your AWS infrastructure
         </p>
@@ -90,7 +110,9 @@ export function DashboardPage() {
           </CardHeader>
           <CardContent>
             {ec2Loading ? (
-              <div className="py-4 text-center text-gray-500 dark:text-gray-400">Loading...</div>
+              <div className="py-4 text-center text-gray-500 dark:text-gray-400">
+                Loading...
+              </div>
             ) : recentEC2.length === 0 ? (
               <div className="py-4 text-center text-gray-500 dark:text-gray-400">
                 No EC2 instances found
@@ -132,7 +154,9 @@ export function DashboardPage() {
           </CardHeader>
           <CardContent>
             {rdsLoading ? (
-              <div className="py-4 text-center text-gray-500 dark:text-gray-400">Loading...</div>
+              <div className="py-4 text-center text-gray-500 dark:text-gray-400">
+                Loading...
+              </div>
             ) : recentRDS.length === 0 ? (
               <div className="py-4 text-center text-gray-500 dark:text-gray-400">
                 No RDS instances found
@@ -147,7 +171,10 @@ export function DashboardPage() {
                   >
                     <div>
                       <p className="font-medium text-gray-900 dark:text-gray-100">
-                        {getResourceName(instance.name, instance.db_instance_identifier)}
+                        {getResourceName(
+                          instance.name,
+                          instance.db_instance_identifier,
+                        )}
                       </p>
                       <p className="text-sm text-gray-500 dark:text-gray-400">
                         {instance.engine} {instance.engine_version}

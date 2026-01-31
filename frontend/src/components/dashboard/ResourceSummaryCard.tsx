@@ -1,6 +1,6 @@
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/common';
-import { cn, getStatusConfig } from '@/lib/utils';
-import type { ResourceCount, DisplayStatus } from '@/types';
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/common";
+import { cn, getStatusConfig } from "@/lib/utils";
+import type { ResourceCount, DisplayStatus } from "@/types";
 
 interface ResourceSummaryCardProps {
   title: string;
@@ -9,7 +9,12 @@ interface ResourceSummaryCardProps {
   href?: string;
 }
 
-const statusOrder: (keyof Omit<ResourceCount, 'total'>)[] = ['active', 'inactive', 'transitioning', 'error'];
+const statusOrder: (keyof Omit<ResourceCount, "total">)[] = [
+  "active",
+  "inactive",
+  "transitioning",
+  "error",
+];
 
 export function ResourceSummaryCard({
   title,
@@ -23,7 +28,9 @@ export function ResourceSummaryCard({
           {icon}
           {title}
         </CardTitle>
-        <span className="text-2xl font-bold text-gray-900 dark:text-gray-100">{counts.total}</span>
+        <span className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+          {counts.total}
+        </span>
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-2 gap-4">
@@ -37,11 +44,15 @@ export function ResourceSummaryCard({
               >
                 <div className="flex items-center gap-2">
                   <span
-                    className={cn('h-2.5 w-2.5 rounded-full', config.dotColor)}
+                    className={cn("h-2.5 w-2.5 rounded-full", config.dotColor)}
                   />
-                  <span className="text-sm text-gray-600 dark:text-gray-300">{config.label}</span>
+                  <span className="text-sm text-gray-600 dark:text-gray-300">
+                    {config.label}
+                  </span>
                 </div>
-                <span className="font-semibold text-gray-900 dark:text-gray-100">{count}</span>
+                <span className="font-semibold text-gray-900 dark:text-gray-100">
+                  {count}
+                </span>
               </div>
             );
           })}

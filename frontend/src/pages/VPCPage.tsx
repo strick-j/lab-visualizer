@@ -1,15 +1,15 @@
-import { useState } from 'react';
-import { Network } from 'lucide-react';
-import { VPCTabNavigation } from '@/components/vpc/VPCTabNavigation';
-import { VPCList } from '@/components/vpc/VPCList';
-import { SubnetList } from '@/components/vpc/SubnetList';
-import { IGWList } from '@/components/vpc/IGWList';
-import { NATGatewayList } from '@/components/vpc/NATGatewayList';
-import { ElasticIPList } from '@/components/vpc/ElasticIPList';
-import type { VPCResourceType, ResourceFilters } from '@/types';
+import { useState } from "react";
+import { Network } from "lucide-react";
+import { VPCTabNavigation } from "@/components/vpc/VPCTabNavigation";
+import { VPCList } from "@/components/vpc/VPCList";
+import { SubnetList } from "@/components/vpc/SubnetList";
+import { IGWList } from "@/components/vpc/IGWList";
+import { NATGatewayList } from "@/components/vpc/NATGatewayList";
+import { ElasticIPList } from "@/components/vpc/ElasticIPList";
+import type { VPCResourceType, ResourceFilters } from "@/types";
 
 export function VPCPage() {
-  const [activeTab, setActiveTab] = useState<VPCResourceType>('vpcs');
+  const [activeTab, setActiveTab] = useState<VPCResourceType>("vpcs");
   const [filters, setFilters] = useState<ResourceFilters>({});
 
   return (
@@ -34,11 +34,21 @@ export function VPCPage() {
 
       {/* Tab Content */}
       <div>
-        {activeTab === 'vpcs' && <VPCList filters={filters} onFilterChange={setFilters} />}
-        {activeTab === 'subnets' && <SubnetList filters={filters} onFilterChange={setFilters} />}
-        {activeTab === 'internet-gateways' && <IGWList filters={filters} onFilterChange={setFilters} />}
-        {activeTab === 'nat-gateways' && <NATGatewayList filters={filters} onFilterChange={setFilters} />}
-        {activeTab === 'elastic-ips' && <ElasticIPList filters={filters} onFilterChange={setFilters} />}
+        {activeTab === "vpcs" && (
+          <VPCList filters={filters} onFilterChange={setFilters} />
+        )}
+        {activeTab === "subnets" && (
+          <SubnetList filters={filters} onFilterChange={setFilters} />
+        )}
+        {activeTab === "internet-gateways" && (
+          <IGWList filters={filters} onFilterChange={setFilters} />
+        )}
+        {activeTab === "nat-gateways" && (
+          <NATGatewayList filters={filters} onFilterChange={setFilters} />
+        )}
+        {activeTab === "elastic-ips" && (
+          <ElasticIPList filters={filters} onFilterChange={setFilters} />
+        )}
       </div>
     </div>
   );
