@@ -1,21 +1,26 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Server, Database, GitBranch, AlertTriangle, CheckCircle, Network } from 'lucide-react';
-import { Card, CardHeader, CardTitle, CardContent, PageLoading, StatusBadge } from '@/components/common';
+import { Card, CardHeader, CardTitle, CardContent, PageLoading, StatusBadge, Button } from '@/components/common';
 import { ResourceSummaryCard } from '@/components/dashboard';
 import { useStatusSummary, useEC2Instances, useRDSInstances, useDrift, useVPCs, useSubnets, useInternetGateways, useNATGateways, useElasticIPs } from '@/hooks';
 import { formatRelativeTime, getResourceName } from '@/lib/utils';
-import type { EC2Instance, RDSInstance, VPC } from '@/types';
+import type { EC2Instance, RDSInstance, VPC, ResourceFilters } from '@/types';
 
 export function DashboardPage() {
+  const [showManagedOnly, setShowManagedOnly] = useState(false);
+
+  const filters: ResourceFilters | undefined = showManagedOnly ? { tf_managed: true } : undefined;
+
   const { data: summary, isLoading: summaryLoading } = useStatusSummary();
-  const { data: ec2Data, isLoading: ec2Loading } = useEC2Instances();
-  const { data: rdsData, isLoading: rdsLoading } = useRDSInstances();
+  const { data: ec2Data, isLoading: ec2Loading } = useEC2Instances(filters);
+  const { data: rdsData, isLoading: rdsLoading } = useRDSInstances(filters);
   const { data: drift } = useDrift();
-  const { data: vpcData, isLoading: vpcLoading } = useVPCs();
-  const { data: subnetData } = useSubnets();
-  const { data: igwData } = useInternetGateways();
-  const { data: natData } = useNATGateways();
-  const { data: eipData } = useElasticIPs();
+  const { data: vpcData, isLoading: vpcLoading } = useVPCs(filters);
+  const { data: subnetData } = useSubnets(filters);
+  const { data: igwData } = useInternetGateways(filters);
+  const { data: natData } = useNATGateways(filters);
+  const { data: eipData } = useElasticIPs(filters);
 
   if (summaryLoading) {
     return <PageLoading />;
@@ -24,6 +29,21 @@ export function DashboardPage() {
   const recentEC2 = ec2Data?.data.slice(0, 5) || [];
   const recentRDS = rdsData?.data.slice(0, 5) || [];
   const recentVPCs = vpcData?.data.slice(0, 5) || [];
+
+  // Calculate counts from filtered data
+  const computeCounts = (data: { display_status: string }[] | undefined) => {
+    if (!data) return { active: 0, inactive: 0, transitioning: 0, error: 0, total: 0 };
+    return {
+      active: data.filter(d => d.display_status === 'active').length,
+      inactive: data.filter(d => d.display_status === 'inactive').length,
+      transitioning: data.filter(d => d.display_status === 'transitioning').length,
+      error: data.filter(d => d.display_status === 'error').length,
+      total: data.length,
+    };
+  };
+
+  const ec2Counts = showManagedOnly ? computeCounts(ec2Data?.data) : summary?.ec2;
+  const rdsCounts = showManagedOnly ? computeCounts(rdsData?.data) : summary?.rds;
 
   // Calculate VPC networking totals
   const vpcNetworkingTotal = {
@@ -36,27 +56,42 @@ export function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Dashboard</h1>
-        <p className="text-gray-500 dark:text-gray-400">
-          Overview of your AWS infrastructure
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Dashboard</h1>
+          <p className="text-gray-500 dark:text-gray-400">
+            Overview of your AWS infrastructure
+          </p>
+        </div>
+        <Button
+          variant={showManagedOnly ? 'primary' : 'outline'}
+          size="sm"
+          onClick={() => setShowManagedOnly(!showManagedOnly)}
+        >
+          {showManagedOnly ? 'Showing Managed Only' : 'Show All Resources'}
+        </Button>
       </div>
 
       {/* Summary Cards */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        {summary && (
+        {(summary || showManagedOnly) && (
           <>
-            <ResourceSummaryCard
-              title="EC2 Instances"
-              icon={<Server className="h-5 w-5 text-blue-600" />}
-              counts={summary.ec2}
-            />
-            <ResourceSummaryCard
-              title="RDS Databases"
-              icon={<Database className="h-5 w-5 text-green-600" />}
-              counts={summary.rds}
-            />
+            {ec2Counts && (
+              <ResourceSummaryCard
+                title="EC2 Instances"
+                icon={<Server className="h-5 w-5 text-blue-600" />}
+                counts={ec2Counts}
+                href="/ec2"
+              />
+            )}
+            {rdsCounts && (
+              <ResourceSummaryCard
+                title="RDS Databases"
+                icon={<Database className="h-5 w-5 text-green-600" />}
+                counts={rdsCounts}
+                href="/rds"
+              />
+            )}
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="flex items-center gap-2">

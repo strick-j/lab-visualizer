@@ -56,7 +56,7 @@ export const statusConfig: Record<
     dotColor: 'bg-gray-400 dark:bg-gray-500',
   },
   transitioning: {
-    label: 'Transitioning',
+    label: 'Transit',
     color: 'text-yellow-700 dark:text-yellow-300',
     bgColor: 'bg-yellow-50 dark:bg-yellow-900/30',
     dotColor: 'bg-yellow-500',
