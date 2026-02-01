@@ -142,6 +142,18 @@ variable "enable_container_insights" {
   default     = false
 }
 
+variable "enable_log_encryption" {
+  description = "Enable KMS encryption for CloudWatch logs"
+  type        = bool
+  default     = true
+}
+
+variable "log_kms_key_arn" {
+  description = "KMS key ARN for CloudWatch log encryption (if empty, a key will be created)"
+  type        = string
+  default     = ""
+}
+
 # -----------------------------------------------------------------------------
 # Capacity
 # -----------------------------------------------------------------------------

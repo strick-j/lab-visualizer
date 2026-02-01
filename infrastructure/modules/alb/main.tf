@@ -4,6 +4,120 @@
 # =============================================================================
 
 # -----------------------------------------------------------------------------
+# Data Sources
+# -----------------------------------------------------------------------------
+
+data "aws_caller_identity" "current" {}
+data "aws_region" "current" {}
+
+# ELB service account for access logs (varies by region)
+data "aws_elb_service_account" "main" {}
+
+# -----------------------------------------------------------------------------
+# S3 Bucket for ALB Access Logs
+# -----------------------------------------------------------------------------
+
+resource "aws_s3_bucket" "alb_logs" {
+  count  = var.enable_access_logs && var.access_logs_bucket == "" ? 1 : 0
+  bucket = "${var.project_name}-${var.environment}-alb-logs-${data.aws_caller_identity.current.account_id}"
+
+  tags = merge(var.tags, {
+    Name = "${var.project_name}-${var.environment}-alb-logs"
+  })
+}
+
+resource "aws_s3_bucket_versioning" "alb_logs" {
+  count  = var.enable_access_logs && var.access_logs_bucket == "" ? 1 : 0
+  bucket = aws_s3_bucket.alb_logs[0].id
+
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "alb_logs" {
+  count  = var.enable_access_logs && var.access_logs_bucket == "" ? 1 : 0
+  bucket = aws_s3_bucket.alb_logs[0].id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256"
+    }
+  }
+}
+
+resource "aws_s3_bucket_public_access_block" "alb_logs" {
+  count  = var.enable_access_logs && var.access_logs_bucket == "" ? 1 : 0
+  bucket = aws_s3_bucket.alb_logs[0].id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+resource "aws_s3_bucket_lifecycle_configuration" "alb_logs" {
+  count  = var.enable_access_logs && var.access_logs_bucket == "" ? 1 : 0
+  bucket = aws_s3_bucket.alb_logs[0].id
+
+  rule {
+    id     = "expire-old-logs"
+    status = "Enabled"
+
+    expiration {
+      days = 90
+    }
+
+    noncurrent_version_expiration {
+      noncurrent_days = 30
+    }
+  }
+}
+
+resource "aws_s3_bucket_policy" "alb_logs" {
+  count  = var.enable_access_logs && var.access_logs_bucket == "" ? 1 : 0
+  bucket = aws_s3_bucket.alb_logs[0].id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "AllowELBLogDelivery"
+        Effect = "Allow"
+        Principal = {
+          AWS = data.aws_elb_service_account.main.arn
+        }
+        Action   = "s3:PutObject"
+        Resource = "${aws_s3_bucket.alb_logs[0].arn}/${var.access_logs_prefix}/*"
+      },
+      {
+        Sid    = "AllowELBLogDeliveryAcl"
+        Effect = "Allow"
+        Principal = {
+          Service = "delivery.logs.amazonaws.com"
+        }
+        Action   = "s3:PutObject"
+        Resource = "${aws_s3_bucket.alb_logs[0].arn}/${var.access_logs_prefix}/*"
+        Condition = {
+          StringEquals = {
+            "s3:x-amz-acl" = "bucket-owner-full-control"
+          }
+        }
+      },
+      {
+        Sid    = "AllowELBLogDeliveryGetAcl"
+        Effect = "Allow"
+        Principal = {
+          Service = "delivery.logs.amazonaws.com"
+        }
+        Action   = "s3:GetBucketAcl"
+        Resource = aws_s3_bucket.alb_logs[0].arn
+      }
+    ]
+  })
+}
+
+# -----------------------------------------------------------------------------
 # Application Load Balancer
 # -----------------------------------------------------------------------------
 
@@ -15,6 +129,15 @@ resource "aws_lb" "main" {
   subnets            = var.public_subnet_ids
 
   enable_deletion_protection = var.enable_deletion_protection
+
+  dynamic "access_logs" {
+    for_each = var.enable_access_logs ? [1] : []
+    content {
+      bucket  = var.access_logs_bucket != "" ? var.access_logs_bucket : aws_s3_bucket.alb_logs[0].id
+      prefix  = var.access_logs_prefix
+      enabled = true
+    }
+  }
 
   tags = merge(var.tags, {
     Name = "${var.project_name}-${var.environment}-alb"
