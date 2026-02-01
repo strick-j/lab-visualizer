@@ -33,12 +33,70 @@ resource "aws_ecs_cluster_capacity_providers" "main" {
 }
 
 # -----------------------------------------------------------------------------
+# KMS Key for CloudWatch Logs Encryption
+# -----------------------------------------------------------------------------
+
+data "aws_caller_identity" "current" {}
+
+resource "aws_kms_key" "logs" {
+  count               = var.enable_log_encryption && var.log_kms_key_arn == "" ? 1 : 0
+  description         = "KMS key for ${var.project_name}-${var.environment} CloudWatch logs encryption"
+  enable_key_rotation = true
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "EnableRootAccountPermissions"
+        Effect = "Allow"
+        Principal = {
+          AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"
+        }
+        Action   = "kms:*"
+        Resource = "*"
+      },
+      {
+        Sid    = "AllowCloudWatchLogs"
+        Effect = "Allow"
+        Principal = {
+          Service = "logs.${var.aws_region}.amazonaws.com"
+        }
+        Action = [
+          "kms:Encrypt*",
+          "kms:Decrypt*",
+          "kms:ReEncrypt*",
+          "kms:GenerateDataKey*",
+          "kms:Describe*"
+        ]
+        Resource = "*"
+        Condition = {
+          ArnLike = {
+            "kms:EncryptionContext:aws:logs:arn" = "arn:aws:logs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:/ecs/${var.project_name}-${var.environment}"
+          }
+        }
+      }
+    ]
+  })
+
+  tags = merge(var.tags, {
+    Name = "${var.project_name}-${var.environment}-logs-kms"
+  })
+}
+
+resource "aws_kms_alias" "logs" {
+  count         = var.enable_log_encryption && var.log_kms_key_arn == "" ? 1 : 0
+  name          = "alias/${var.project_name}-${var.environment}-logs"
+  target_key_id = aws_kms_key.logs[0].key_id
+}
+
+# -----------------------------------------------------------------------------
 # CloudWatch Log Group
 # -----------------------------------------------------------------------------
 
 resource "aws_cloudwatch_log_group" "main" {
   name              = "/ecs/${var.project_name}-${var.environment}"
   retention_in_days = var.log_retention_days
+  kms_key_id        = var.enable_log_encryption ? (var.log_kms_key_arn != "" ? var.log_kms_key_arn : aws_kms_key.logs[0].arn) : null
 
   tags = merge(var.tags, {
     Name = "${var.project_name}-${var.environment}-logs"
@@ -112,7 +170,7 @@ resource "aws_iam_role" "ecs_task" {
   tags = var.tags
 }
 
-# Policy for AWS API access (EC2, RDS, S3 for Terraform state)
+# Policy for AWS API access (EC2, RDS read-only)
 resource "aws_iam_role_policy" "ecs_task_aws_access" {
   name = "aws-api-access"
   role = aws_iam_role.ecs_task.id
@@ -126,7 +184,12 @@ resource "aws_iam_role_policy" "ecs_task_aws_access" {
         Action = [
           "ec2:DescribeInstances",
           "ec2:DescribeInstanceStatus",
-          "ec2:DescribeTags"
+          "ec2:DescribeTags",
+          "ec2:DescribeVpcs",
+          "ec2:DescribeSubnets",
+          "ec2:DescribeNatGateways",
+          "ec2:DescribeAddresses",
+          "ec2:DescribeInternetGateways"
         ]
         Resource = "*"
       },
@@ -139,7 +202,20 @@ resource "aws_iam_role_policy" "ecs_task_aws_access" {
           "rds:ListTagsForResource"
         ]
         Resource = "*"
-      },
+      }
+    ]
+  })
+}
+
+# Separate policy for S3 Terraform state access (only when bucket is configured)
+resource "aws_iam_role_policy" "ecs_task_s3_access" {
+  count = var.tf_state_bucket_arn != "" ? 1 : 0
+  name  = "s3-terraform-state-access"
+  role  = aws_iam_role.ecs_task.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
       {
         Sid    = "S3TerraformStateAccess"
         Effect = "Allow"
@@ -147,10 +223,10 @@ resource "aws_iam_role_policy" "ecs_task_aws_access" {
           "s3:GetObject",
           "s3:ListBucket"
         ]
-        Resource = var.tf_state_bucket_arn != "" ? [
+        Resource = [
           var.tf_state_bucket_arn,
           "${var.tf_state_bucket_arn}/*"
-        ] : ["arn:aws:s3:::*"]
+        ]
       }
     ]
   })

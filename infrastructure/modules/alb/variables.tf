@@ -80,3 +80,25 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
+# -----------------------------------------------------------------------------
+# Access Logging (Security)
+# -----------------------------------------------------------------------------
+
+variable "enable_access_logs" {
+  description = "Enable access logging for ALB"
+  type        = bool
+  default     = true
+}
+
+variable "access_logs_bucket" {
+  description = "S3 bucket name for ALB access logs (if empty, a bucket will be created)"
+  type        = string
+  default     = ""
+}
+
+variable "access_logs_prefix" {
+  description = "S3 key prefix for ALB access logs"
+  type        = string
+  default     = "alb-logs"
+}

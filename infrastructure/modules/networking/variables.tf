@@ -46,3 +46,25 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
+# -----------------------------------------------------------------------------
+# VPC Flow Logs (Security)
+# -----------------------------------------------------------------------------
+
+variable "enable_flow_logs" {
+  description = "Enable VPC flow logs for network monitoring"
+  type        = bool
+  default     = true
+}
+
+variable "flow_logs_retention_days" {
+  description = "Retention period for VPC flow logs in days"
+  type        = number
+  default     = 30
+}
+
+variable "flow_logs_traffic_type" {
+  description = "Type of traffic to log (ACCEPT, REJECT, or ALL)"
+  type        = string
+  default     = "ALL"
+}
