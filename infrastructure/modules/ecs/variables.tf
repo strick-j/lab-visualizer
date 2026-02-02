@@ -131,9 +131,9 @@ variable "tf_state_bucket_arn" {
 # -----------------------------------------------------------------------------
 
 variable "log_retention_days" {
-  description = "CloudWatch log retention in days"
+  description = "CloudWatch log retention in days (minimum 365 for compliance)"
   type        = number
-  default     = 30
+  default     = 365
 }
 
 variable "enable_container_insights" {
