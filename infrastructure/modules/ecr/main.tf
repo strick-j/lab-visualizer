@@ -3,6 +3,29 @@
 # Creates Elastic Container Registry for Docker images
 # =============================================================================
 
+# -----------------------------------------------------------------------------
+# KMS Key for ECR Encryption
+# -----------------------------------------------------------------------------
+
+resource "aws_kms_key" "ecr" {
+  description             = "KMS key for ECR repository encryption - ${var.project_name}-${var.environment}"
+  deletion_window_in_days = var.kms_key_deletion_window
+  enable_key_rotation     = true
+
+  tags = merge(var.tags, {
+    Name = "${var.project_name}-${var.environment}-ecr-kms"
+  })
+}
+
+resource "aws_kms_alias" "ecr" {
+  name          = "alias/${var.project_name}-${var.environment}-ecr"
+  target_key_id = aws_kms_key.ecr.key_id
+}
+
+# -----------------------------------------------------------------------------
+# ECR Repository
+# -----------------------------------------------------------------------------
+
 resource "aws_ecr_repository" "main" {
   name                 = "${var.project_name}-${var.environment}"
   image_tag_mutability = var.image_tag_mutability
@@ -12,7 +35,8 @@ resource "aws_ecr_repository" "main" {
   }
 
   encryption_configuration {
-    encryption_type = "AES256"
+    encryption_type = "KMS"
+    kms_key         = aws_kms_key.ecr.arn
   }
 
   tags = merge(var.tags, {
