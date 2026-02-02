@@ -1,0 +1,274 @@
+# =============================================================================
+# ECS Container Build & Push
+# Builds Docker images and pushes to AWS ECR on pull requests and merges
+# =============================================================================
+
+name: ECS Build
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'backend/**'
+      - 'frontend/**'
+      - '.github/workflows/ecs-build.yml'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'backend/**'
+      - 'frontend/**'
+      - '.github/workflows/ecs-build.yml'
+  workflow_dispatch:
+    inputs:
+      push_to_ecr:
+        description: 'Push images to ECR (even from PR)'
+        required: false
+        default: 'false'
+        type: boolean
+      environment:
+        description: 'Target environment'
+        required: false
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - prod
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+  PROJECT_NAME: ${{ vars.PROJECT_NAME || 'lab-visualizer' }}
+
+# Permissions required for OIDC authentication with AWS
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+
+jobs:
+  # ===========================================================================
+  # Determine what changed
+  # ===========================================================================
+  changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.changes.outputs.backend }}
+      frontend: ${{ steps.changes.outputs.frontend }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check for changes
+        uses: dorny/paths-filter@v3
+        id: changes
+        with:
+          filters: |
+            backend:
+              - 'backend/**'
+            frontend:
+              - 'frontend/**'
+
+  # ===========================================================================
+  # Build Backend Image
+  # ===========================================================================
+  build-backend:
+    name: Build Backend
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.backend == 'true' || github.event_name == 'workflow_dispatch'
+    outputs:
+      image_tag: ${{ steps.meta.outputs.version }}
+      image_digest: ${{ steps.build.outputs.digest }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Generate image metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ${{ env.PROJECT_NAME }}-backend
+          tags: |
+            type=sha,prefix=
+            type=ref,event=branch
+            type=ref,event=pr,prefix=pr-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Configure AWS credentials
+        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.push_to_ecr == 'true')
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_OIDC_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.push_to_ecr == 'true')
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push backend image
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.push_to_ecr == 'true') }}
+          tags: |
+            ${{ steps.login-ecr.outputs.registry && format('{0}/{1}-{2}-backend:{3}', steps.login-ecr.outputs.registry, env.PROJECT_NAME, github.event.inputs.environment || 'dev', steps.meta.outputs.version) || '' }}
+            ${{ steps.login-ecr.outputs.registry && github.ref == 'refs/heads/main' && format('{0}/{1}-{2}-backend:latest', steps.login-ecr.outputs.registry, env.PROJECT_NAME, github.event.inputs.environment || 'dev') || '' }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64
+
+      - name: Generate build summary
+        run: |
+          echo "## Backend Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Image Tag | \`${{ steps.meta.outputs.version }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Pushed | ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.push_to_ecr == 'true') }} |" >> $GITHUB_STEP_SUMMARY
+          if [ -n "${{ steps.build.outputs.digest }}" ]; then
+            echo "| Digest | \`${{ steps.build.outputs.digest }}\` |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+  # ===========================================================================
+  # Build Frontend Image
+  # ===========================================================================
+  build-frontend:
+    name: Build Frontend
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true' || github.event_name == 'workflow_dispatch'
+    outputs:
+      image_tag: ${{ steps.meta.outputs.version }}
+      image_digest: ${{ steps.build.outputs.digest }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Generate image metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ${{ env.PROJECT_NAME }}-frontend
+          tags: |
+            type=sha,prefix=
+            type=ref,event=branch
+            type=ref,event=pr,prefix=pr-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Configure AWS credentials
+        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.push_to_ecr == 'true')
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_OIDC_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.push_to_ecr == 'true')
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push frontend image
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          push: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.push_to_ecr == 'true') }}
+          tags: |
+            ${{ steps.login-ecr.outputs.registry && format('{0}/{1}-{2}-frontend:{3}', steps.login-ecr.outputs.registry, env.PROJECT_NAME, github.event.inputs.environment || 'dev', steps.meta.outputs.version) || '' }}
+            ${{ steps.login-ecr.outputs.registry && github.ref == 'refs/heads/main' && format('{0}/{1}-{2}-frontend:latest', steps.login-ecr.outputs.registry, env.PROJECT_NAME, github.event.inputs.environment || 'dev') || '' }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64
+
+      - name: Generate build summary
+        run: |
+          echo "## Frontend Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Image Tag | \`${{ steps.meta.outputs.version }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Pushed | ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.push_to_ecr == 'true') }} |" >> $GITHUB_STEP_SUMMARY
+          if [ -n "${{ steps.build.outputs.digest }}" ]; then
+            echo "| Digest | \`${{ steps.build.outputs.digest }}\` |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+  # ===========================================================================
+  # Post build summary on PR
+  # ===========================================================================
+  pr-comment:
+    name: PR Comment
+    runs-on: ubuntu-latest
+    needs: [build-backend, build-frontend]
+    if: always() && github.event_name == 'pull_request'
+
+    steps:
+      - name: Comment on PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const backendResult = '${{ needs.build-backend.result }}';
+            const frontendResult = '${{ needs.build-frontend.result }}';
+            const backendTag = '${{ needs.build-backend.outputs.image_tag }}' || 'N/A (no changes)';
+            const frontendTag = '${{ needs.build-frontend.outputs.image_tag }}' || 'N/A (no changes)';
+
+            const statusEmoji = (result) => {
+              if (result === 'success') return '✅';
+              if (result === 'failure') return '❌';
+              if (result === 'skipped') return '⏭️';
+              return '⚠️';
+            };
+
+            const body = `## 🐳 Docker Build Results
+
+            | Image | Status | Tag |
+            |-------|--------|-----|
+            | Backend | ${statusEmoji(backendResult)} ${backendResult} | \`${backendTag}\` |
+            | Frontend | ${statusEmoji(frontendResult)} ${frontendResult} | \`${frontendTag}\` |
+
+            > **Note:** Images are only pushed to ECR on merge to main/develop branches.
+            > To push from this PR, use the workflow dispatch with \`push_to_ecr: true\`.
+            `;
+
+            // Find existing comment
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const botComment = comments.find(comment =>
+              comment.user.type === 'Bot' &&
+              comment.body.includes('🐳 Docker Build Results')
+            );
+
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: body
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: body
+              });
+            }

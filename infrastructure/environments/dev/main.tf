@@ -113,12 +113,14 @@ module "networking" {
 module "ecr" {
   source = "../../modules/ecr"
 
-  project_name          = var.project_name
-  environment           = var.environment
-  image_tag_mutability  = "MUTABLE"
-  scan_on_push          = true
-  image_retention_count = 5 # Keep fewer images in dev
-  tags                  = local.common_tags
+  project_name            = var.project_name
+  environment             = var.environment
+  services                = ["backend", "frontend"]
+  image_tag_mutability    = "MUTABLE"
+  scan_on_push            = true
+  image_retention_count   = 5  # Keep fewer images in dev
+  pr_image_retention_days = 7  # Keep PR images for a week in dev
+  tags                    = local.common_tags
 }
 
 # -----------------------------------------------------------------------------

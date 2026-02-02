@@ -12,6 +12,12 @@ variable "environment" {
   type        = string
 }
 
+variable "services" {
+  description = "List of services to create ECR repositories for"
+  type        = list(string)
+  default     = ["backend", "frontend"]
+}
+
 variable "image_tag_mutability" {
   description = "Image tag mutability setting"
   type        = string
@@ -28,6 +34,12 @@ variable "image_retention_count" {
   description = "Number of tagged images to retain"
   type        = number
   default     = 10
+}
+
+variable "pr_image_retention_days" {
+  description = "Number of days to retain PR images"
+  type        = number
+  default     = 14
 }
 
 variable "untagged_image_retention_days" {

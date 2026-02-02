@@ -1,10 +1,21 @@
 # =============================================================================
 # ECR Module
-# Creates Elastic Container Registry for Docker images
+# Creates Elastic Container Registry repositories for Docker images
 # =============================================================================
 
-resource "aws_ecr_repository" "main" {
-  name                 = "${var.project_name}-${var.environment}"
+locals {
+  # Define the services that need ECR repositories
+  services = toset(var.services)
+}
+
+# -----------------------------------------------------------------------------
+# ECR Repositories (one per service)
+# -----------------------------------------------------------------------------
+
+resource "aws_ecr_repository" "services" {
+  for_each = local.services
+
+  name                 = "${var.project_name}-${var.environment}-${each.key}"
   image_tag_mutability = var.image_tag_mutability
 
   image_scanning_configuration {
@@ -16,22 +27,28 @@ resource "aws_ecr_repository" "main" {
   }
 
   tags = merge(var.tags, {
-    Name = "${var.project_name}-${var.environment}"
+    Name    = "${var.project_name}-${var.environment}-${each.key}"
+    Service = each.key
   })
 }
 
-# Lifecycle policy to clean up old images
-resource "aws_ecr_lifecycle_policy" "main" {
-  repository = aws_ecr_repository.main.name
+# -----------------------------------------------------------------------------
+# Lifecycle Policies (one per repository)
+# -----------------------------------------------------------------------------
+
+resource "aws_ecr_lifecycle_policy" "services" {
+  for_each = local.services
+
+  repository = aws_ecr_repository.services[each.key].name
 
   policy = jsonencode({
     rules = [
       {
         rulePriority = 1
-        description  = "Keep last ${var.image_retention_count} images"
+        description  = "Keep last ${var.image_retention_count} tagged images"
         selection = {
           tagStatus     = "tagged"
-          tagPrefixList = ["v"]
+          tagPrefixList = ["v", "sha-", "main", "develop"]
           countType     = "imageCountMoreThan"
           countNumber   = var.image_retention_count
         }
@@ -41,6 +58,20 @@ resource "aws_ecr_lifecycle_policy" "main" {
       },
       {
         rulePriority = 2
+        description  = "Keep PR images for ${var.pr_image_retention_days} days"
+        selection = {
+          tagStatus     = "tagged"
+          tagPrefixList = ["pr-"]
+          countType     = "sinceImagePushed"
+          countUnit     = "days"
+          countNumber   = var.pr_image_retention_days
+        }
+        action = {
+          type = "expire"
+        }
+      },
+      {
+        rulePriority = 3
         description  = "Remove untagged images older than ${var.untagged_image_retention_days} days"
         selection = {
           tagStatus   = "untagged"
@@ -56,10 +87,14 @@ resource "aws_ecr_lifecycle_policy" "main" {
   })
 }
 
-# Repository policy for cross-account access (optional)
-resource "aws_ecr_repository_policy" "main" {
-  count      = var.enable_cross_account_access ? 1 : 0
-  repository = aws_ecr_repository.main.name
+# -----------------------------------------------------------------------------
+# Repository Policies for cross-account access (optional)
+# -----------------------------------------------------------------------------
+
+resource "aws_ecr_repository_policy" "services" {
+  for_each = var.enable_cross_account_access ? local.services : toset([])
+
+  repository = aws_ecr_repository.services[each.key].name
 
   policy = jsonencode({
     Version = "2012-10-17"
