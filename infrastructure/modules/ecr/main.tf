@@ -4,6 +4,13 @@
 # =============================================================================
 
 # -----------------------------------------------------------------------------
+# Data Sources
+# -----------------------------------------------------------------------------
+
+data "aws_caller_identity" "current" {}
+data "aws_region" "current" {}
+
+# -----------------------------------------------------------------------------
 # KMS Key for ECR Encryption
 # -----------------------------------------------------------------------------
 
@@ -11,6 +18,42 @@ resource "aws_kms_key" "ecr" {
   description             = "KMS key for ECR repository encryption - ${var.project_name}-${var.environment}"
   deletion_window_in_days = var.kms_key_deletion_window
   enable_key_rotation     = true
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Id      = "ecr-kms-key-policy"
+    Statement = [
+      {
+        Sid    = "EnableRootAccountPermissions"
+        Effect = "Allow"
+        Principal = {
+          AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"
+        }
+        Action   = "kms:*"
+        Resource = "*"
+      },
+      {
+        Sid    = "AllowECRServiceAccess"
+        Effect = "Allow"
+        Principal = {
+          Service = "ecr.amazonaws.com"
+        }
+        Action = [
+          "kms:Encrypt",
+          "kms:Decrypt",
+          "kms:ReEncrypt*",
+          "kms:GenerateDataKey*",
+          "kms:DescribeKey"
+        ]
+        Resource = "*"
+        Condition = {
+          StringEquals = {
+            "kms:CallerAccount" = data.aws_caller_identity.current.account_id
+          }
+        }
+      }
+    ]
+  })
 
   tags = merge(var.tags, {
     Name = "${var.project_name}-${var.environment}-ecr-kms"
