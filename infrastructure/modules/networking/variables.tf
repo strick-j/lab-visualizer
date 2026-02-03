@@ -58,9 +58,9 @@ variable "enable_flow_logs" {
 }
 
 variable "flow_logs_retention_days" {
-  description = "Retention period for VPC flow logs in days"
+  description = "Retention period for VPC flow logs in days (minimum 365 for compliance)"
   type        = number
-  default     = 30
+  default     = 365
 }
 
 variable "flow_logs_traffic_type" {

@@ -64,6 +64,10 @@ resource "aws_s3_bucket_lifecycle_configuration" "alb_logs" {
     id     = "expire-old-logs"
     status = "Enabled"
 
+    filter {
+      prefix = ""
+    }
+
     expiration {
       days = 90
     }
@@ -71,7 +75,130 @@ resource "aws_s3_bucket_lifecycle_configuration" "alb_logs" {
     noncurrent_version_expiration {
       noncurrent_days = 30
     }
+
+    abort_incomplete_multipart_upload {
+      days_after_initiation = 7
+    }
   }
+}
+
+# S3 bucket for access logging (logs of ALB logs bucket access)
+resource "aws_s3_bucket" "alb_logs_access_logs" {
+  count  = var.enable_access_logs && var.access_logs_bucket == "" ? 1 : 0
+  bucket = "${var.project_name}-${var.environment}-alb-logs-access-${data.aws_caller_identity.current.account_id}"
+
+  tags = merge(var.tags, {
+    Name = "${var.project_name}-${var.environment}-alb-logs-access"
+  })
+}
+
+resource "aws_s3_bucket_versioning" "alb_logs_access_logs" {
+  count  = var.enable_access_logs && var.access_logs_bucket == "" ? 1 : 0
+  bucket = aws_s3_bucket.alb_logs_access_logs[0].id
+
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "alb_logs_access_logs" {
+  count  = var.enable_access_logs && var.access_logs_bucket == "" ? 1 : 0
+  bucket = aws_s3_bucket.alb_logs_access_logs[0].id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256"
+    }
+  }
+}
+
+resource "aws_s3_bucket_public_access_block" "alb_logs_access_logs" {
+  count  = var.enable_access_logs && var.access_logs_bucket == "" ? 1 : 0
+  bucket = aws_s3_bucket.alb_logs_access_logs[0].id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+resource "aws_s3_bucket_lifecycle_configuration" "alb_logs_access_logs" {
+  count  = var.enable_access_logs && var.access_logs_bucket == "" ? 1 : 0
+  bucket = aws_s3_bucket.alb_logs_access_logs[0].id
+
+  rule {
+    id     = "expire-access-logs"
+    status = "Enabled"
+
+    filter {
+      prefix = ""
+    }
+
+    expiration {
+      days = 90
+    }
+
+    abort_incomplete_multipart_upload {
+      days_after_initiation = 7
+    }
+  }
+}
+
+# Enable access logging on the ALB logs bucket
+resource "aws_s3_bucket_logging" "alb_logs" {
+  count  = var.enable_access_logs && var.access_logs_bucket == "" ? 1 : 0
+  bucket = aws_s3_bucket.alb_logs[0].id
+
+  target_bucket = aws_s3_bucket.alb_logs_access_logs[0].id
+  target_prefix = "access-logs/"
+}
+
+# SNS Topic for S3 event notifications
+resource "aws_sns_topic" "alb_logs_events" {
+  count = var.enable_access_logs && var.access_logs_bucket == "" ? 1 : 0
+  name  = "${var.project_name}-${var.environment}-alb-logs-events"
+
+  tags = merge(var.tags, {
+    Name = "${var.project_name}-${var.environment}-alb-logs-events"
+  })
+}
+
+resource "aws_sns_topic_policy" "alb_logs_events" {
+  count  = var.enable_access_logs && var.access_logs_bucket == "" ? 1 : 0
+  arn    = aws_sns_topic.alb_logs_events[0].arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "AllowS3Publish"
+        Effect = "Allow"
+        Principal = {
+          Service = "s3.amazonaws.com"
+        }
+        Action   = "sns:Publish"
+        Resource = aws_sns_topic.alb_logs_events[0].arn
+        Condition = {
+          ArnLike = {
+            "aws:SourceArn" = aws_s3_bucket.alb_logs[0].arn
+          }
+        }
+      }
+    ]
+  })
+}
+
+# S3 bucket event notifications
+resource "aws_s3_bucket_notification" "alb_logs" {
+  count  = var.enable_access_logs && var.access_logs_bucket == "" ? 1 : 0
+  bucket = aws_s3_bucket.alb_logs[0].id
+
+  topic {
+    topic_arn     = aws_sns_topic.alb_logs_events[0].arn
+    events        = ["s3:ObjectCreated:*", "s3:ObjectRemoved:*"]
+    filter_prefix = var.access_logs_prefix
+  }
+
+  depends_on = [aws_sns_topic_policy.alb_logs_events]
 }
 
 resource "aws_s3_bucket_policy" "alb_logs" {

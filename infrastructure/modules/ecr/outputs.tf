@@ -48,3 +48,13 @@ output "repository_name" {
   description = "Name of the backend ECR repository (for backward compatibility)"
   value       = try(aws_ecr_repository.services["backend"].name, "")
 }
+
+output "kms_key_arn" {
+  description = "ARN of the KMS key used for ECR encryption"
+  value       = aws_kms_key.ecr.arn
+}
+
+output "kms_key_id" {
+  description = "ID of the KMS key used for ECR encryption"
+  value       = aws_kms_key.ecr.key_id
+}

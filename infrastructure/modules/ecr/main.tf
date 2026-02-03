@@ -3,19 +3,74 @@
 # Creates Elastic Container Registry repositories for Docker images
 # =============================================================================
 
-locals {
-  # Define the services that need ECR repositories
-  services = toset(var.services)
+# -----------------------------------------------------------------------------
+# Data Sources
+# -----------------------------------------------------------------------------
+
+data "aws_caller_identity" "current" {}
+data "aws_region" "current" {}
+
+# -----------------------------------------------------------------------------
+# KMS Key for ECR Encryption
+# -----------------------------------------------------------------------------
+
+resource "aws_kms_key" "ecr" {
+  description             = "KMS key for ECR repository encryption - ${var.project_name}-${var.environment}"
+  deletion_window_in_days = var.kms_key_deletion_window
+  enable_key_rotation     = true
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Id      = "ecr-kms-key-policy"
+    Statement = [
+      {
+        Sid    = "EnableRootAccountPermissions"
+        Effect = "Allow"
+        Principal = {
+          AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"
+        }
+        Action   = "kms:*"
+        Resource = "*"
+      },
+      {
+        Sid    = "AllowECRServiceAccess"
+        Effect = "Allow"
+        Principal = {
+          Service = "ecr.amazonaws.com"
+        }
+        Action = [
+          "kms:Encrypt",
+          "kms:Decrypt",
+          "kms:ReEncrypt*",
+          "kms:GenerateDataKey*",
+          "kms:DescribeKey"
+        ]
+        Resource = "*"
+        Condition = {
+          StringEquals = {
+            "kms:CallerAccount" = data.aws_caller_identity.current.account_id
+          }
+        }
+      }
+    ]
+  })
+
+  tags = merge(var.tags, {
+    Name = "${var.project_name}-${var.environment}-ecr-kms"
+  })
+}
+
+resource "aws_kms_alias" "ecr" {
+  name          = "alias/${var.project_name}-${var.environment}-ecr"
+  target_key_id = aws_kms_key.ecr.key_id
 }
 
 # -----------------------------------------------------------------------------
-# ECR Repositories (one per service)
+# ECR Repository
 # -----------------------------------------------------------------------------
 
-resource "aws_ecr_repository" "services" {
-  for_each = local.services
-
-  name                 = "${var.project_name}-${var.environment}-${each.key}"
+resource "aws_ecr_repository" "main" {
+  name                 = "${var.project_name}-${var.environment}"
   image_tag_mutability = var.image_tag_mutability
 
   image_scanning_configuration {
@@ -23,7 +78,8 @@ resource "aws_ecr_repository" "services" {
   }
 
   encryption_configuration {
-    encryption_type = "AES256"
+    encryption_type = "KMS"
+    kms_key         = aws_kms_key.ecr.arn
   }
 
   tags = merge(var.tags, {

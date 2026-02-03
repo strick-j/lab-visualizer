@@ -24,10 +24,63 @@ resource "aws_vpc" "main" {
 data "aws_caller_identity" "current" {}
 data "aws_region" "current" {}
 
+# KMS key for VPC Flow Logs encryption
+resource "aws_kms_key" "flow_logs" {
+  count               = var.enable_flow_logs ? 1 : 0
+  description         = "KMS key for ${var.project_name}-${var.environment} VPC flow logs encryption"
+  enable_key_rotation = true
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "EnableRootAccountPermissions"
+        Effect = "Allow"
+        Principal = {
+          AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"
+        }
+        Action   = "kms:*"
+        Resource = "*"
+      },
+      {
+        Sid    = "AllowCloudWatchLogs"
+        Effect = "Allow"
+        Principal = {
+          Service = "logs.${data.aws_region.current.name}.amazonaws.com"
+        }
+        Action = [
+          "kms:Encrypt*",
+          "kms:Decrypt*",
+          "kms:ReEncrypt*",
+          "kms:GenerateDataKey*",
+          "kms:Describe*"
+        ]
+        Resource = "*"
+        Condition = {
+          ArnLike = {
+            "kms:EncryptionContext:aws:logs:arn" = "arn:aws:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:log-group:/aws/vpc/${var.project_name}-${var.environment}-flow-logs"
+          }
+        }
+      }
+    ]
+  })
+
+  tags = merge(var.tags, {
+    Name = "${var.project_name}-${var.environment}-flow-logs-kms"
+  })
+}
+
+resource "aws_kms_alias" "flow_logs" {
+  count         = var.enable_flow_logs ? 1 : 0
+  name          = "alias/${var.project_name}-${var.environment}-flow-logs"
+  target_key_id = aws_kms_key.flow_logs[0].key_id
+}
+
 resource "aws_cloudwatch_log_group" "flow_logs" {
   count             = var.enable_flow_logs ? 1 : 0
   name              = "/aws/vpc/${var.project_name}-${var.environment}-flow-logs"
   retention_in_days = var.flow_logs_retention_days
+  kms_key_id        = aws_kms_key.flow_logs[0].arn
 
   tags = merge(var.tags, {
     Name = "${var.project_name}-${var.environment}-flow-logs"
