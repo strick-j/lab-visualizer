@@ -115,7 +115,7 @@ module "ecr" {
 
   project_name          = var.project_name
   environment           = var.environment
-  image_tag_mutability  = "MUTABLE"
+  image_tag_mutability  = "IMMUTABLE" # Enforce immutable tags for security
   scan_on_push          = true
   image_retention_count = 5 # Keep fewer images in dev
   tags                  = local.common_tags

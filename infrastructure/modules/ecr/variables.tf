@@ -13,9 +13,15 @@ variable "environment" {
 }
 
 variable "image_tag_mutability" {
-  description = "Image tag mutability setting"
+  description = "Image tag mutability setting (IMMUTABLE recommended for security)"
   type        = string
-  default     = "MUTABLE"
+  default     = "IMMUTABLE"
+}
+
+variable "kms_key_deletion_window" {
+  description = "Number of days before KMS key is deleted after scheduling"
+  type        = number
+  default     = 30
 }
 
 variable "scan_on_push" {
