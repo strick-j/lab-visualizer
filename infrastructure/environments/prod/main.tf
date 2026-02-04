@@ -110,12 +110,14 @@ module "networking" {
 module "ecr" {
   source = "../../modules/ecr"
 
-  project_name          = var.project_name
-  environment           = var.environment
-  image_tag_mutability  = "IMMUTABLE" # Enforce unique tags in prod
-  scan_on_push          = true
-  image_retention_count = 20
-  tags                  = local.common_tags
+  project_name            = var.project_name
+  environment             = var.environment
+  services                = ["backend", "frontend"]
+  image_tag_mutability    = "IMMUTABLE" # Enforce unique tags in prod
+  scan_on_push            = true
+  image_retention_count   = 20
+  pr_image_retention_days = 14
+  tags                    = local.common_tags
 }
 
 # -----------------------------------------------------------------------------
