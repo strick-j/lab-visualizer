@@ -162,9 +162,10 @@ resource "aws_internet_gateway" "main" {
 resource "aws_subnet" "public" {
   count = length(var.availability_zones)
 
-  vpc_id                  = aws_vpc.main.id
-  cidr_block              = cidrsubnet(var.vpc_cidr, 4, count.index)
-  availability_zone       = var.availability_zones[count.index]
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = cidrsubnet(var.vpc_cidr, 4, count.index)
+  availability_zone = var.availability_zones[count.index]
+  #trivy:ignore:AWS-0164 -- Public subnets require auto-assigned public IPs for internet-facing ALB placement
   map_public_ip_on_launch = true
 
   tags = merge(var.tags, {
@@ -305,11 +306,13 @@ resource "aws_vpc_security_group_ingress_rule" "alb_https" {
   cidr_ipv4         = "0.0.0.0/0"
 }
 
-resource "aws_vpc_security_group_egress_rule" "alb_all" {
-  security_group_id = aws_security_group.alb.id
-  description       = "Allow all outbound"
-  ip_protocol       = "-1"
-  cidr_ipv4         = "0.0.0.0/0"
+resource "aws_vpc_security_group_egress_rule" "alb_to_ecs" {
+  security_group_id            = aws_security_group.alb.id
+  description                  = "Allow outbound to ECS tasks on container port"
+  from_port                    = var.container_port
+  to_port                      = var.container_port
+  ip_protocol                  = "tcp"
+  referenced_security_group_id = aws_security_group.ecs_tasks.id
 }
 
 # ECS Tasks Security Group
@@ -332,9 +335,30 @@ resource "aws_vpc_security_group_ingress_rule" "ecs_from_alb" {
   referenced_security_group_id = aws_security_group.alb.id
 }
 
-resource "aws_vpc_security_group_egress_rule" "ecs_all" {
+resource "aws_vpc_security_group_egress_rule" "ecs_https" {
   security_group_id = aws_security_group.ecs_tasks.id
-  description       = "Allow all outbound"
-  ip_protocol       = "-1"
+  description       = "Allow HTTPS outbound for AWS API access (ECR, CloudWatch, S3, Secrets Manager)"
+  from_port         = 443
+  to_port           = 443
+  ip_protocol       = "tcp"
+  #trivy:ignore:AWS-0104 -- ECS tasks require HTTPS egress to 0.0.0.0/0 for AWS API endpoints via NAT Gateway
   cidr_ipv4         = "0.0.0.0/0"
+}
+
+resource "aws_vpc_security_group_egress_rule" "ecs_dns_udp" {
+  security_group_id = aws_security_group.ecs_tasks.id
+  description       = "Allow DNS (UDP) outbound for name resolution"
+  from_port         = 53
+  to_port           = 53
+  ip_protocol       = "udp"
+  cidr_ipv4         = var.vpc_cidr
+}
+
+resource "aws_vpc_security_group_egress_rule" "ecs_dns_tcp" {
+  security_group_id = aws_security_group.ecs_tasks.id
+  description       = "Allow DNS (TCP) outbound for name resolution"
+  from_port         = 53
+  to_port           = 53
+  ip_protocol       = "tcp"
+  cidr_ipv4         = var.vpc_cidr
 }
