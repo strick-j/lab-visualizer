@@ -13,6 +13,9 @@ on:
       - '.github/workflows/backend-tests.yml'
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 env:
   PYTHON_VERSION: '3.11'
 
