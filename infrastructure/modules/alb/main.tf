@@ -35,6 +35,7 @@ resource "aws_s3_bucket_versioning" "alb_logs" {
   }
 }
 
+#trivy:ignore:AWS-0132 -- ALB access log buckets require SSE-S3 (AES256); SSE-KMS is not supported by the ELB log delivery service
 resource "aws_s3_bucket_server_side_encryption_configuration" "alb_logs" {
   count  = var.enable_access_logs && var.access_logs_bucket == "" ? 1 : 0
   bucket = aws_s3_bucket.alb_logs[0].id
@@ -101,6 +102,7 @@ resource "aws_s3_bucket_versioning" "alb_logs_access_logs" {
   }
 }
 
+#trivy:ignore:AWS-0132 -- S3 server access logging destination buckets require SSE-S3 (AES256); SSE-KMS is not supported
 resource "aws_s3_bucket_server_side_encryption_configuration" "alb_logs_access_logs" {
   count  = var.enable_access_logs && var.access_logs_bucket == "" ? 1 : 0
   bucket = aws_s3_bucket.alb_logs_access_logs[0].id
@@ -153,10 +155,55 @@ resource "aws_s3_bucket_logging" "alb_logs" {
   target_prefix = "access-logs/"
 }
 
+# KMS key for SNS topic encryption
+resource "aws_kms_key" "sns" {
+  count               = var.enable_access_logs && var.access_logs_bucket == "" ? 1 : 0
+  description         = "CMK for ${var.project_name}-${var.environment} ALB logs SNS topic encryption"
+  enable_key_rotation = true
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "EnableRootAccountPermissions"
+        Effect = "Allow"
+        Principal = {
+          AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"
+        }
+        Action   = "kms:*"
+        Resource = "*"
+      },
+      {
+        Sid    = "AllowS3ToPublishEncrypted"
+        Effect = "Allow"
+        Principal = {
+          Service = "s3.amazonaws.com"
+        }
+        Action = [
+          "kms:GenerateDataKey*",
+          "kms:Decrypt"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+
+  tags = merge(var.tags, {
+    Name = "${var.project_name}-${var.environment}-sns-kms"
+  })
+}
+
+resource "aws_kms_alias" "sns" {
+  count         = var.enable_access_logs && var.access_logs_bucket == "" ? 1 : 0
+  name          = "alias/${var.project_name}-${var.environment}-sns"
+  target_key_id = aws_kms_key.sns[0].key_id
+}
+
 # SNS Topic for S3 event notifications
 resource "aws_sns_topic" "alb_logs_events" {
-  count = var.enable_access_logs && var.access_logs_bucket == "" ? 1 : 0
-  name  = "${var.project_name}-${var.environment}-alb-logs-events"
+  count             = var.enable_access_logs && var.access_logs_bucket == "" ? 1 : 0
+  name              = "${var.project_name}-${var.environment}-alb-logs-events"
+  kms_master_key_id = aws_kms_key.sns[0].arn
 
   tags = merge(var.tags, {
     Name = "${var.project_name}-${var.environment}-alb-logs-events"
@@ -250,12 +297,14 @@ resource "aws_s3_bucket_policy" "alb_logs" {
 
 resource "aws_lb" "main" {
   name               = "${var.project_name}-${var.environment}-alb"
+  #trivy:ignore:AWS-0053 -- ALB is intentionally public-facing as the internet entry point for the web application
   internal           = false
   load_balancer_type = "application"
   security_groups    = [var.security_group_id]
   subnets            = var.public_subnet_ids
 
   enable_deletion_protection = var.enable_deletion_protection
+  drop_invalid_header_fields = true
 
   dynamic "access_logs" {
     for_each = var.enable_access_logs ? [1] : []
@@ -306,6 +355,7 @@ resource "aws_lb_target_group" "main" {
 # HTTP Listener
 # -----------------------------------------------------------------------------
 
+#trivy:ignore:AWS-0054 -- HTTP listener redirects to HTTPS when certificate is configured; plain HTTP forwarding is only used during initial setup without TLS
 resource "aws_lb_listener" "http" {
   load_balancer_arn = aws_lb.main.arn
   port              = 80
