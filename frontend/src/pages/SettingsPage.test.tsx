@@ -204,16 +204,6 @@ describe("SettingsPage", () => {
     });
 
     it("shows success message after saving", async () => {
-      // Delay the second getAuthSettings call (triggered by onUpdate) so
-      // the success message is visible before the form remounts
-      mockGetAuthSettings
-        .mockResolvedValueOnce(mockSettings) // initial load
-        .mockImplementationOnce(
-          () =>
-            new Promise((resolve) =>
-              setTimeout(() => resolve(mockSettings), 500),
-            ),
-        );
       const user = userEvent.setup();
 
       render(<SettingsPage />);

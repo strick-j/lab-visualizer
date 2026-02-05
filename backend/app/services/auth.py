@@ -137,7 +137,8 @@ async def authenticate_local_user(
         return None
     if user.auth_provider != "local":
         logger.warning(
-            f"Auth failed: user '{username}' is not a local user (provider: {user.auth_provider})"
+            f"Auth failed: user '{username}' is not a local user "
+            f"(provider: {user.auth_provider})"
         )
         return None
     if not user.password_hash:
@@ -295,7 +296,9 @@ async def revoke_all_user_sessions(db: AsyncSession, user_id: int) -> int:
 async def ensure_admin_user(db: AsyncSession) -> None:
     """Ensure an admin user exists on startup if configured."""
     logger.info(
-        f"ensure_admin_user: checking config (username={settings.admin_username!r}, password_set={bool(settings.admin_password)})"
+        f"ensure_admin_user: checking config "
+        f"(username={settings.admin_username!r}, "
+        f"password_set={bool(settings.admin_password)})"
     )
     if not settings.admin_username or not settings.admin_password:
         logger.info(

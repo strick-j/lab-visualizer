@@ -29,9 +29,9 @@ export function SettingsPage() {
     }
   }, [isAdmin]);
 
-  const loadSettings = async () => {
+  const loadSettings = async (showSpinner = true) => {
     try {
-      setIsLoading(true);
+      if (showSpinner) setIsLoading(true);
       setError(null);
       const data = await getAuthSettings();
       setSettings(data);
@@ -126,7 +126,7 @@ export function SettingsPage() {
       <div className="rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
         <div className="p-6">
           {settings && (
-            <OIDCSettingsForm settings={settings.oidc} onUpdate={loadSettings} />
+            <OIDCSettingsForm settings={settings.oidc} onUpdate={() => loadSettings(false)} />
           )}
         </div>
       </div>

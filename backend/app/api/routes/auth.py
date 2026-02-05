@@ -353,8 +353,8 @@ async def oidc_callback(
         db, user, user_agent=user_agent, ip_address=ip_address
     )
 
-    # Redirect to frontend with tokens in URL fragment
-    # Using fragment (#) instead of query params for security (fragments aren't sent to server)
+    # Redirect to frontend with tokens in URL fragment.
+    # Fragments aren't sent to server, improving security.
     # Use frontend_url if configured, otherwise fall back to first CORS origin
     frontend_base = settings.frontend_url or (
         settings.cors_origins_list[0] if settings.cors_origins_list else ""

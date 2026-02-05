@@ -6,7 +6,6 @@ Returns Terraform-managed resources with their relationships.
 """
 
 import logging
-from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
