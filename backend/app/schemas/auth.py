@@ -7,7 +7,7 @@ Defines request/response models for authentication endpoints.
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
 class LoginRequest(BaseModel):
@@ -35,6 +35,8 @@ class RefreshTokenRequest(BaseModel):
 class UserResponse(BaseModel):
     """Response model for user information."""
 
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     username: str
     email: Optional[str] = None
@@ -44,9 +46,6 @@ class UserResponse(BaseModel):
     is_admin: bool
     last_login_at: Optional[datetime] = None
     created_at: datetime
-
-    class Config:
-        from_attributes = True
 
 
 class UserCreate(BaseModel):

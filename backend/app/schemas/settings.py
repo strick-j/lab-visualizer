@@ -7,7 +7,7 @@ Defines request/response models for auth settings endpoints.
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class OIDCSettingsUpdate(BaseModel):
@@ -37,6 +37,8 @@ class OIDCSettingsUpdate(BaseModel):
 class OIDCSettingsResponse(BaseModel):
     """Response model for OIDC settings."""
 
+    model_config = ConfigDict(from_attributes=True)
+
     enabled: bool
     issuer: Optional[str] = None
     client_id: Optional[str] = None
@@ -47,18 +49,14 @@ class OIDCSettingsResponse(BaseModel):
     updated_at: Optional[datetime] = None
     updated_by: Optional[str] = None
 
-    class Config:
-        from_attributes = True
-
 
 class AuthSettingsResponse(BaseModel):
     """Response model for all auth settings."""
 
+    model_config = ConfigDict(from_attributes=True)
+
     local_auth_enabled: bool
     oidc: OIDCSettingsResponse
-
-    class Config:
-        from_attributes = True
 
 
 class TestConnectionRequest(BaseModel):
