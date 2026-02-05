@@ -200,10 +200,10 @@ async def get_oidc_discovery(issuer: str) -> dict[str, object]:
             discovery = response.json()
             data: dict[str, object] = discovery
             _oidc_discovery_cache[issuer] = data
-            logger.info("Fetched OIDC discovery document successfully")
+            logger.info("Fetched OIDC discovery document")
             return data
         except httpx.HTTPError as e:
-            logger.error(f"Failed to fetch OIDC discovery from {discovery_url}: {e}")
+            logger.error(f"Failed to fetch OIDC discovery document: {e}")
             raise HTTPException(
                 status_code=status.HTTP_502_BAD_GATEWAY,
                 detail=f"Failed to fetch OIDC configuration from {discovery_url}",
