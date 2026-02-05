@@ -9,6 +9,9 @@ import logging
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
+import ipaddress
+import socket
+from urllib.parse import urlparse
 
 from app.api.deps import get_current_admin_user
 from app.config import get_settings
@@ -26,6 +29,64 @@ from app.services.settings import get_or_create_auth_settings, update_oidc_setti
 logger = logging.getLogger(__name__)
 router = APIRouter()
 env_settings = get_settings()
+
+
+def _validate_external_https_url(url: str) -> str:
+    """
+    Validate that the given URL is a HTTPS URL and does not resolve to a
+    private, loopback, or otherwise non-public IP address.
+
+    Raises HTTPException if the URL is invalid or not allowed.
+    """
+    try:
+        parsed = urlparse(url)
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid URL format for OIDC issuer",
+        )
+
+    if parsed.scheme != "https" or not parsed.hostname:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="OIDC issuer must be a valid HTTPS URL with a hostname",
+        )
+
+    hostname = parsed.hostname
+
+   # Resolve the hostname and ensure all IPs are public.
+    try:
+        addr_info = socket.getaddrinfo(hostname, None)
+    except OSError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Unable to resolve OIDC issuer host",
+        )
+
+    for family, _, _, _, sockaddr in addr_info:
+        ip_str = None
+        if family == socket.AF_INET:
+            ip_str = sockaddr[0]
+        elif family == socket.AF_INET6:
+            ip_str = sockaddr[0]
+
+        if not ip_str:
+            continue
+
+        ip = ipaddress.ip_address(ip_str)
+        if (
+            ip.is_private
+            or ip.is_loopback
+            or ip.is_link_local
+            or ip.is_reserved
+            or ip.is_multicast
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="OIDC issuer host must not resolve to a private or internal IP",
+            )
+
+    return url
 
 
 @router.get("", response_model=AuthSettingsResponse)
@@ -144,6 +205,7 @@ async def test_oidc_connection(
         discovery_url = (
             f"{test_data.issuer.rstrip('/')}/.well-known/openid-configuration"
         )
+        discovery_url = _validate_external_https_url(discovery_url)
 
         async with httpx.AsyncClient(timeout=10.0) as client:
             response = await client.get(discovery_url)
