@@ -29,7 +29,9 @@ router = APIRouter()
 
 @router.get("/ec2", response_model=ListResponse[EC2InstanceResponse])
 async def list_ec2_instances(
-    status: Optional[DisplayStatus] = Query(None, description="Filter by display status"),
+    status: Optional[DisplayStatus] = Query(
+        None, description="Filter by display status"
+    ),
     region: Optional[str] = Query(None, description="Filter by AWS region"),
     search: Optional[str] = Query(None, description="Search by name or instance ID"),
     tf_managed: Optional[bool] = Query(None, description="Filter by Terraform managed"),
@@ -48,8 +50,10 @@ async def list_ec2_instances(
         List of EC2 instances matching the filters
     """
     # Build query - exclude deleted instances by default
-    query = select(EC2Instance).options(joinedload(EC2Instance.region)).where(
-        EC2Instance.is_deleted == False
+    query = (
+        select(EC2Instance)
+        .options(joinedload(EC2Instance.region))
+        .where(EC2Instance.is_deleted == False)
     )
 
     # Apply filters
@@ -109,7 +113,9 @@ async def get_ec2_instance(
     instance = result.scalar_one_or_none()
 
     if not instance:
-        raise HTTPException(status_code=404, detail=f"EC2 instance not found: {instance_id}")
+        raise HTTPException(
+            status_code=404, detail=f"EC2 instance not found: {instance_id}"
+        )
 
     return _instance_to_detail(instance)
 

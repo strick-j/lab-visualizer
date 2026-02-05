@@ -29,12 +29,16 @@ router = APIRouter()
 
 @router.get("/subnets", response_model=ListResponse[SubnetResponse])
 async def list_subnets(
-    status: Optional[DisplayStatus] = Query(None, description="Filter by display status"),
+    status: Optional[DisplayStatus] = Query(
+        None, description="Filter by display status"
+    ),
     region: Optional[str] = Query(None, description="Filter by AWS region"),
     search: Optional[str] = Query(None, description="Search by name or Subnet ID"),
     tf_managed: Optional[bool] = Query(None, description="Filter by Terraform managed"),
     vpc_id: Optional[str] = Query(None, description="Filter by VPC ID"),
-    subnet_type: Optional[str] = Query(None, description="Filter by subnet type (public/private/unknown)"),
+    subnet_type: Optional[str] = Query(
+        None, description="Filter by subnet type (public/private/unknown)"
+    ),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -52,7 +56,11 @@ async def list_subnets(
         List of Subnets matching the filters
     """
     # Build query - exclude deleted instances by default
-    query = select(Subnet).options(joinedload(Subnet.region)).where(Subnet.is_deleted == False)
+    query = (
+        select(Subnet)
+        .options(joinedload(Subnet.region))
+        .where(Subnet.is_deleted == False)
+    )
 
     # Apply filters
     if status:

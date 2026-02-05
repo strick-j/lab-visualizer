@@ -25,7 +25,7 @@ AWS Lab Infrastructure Visualizer is a web application that provides visual repr
 | AWS SDK | Boto3 | ≥1.35.0 |
 | Database | SQLAlchemy + aiosqlite | 2.0.25 |
 | Validation | Pydantic | ≥2.7.0 |
-| Auth | Authlib (OIDC/SAML) | ≥1.3.0 |
+| Auth | Authlib (OIDC) | ≥1.3.0 |
 | Testing | pytest + pytest-asyncio | 7.4.4 |
 | Linting | black, isort, flake8, mypy | - |
 

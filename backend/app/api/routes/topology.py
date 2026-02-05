@@ -6,7 +6,6 @@ Returns Terraform-managed resources with their relationships.
 """
 
 import logging
-from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
@@ -15,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.database import get_db
 from app.models.resources import (
+    VPC,
     EC2Instance,
     ElasticIP,
     InternetGateway,
@@ -22,7 +22,6 @@ from app.models.resources import (
     RDSInstance,
     Subnet,
     SyncStatus,
-    VPC,
 )
 from app.schemas.resources import (
     DisplayStatus,
@@ -71,7 +70,13 @@ def _get_display_status(state: str, resource_type: str) -> DisplayStatus:
             return DisplayStatus.ACTIVE
         elif state_lower == "stopped":
             return DisplayStatus.INACTIVE
-        elif state_lower in ("starting", "stopping", "creating", "deleting", "modifying"):
+        elif state_lower in (
+            "starting",
+            "stopping",
+            "creating",
+            "deleting",
+            "modifying",
+        ):
             return DisplayStatus.TRANSITIONING
         elif state_lower == "failed":
             return DisplayStatus.ERROR
@@ -148,11 +153,13 @@ async def get_topology(
 
         # Get Subnets for this VPC
         subnet_result = await db.execute(
-            select(Subnet).where(
+            select(Subnet)
+            .where(
                 Subnet.vpc_id == vpc.vpc_id,
                 Subnet.tf_managed == True,
                 Subnet.is_deleted == False,
-            ).order_by(Subnet.subnet_type, Subnet.availability_zone)
+            )
+            .order_by(Subnet.subnet_type, Subnet.availability_zone)
         )
         subnets = subnet_result.scalars().all()
 
@@ -196,19 +203,21 @@ async def get_topology(
             topology_ec2 = []
             for ec2 in ec2_instances:
                 total_ec2 += 1
-                topology_ec2.append(TopologyEC2Instance(
-                    id=ec2.instance_id,
-                    name=ec2.name,
-                    instance_type=ec2.instance_type,
-                    state=ec2.state,
-                    display_status=_get_display_status(ec2.state, "ec2"),
-                    private_ip=ec2.private_ip,
-                    public_ip=ec2.public_ip,
-                    private_dns=ec2.private_dns,
-                    public_dns=ec2.public_dns,
-                    tf_managed=True,
-                    tf_resource_address=ec2.tf_resource_address,
-                ))
+                topology_ec2.append(
+                    TopologyEC2Instance(
+                        id=ec2.instance_id,
+                        name=ec2.name,
+                        instance_type=ec2.instance_type,
+                        state=ec2.state,
+                        display_status=_get_display_status(ec2.state, "ec2"),
+                        private_ip=ec2.private_ip,
+                        public_ip=ec2.public_ip,
+                        private_dns=ec2.private_dns,
+                        public_dns=ec2.public_dns,
+                        tf_managed=True,
+                        tf_resource_address=ec2.tf_resource_address,
+                    )
+                )
 
             # Get RDS instances in this VPC
             # Note: RDS uses DB Subnet Groups, so we match by VPC
@@ -226,32 +235,36 @@ async def get_topology(
 
                 for rds in rds_instances:
                     total_rds += 1
-                    topology_rds.append(TopologyRDSInstance(
-                        id=rds.db_instance_identifier,
-                        name=rds.name,
-                        engine=rds.engine,
-                        instance_class=rds.db_instance_class,
-                        status=rds.status,
-                        display_status=_get_display_status(rds.status, "rds"),
-                        endpoint=rds.endpoint,
-                        port=rds.port,
-                        tf_managed=True,
-                        tf_resource_address=rds.tf_resource_address,
-                    ))
+                    topology_rds.append(
+                        TopologyRDSInstance(
+                            id=rds.db_instance_identifier,
+                            name=rds.name,
+                            engine=rds.engine,
+                            instance_class=rds.db_instance_class,
+                            status=rds.status,
+                            display_status=_get_display_status(rds.status, "rds"),
+                            endpoint=rds.endpoint,
+                            port=rds.port,
+                            tf_managed=True,
+                            tf_resource_address=rds.tf_resource_address,
+                        )
+                    )
 
-            topology_subnets.append(TopologySubnet(
-                id=subnet.subnet_id,
-                name=subnet.name,
-                cidr_block=subnet.cidr_block,
-                availability_zone=subnet.availability_zone,
-                subnet_type=subnet.subnet_type,
-                display_status=_get_display_status(subnet.state, "subnet"),
-                tf_managed=True,
-                tf_resource_address=subnet.tf_resource_address,
-                nat_gateway=topology_nat,
-                ec2_instances=topology_ec2,
-                rds_instances=topology_rds,
-            ))
+            topology_subnets.append(
+                TopologySubnet(
+                    id=subnet.subnet_id,
+                    name=subnet.name,
+                    cidr_block=subnet.cidr_block,
+                    availability_zone=subnet.availability_zone,
+                    subnet_type=subnet.subnet_type,
+                    display_status=_get_display_status(subnet.state, "subnet"),
+                    tf_managed=True,
+                    tf_resource_address=subnet.tf_resource_address,
+                    nat_gateway=topology_nat,
+                    ec2_instances=topology_ec2,
+                    rds_instances=topology_rds,
+                )
+            )
 
         # Get Elastic IPs associated with resources in this VPC
         eip_result = await db.execute(
@@ -295,27 +308,31 @@ async def get_topology(
 
             if associated_with:
                 total_eips += 1
-                topology_eips.append(TopologyElasticIP(
-                    id=eip.allocation_id,
-                    public_ip=eip.public_ip,
-                    associated_with=associated_with,
-                    association_type=association_type,
-                    tf_managed=True,
-                    tf_resource_address=eip.tf_resource_address,
-                ))
+                topology_eips.append(
+                    TopologyElasticIP(
+                        id=eip.allocation_id,
+                        public_ip=eip.public_ip,
+                        associated_with=associated_with,
+                        association_type=association_type,
+                        tf_managed=True,
+                        tf_resource_address=eip.tf_resource_address,
+                    )
+                )
 
-        topology_vpcs.append(TopologyVPC(
-            id=vpc.vpc_id,
-            name=vpc.name,
-            cidr_block=vpc.cidr_block,
-            state=vpc.state,
-            display_status=_get_display_status(vpc.state, "vpc"),
-            tf_managed=True,
-            tf_resource_address=vpc.tf_resource_address,
-            internet_gateway=topology_igw,
-            subnets=topology_subnets,
-            elastic_ips=topology_eips,
-        ))
+        topology_vpcs.append(
+            TopologyVPC(
+                id=vpc.vpc_id,
+                name=vpc.name,
+                cidr_block=vpc.cidr_block,
+                state=vpc.state,
+                display_status=_get_display_status(vpc.state, "vpc"),
+                tf_managed=True,
+                tf_resource_address=vpc.tf_resource_address,
+                internet_gateway=topology_igw,
+                subnets=topology_subnets,
+                elastic_ips=topology_eips,
+            )
+        )
 
     # Get last sync time
     sync_result = await db.execute(

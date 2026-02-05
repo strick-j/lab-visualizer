@@ -345,7 +345,9 @@ class TerraformStateAggregator:
 
         # Log summary
         for category, resources in all_resources.items():
-            logger.info(f"Aggregated {len(resources)} {category} resources from Terraform")
+            logger.info(
+                f"Aggregated {len(resources)} {category} resources from Terraform"
+            )
 
         return all_resources
 

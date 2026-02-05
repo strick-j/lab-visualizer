@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
 from app.models.database import get_db
-from app.models.resources import Region, VPC
+from app.models.resources import VPC, Region
 from app.schemas.resources import (
     DisplayStatus,
     ListResponse,
@@ -29,7 +29,9 @@ router = APIRouter()
 
 @router.get("/vpcs", response_model=ListResponse[VPCResponse])
 async def list_vpcs(
-    status: Optional[DisplayStatus] = Query(None, description="Filter by display status"),
+    status: Optional[DisplayStatus] = Query(
+        None, description="Filter by display status"
+    ),
     region: Optional[str] = Query(None, description="Filter by AWS region"),
     search: Optional[str] = Query(None, description="Search by name or VPC ID"),
     tf_managed: Optional[bool] = Query(None, description="Filter by Terraform managed"),
@@ -97,11 +99,7 @@ async def get_vpc(
     Raises:
         404: If VPC not found
     """
-    query = (
-        select(VPC)
-        .options(joinedload(VPC.region))
-        .where(VPC.vpc_id == vpc_id)
-    )
+    query = select(VPC).options(joinedload(VPC.region)).where(VPC.vpc_id == vpc_id)
     result = await db.execute(query)
     vpc = result.scalar_one_or_none()
 

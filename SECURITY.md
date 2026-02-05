@@ -45,7 +45,7 @@ This project interacts with AWS APIs and handles infrastructure state data. Foll
 - Never commit AWS credentials, API keys, or secrets to the repository
 - Use IAM roles (not access keys) for AWS authentication in production
 - Rotate the `SESSION_SECRET` environment variable and use a strong, random value
-- Configure OIDC/SAML authentication for production environments
+- Configure OIDC authentication for production environments
 
 ### Network & Access
 

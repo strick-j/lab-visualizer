@@ -16,6 +16,25 @@ vi.mock("@/hooks", () => ({
   }),
 }));
 
+// Mock the auth context
+vi.mock("@/contexts/AuthContext", () => ({
+  AuthProvider: ({ children }: { children: React.ReactNode }) => (
+    <>{children}</>
+  ),
+  useAuth: () => ({
+    user: { username: "admin", display_name: "Admin", auth_provider: "local" },
+    authConfig: { local_auth_enabled: true, oidc_enabled: false },
+    isAuthenticated: true,
+    isLoading: false,
+    error: null,
+    login: vi.fn(),
+    logout: vi.fn(),
+    refreshAuth: vi.fn(),
+    clearError: vi.fn(),
+    setTokens: vi.fn(),
+  }),
+}));
+
 // Mock react-router-dom's Outlet
 vi.mock("react-router-dom", async () => {
   const actual = await vi.importActual("react-router-dom");

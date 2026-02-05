@@ -3,17 +3,20 @@
 # =============================================================================
 FROM node:18-alpine
 
+# Update npm to latest 10.x
+RUN npm install -g npm@10
+
+# Create app directory owned by node user so Vite can write temp files
+# (Vite compiles vite.config.ts to a temporary .mjs file in the same directory)
+RUN mkdir -p /app && chown node:node /app
 WORKDIR /app
 
-# Install dependencies
-COPY package*.json ./
+# Copy package files and install dependencies as node user
+COPY --chown=node:node package*.json ./
+USER node
 RUN npm ci
 
-# Copy source code and set ownership to non-root user
-COPY --chown=node:node . .
-
-# Run as non-root user (node user is built into node alpine images)
-USER node
+# Source code is mounted via docker-compose volumes, no COPY needed
 
 # Expose Vite dev server port
 EXPOSE 3000

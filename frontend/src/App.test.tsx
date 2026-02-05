@@ -14,6 +14,11 @@ vi.mock("@/pages", () => ({
     <div data-testid="terraform-page">Terraform Content</div>
   ),
   TopologyPage: () => <div data-testid="topology-page">Topology Content</div>,
+  LoginPage: () => <div data-testid="login-page">Login Content</div>,
+  SettingsPage: () => <div data-testid="settings-page">Settings Content</div>,
+  AuthCallbackPage: () => (
+    <div data-testid="auth-callback-page">Auth Callback</div>
+  ),
 }));
 
 // Mock the hooks used by Layout components
@@ -28,6 +33,46 @@ vi.mock("@/hooks", () => ({
     mutate: vi.fn(),
     isPending: false,
   }),
+}));
+
+// Mock the auth context
+vi.mock("@/contexts/AuthContext", () => ({
+  AuthProvider: ({ children }: { children: React.ReactNode }) => (
+    <>{children}</>
+  ),
+  useAuth: () => ({
+    user: { username: "admin", display_name: "Admin", auth_provider: "local" },
+    authConfig: { local_auth_enabled: true, oidc_enabled: false },
+    isAuthenticated: true,
+    isLoading: false,
+    error: null,
+    login: vi.fn(),
+    logout: vi.fn(),
+    refreshAuth: vi.fn(),
+    clearError: vi.fn(),
+    setTokens: vi.fn(),
+  }),
+}));
+
+// Mock the API client to prevent real API calls
+vi.mock("@/api/client", () => ({
+  getAuthConfig: vi.fn().mockResolvedValue({
+    local_auth_enabled: true,
+    oidc_enabled: false,
+    oidc_issuer: null,
+    oidc_display_name: null,
+  }),
+  getCurrentUser: vi.fn().mockResolvedValue({
+    username: "admin",
+    display_name: "Admin",
+    auth_provider: "local",
+  }),
+  default: {
+    interceptors: {
+      request: { use: vi.fn() },
+      response: { use: vi.fn() },
+    },
+  },
 }));
 
 describe("App", () => {

@@ -80,7 +80,9 @@ class EC2Instance(Base):
     # Basic info
     name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     instance_type: Mapped[str] = mapped_column(String(50), nullable=False)
-    state: Mapped[str] = mapped_column(String(20), nullable=False)  # running, stopped, etc.
+    state: Mapped[str] = mapped_column(
+        String(20), nullable=False
+    )  # running, stopped, etc.
 
     # Network
     private_ip: Mapped[Optional[str]] = mapped_column(String(45), nullable=True)
@@ -98,7 +100,9 @@ class EC2Instance(Base):
     # Terraform tracking
     tf_managed: Mapped[bool] = mapped_column(Boolean, default=False)
     tf_state_source: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    tf_resource_address: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    tf_resource_address: Mapped[Optional[str]] = mapped_column(
+        String(500), nullable=True
+    )
 
     # Deletion tracking
     is_deleted: Mapped[bool] = mapped_column(Boolean, default=False)
@@ -145,7 +149,9 @@ class RDSInstance(Base):
     # Basic info
     name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     db_instance_class: Mapped[str] = mapped_column(String(50), nullable=False)
-    status: Mapped[str] = mapped_column(String(30), nullable=False)  # available, stopped, etc.
+    status: Mapped[str] = mapped_column(
+        String(30), nullable=False
+    )  # available, stopped, etc.
 
     # Database details
     engine: Mapped[str] = mapped_column(String(30), nullable=False)
@@ -165,7 +171,9 @@ class RDSInstance(Base):
     # Terraform tracking
     tf_managed: Mapped[bool] = mapped_column(Boolean, default=False)
     tf_state_source: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    tf_resource_address: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    tf_resource_address: Mapped[Optional[str]] = mapped_column(
+        String(500), nullable=True
+    )
 
     # Deletion tracking
     is_deleted: Mapped[bool] = mapped_column(Boolean, default=False)
@@ -226,7 +234,9 @@ class VPC(Base):
     # Terraform tracking
     tf_managed: Mapped[bool] = mapped_column(Boolean, default=False)
     tf_state_source: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    tf_resource_address: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    tf_resource_address: Mapped[Optional[str]] = mapped_column(
+        String(500), nullable=True
+    )
 
     # Deletion tracking
     is_deleted: Mapped[bool] = mapped_column(Boolean, default=False)
@@ -276,9 +286,7 @@ class Subnet(Base):
     )  # public, private, unknown
 
     # Configuration
-    state: Mapped[str] = mapped_column(
-        String(20), nullable=False
-    )  # available, pending
+    state: Mapped[str] = mapped_column(String(20), nullable=False)  # available, pending
     available_ip_count: Mapped[int] = mapped_column(Integer, nullable=False)
     map_public_ip_on_launch: Mapped[bool] = mapped_column(Boolean, default=False)
 
@@ -288,7 +296,9 @@ class Subnet(Base):
     # Terraform tracking
     tf_managed: Mapped[bool] = mapped_column(Boolean, default=False)
     tf_state_source: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    tf_resource_address: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    tf_resource_address: Mapped[Optional[str]] = mapped_column(
+        String(500), nullable=True
+    )
 
     # Deletion tracking
     is_deleted: Mapped[bool] = mapped_column(Boolean, default=False)
@@ -341,7 +351,9 @@ class InternetGateway(Base):
     # Terraform tracking
     tf_managed: Mapped[bool] = mapped_column(Boolean, default=False)
     tf_state_source: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    tf_resource_address: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    tf_resource_address: Mapped[Optional[str]] = mapped_column(
+        String(500), nullable=True
+    )
 
     # Deletion tracking
     is_deleted: Mapped[bool] = mapped_column(Boolean, default=False)
@@ -410,7 +422,9 @@ class NATGateway(Base):
     # Terraform tracking
     tf_managed: Mapped[bool] = mapped_column(Boolean, default=False)
     tf_state_source: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    tf_resource_address: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    tf_resource_address: Mapped[Optional[str]] = mapped_column(
+        String(500), nullable=True
+    )
 
     # Deletion tracking
     is_deleted: Mapped[bool] = mapped_column(Boolean, default=False)
@@ -459,12 +473,12 @@ class ElasticIP(Base):
     # Associations
     association_id: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     instance_id: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
-    network_interface_id: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
+    network_interface_id: Mapped[Optional[str]] = mapped_column(
+        String(30), nullable=True
+    )
 
     # Configuration
-    domain: Mapped[str] = mapped_column(
-        String(10), nullable=False
-    )  # vpc, standard
+    domain: Mapped[str] = mapped_column(String(10), nullable=False)  # vpc, standard
 
     # Metadata
     tags: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON string
@@ -472,7 +486,9 @@ class ElasticIP(Base):
     # Terraform tracking
     tf_managed: Mapped[bool] = mapped_column(Boolean, default=False)
     tf_state_source: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    tf_resource_address: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    tf_resource_address: Mapped[Optional[str]] = mapped_column(
+        String(500), nullable=True
+    )
 
     # Deletion tracking
     is_deleted: Mapped[bool] = mapped_column(Boolean, default=False)

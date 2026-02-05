@@ -37,7 +37,9 @@ class NATGatewayCollector(BaseCollector):
                     if nat_gw_data:
                         nat_gateways.append(nat_gw_data)
 
-            logger.info(f"Collected {len(nat_gateways)} NAT Gateways from {self.region}")
+            logger.info(
+                f"Collected {len(nat_gateways)} NAT Gateways from {self.region}"
+            )
 
         except ClientError as e:
             self._handle_client_error(e, f"NAT Gateway collection in {self.region}")
@@ -97,7 +99,9 @@ class NATGatewayCollector(BaseCollector):
             logger.warning(f"Error parsing NAT Gateway: {e}")
             return None
 
-    async def collect_nat_gateway(self, nat_gateway_id: str) -> Optional[Dict[str, Any]]:
+    async def collect_nat_gateway(
+        self, nat_gateway_id: str
+    ) -> Optional[Dict[str, Any]]:
         """
         Collect a specific NAT Gateway by ID.
 

@@ -29,7 +29,9 @@ router = APIRouter()
 
 @router.get("/internet-gateways", response_model=ListResponse[InternetGatewayResponse])
 async def list_internet_gateways(
-    status: Optional[DisplayStatus] = Query(None, description="Filter by display status"),
+    status: Optional[DisplayStatus] = Query(
+        None, description="Filter by display status"
+    ),
     region: Optional[str] = Query(None, description="Filter by AWS region"),
     search: Optional[str] = Query(None, description="Search by name or IGW ID"),
     tf_managed: Optional[bool] = Query(None, description="Filter by Terraform managed"),
@@ -50,8 +52,10 @@ async def list_internet_gateways(
         List of Internet Gateways matching the filters
     """
     # Build query - exclude deleted instances by default
-    query = select(InternetGateway).options(joinedload(InternetGateway.region)).where(
-        InternetGateway.is_deleted == False
+    query = (
+        select(InternetGateway)
+        .options(joinedload(InternetGateway.region))
+        .where(InternetGateway.is_deleted == False)
     )
 
     # Apply filters
@@ -76,7 +80,9 @@ async def list_internet_gateways(
         query = query.where(InternetGateway.vpc_id == vpc_id)
 
     # Execute query
-    result = await db.execute(query.order_by(InternetGateway.name, InternetGateway.igw_id))
+    result = await db.execute(
+        query.order_by(InternetGateway.name, InternetGateway.igw_id)
+    )
     igws = result.scalars().unique().all()
 
     # Convert to response format
@@ -114,7 +120,9 @@ async def get_internet_gateway(
     igw = result.scalar_one_or_none()
 
     if not igw:
-        raise HTTPException(status_code=404, detail=f"Internet Gateway not found: {igw_id}")
+        raise HTTPException(
+            status_code=404, detail=f"Internet Gateway not found: {igw_id}"
+        )
 
     return _igw_to_detail(igw)
 

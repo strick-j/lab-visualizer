@@ -1,0 +1,339 @@
+"""
+Authentication service.
+
+Handles user authentication, token management, and session handling.
+"""
+
+import hashlib
+import logging
+import secrets
+from datetime import datetime, timedelta, timezone
+from typing import Optional, Tuple
+
+from passlib.context import CryptContext
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.config import get_settings
+from app.models.auth import Session, User
+
+logger = logging.getLogger(__name__)
+settings = get_settings()
+
+
+def _sanitize_for_log(value: Optional[str]) -> str:
+    """Sanitize a potentially user-controlled value for safe logging."""
+    if value is None:
+        return ""
+    # Remove CR/LF characters to prevent log injection via new lines.
+    return str(value).replace("\r", "").replace("\n", "")
+
+# Password hashing context
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+
+def hash_password(password: str) -> str:
+    """Hash a password using bcrypt."""
+    result: str = pwd_context.hash(password)
+    return result
+
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """Verify a password against a hash."""
+    result: bool = pwd_context.verify(plain_password, hashed_password)
+    return result
+
+
+def hash_token(token: str) -> str:
+    """Hash a token using SHA-256."""
+    return hashlib.sha256(token.encode()).hexdigest()
+
+
+def generate_token() -> str:
+    """Generate a secure random token."""
+    return secrets.token_urlsafe(32)
+
+
+async def get_user_by_username(db: AsyncSession, username: str) -> Optional[User]:
+    """Get a user by username."""
+    result = await db.execute(select(User).where(User.username == username))
+    user: Optional[User] = result.scalar_one_or_none()
+    return user
+
+
+async def get_user_by_email(db: AsyncSession, email: str) -> Optional[User]:
+    """Get a user by email."""
+    result = await db.execute(select(User).where(User.email == email))
+    user: Optional[User] = result.scalar_one_or_none()
+    return user
+
+
+async def get_user_by_id(db: AsyncSession, user_id: int) -> Optional[User]:
+    """Get a user by ID."""
+    result = await db.execute(select(User).where(User.id == user_id))
+    user: Optional[User] = result.scalar_one_or_none()
+    return user
+
+
+async def get_user_by_external_id(
+    db: AsyncSession, external_id: str, provider: str
+) -> Optional[User]:
+    """Get a user by external ID (from OIDC)."""
+    result = await db.execute(
+        select(User).where(
+            User.external_id == external_id, User.auth_provider == provider
+        )
+    )
+    user: Optional[User] = result.scalar_one_or_none()
+    return user
+
+
+async def create_local_user(
+    db: AsyncSession,
+    username: str,
+    password: str,
+    email: Optional[str] = None,
+    display_name: Optional[str] = None,
+    is_admin: bool = False,
+) -> User:
+    """Create a new local user."""
+    user = User(
+        username=username,
+        email=email,
+        password_hash=hash_password(password),
+        auth_provider="local",
+        display_name=display_name or username,
+        is_admin=is_admin,
+    )
+    db.add(user)
+    await db.commit()
+    await db.refresh(user)
+    safe_username = _sanitize_for_log(username)
+    logger.info(f"Created local user: {safe_username}")
+    return user
+
+
+async def create_federated_user(
+    db: AsyncSession,
+    username: str,
+    external_id: str,
+    provider: str,
+    email: Optional[str] = None,
+    display_name: Optional[str] = None,
+) -> User:
+    """Create a new federated user (OIDC)."""
+    user = User(
+        username=username,
+        email=email,
+        auth_provider=provider,
+        external_id=external_id,
+        display_name=display_name or username,
+    )
+    db.add(user)
+    await db.commit()
+    await db.refresh(user)
+    safe_username = _sanitize_for_log(username)
+    safe_provider = _sanitize_for_log(provider)
+    logger.info(f"Created federated user: {safe_username} (provider: {safe_provider})")
+    return user
+
+
+async def authenticate_local_user(
+    db: AsyncSession, username: str, password: str
+) -> Optional[User]:
+    """Authenticate a local user by username and password."""
+    user = await get_user_by_username(db, username)
+    safe_username = _sanitize_for_log(username)
+    if not user:
+        logger.warning(f"Auth failed: user '{safe_username}' not found")
+        return None
+    if user.auth_provider != "local":
+        logger.warning(
+            f"Auth failed: user '{safe_username}' is not a local user "
+            f"(provider: {user.auth_provider})"
+        )
+        return None
+    if not user.password_hash:
+        logger.warning(f"Auth failed: user '{safe_username}' has no password hash")
+        return None
+    if not verify_password(password, user.password_hash):
+        logger.warning(
+            f"Auth failed: password verification failed for user '{safe_username}'"
+        )
+        return None
+    if not user.is_active:
+        logger.warning(f"Auth failed: user '{safe_username}' is not active")
+        return None
+    logger.info(f"Auth succeeded for user '{safe_username}'")
+    return user
+
+
+async def create_session(
+    db: AsyncSession,
+    user: User,
+    user_agent: Optional[str] = None,
+    ip_address: Optional[str] = None,
+) -> Tuple[str, str, Session]:
+    """Create a new session and return access/refresh tokens."""
+    access_token = generate_token()
+    refresh_token = generate_token()
+    session_id = generate_token()
+
+    now = datetime.now(timezone.utc)
+    access_expires = now + timedelta(minutes=settings.access_token_expire_minutes)
+    refresh_expires = now + timedelta(days=settings.refresh_token_expire_days)
+
+    session = Session(
+        session_id=session_id,
+        user_id=user.id,
+        access_token_hash=hash_token(access_token),
+        refresh_token_hash=hash_token(refresh_token),
+        user_agent=user_agent,
+        ip_address=ip_address,
+        expires_at=access_expires,
+        refresh_expires_at=refresh_expires,
+    )
+    db.add(session)
+
+    # Update user's last login
+    user.last_login_at = now
+    await db.commit()
+    await db.refresh(session)
+
+    logger.info(f"Created session for user: {user.username}")
+    return access_token, refresh_token, session
+
+
+async def validate_access_token(
+    db: AsyncSession, access_token: str
+) -> Optional[Tuple[User, Session]]:
+    """Validate an access token and return the associated user and session."""
+    token_hash = hash_token(access_token)
+    now = datetime.now(timezone.utc)
+
+    result = await db.execute(
+        select(Session).where(
+            Session.access_token_hash == token_hash,
+            Session.is_revoked == False,  # noqa: E712
+            Session.expires_at > now,
+        )
+    )
+    session = result.scalar_one_or_none()
+    if not session:
+        return None
+
+    user = await get_user_by_id(db, session.user_id)
+    if not user or not user.is_active:
+        return None
+
+    # Update last activity
+    session.last_activity_at = now
+    await db.commit()
+
+    return user, session
+
+
+async def refresh_access_token(
+    db: AsyncSession, refresh_token: str
+) -> Optional[Tuple[str, str]]:
+    """Refresh an access token using a refresh token."""
+    token_hash = hash_token(refresh_token)
+    now = datetime.now(timezone.utc)
+
+    result = await db.execute(
+        select(Session).where(
+            Session.refresh_token_hash == token_hash,
+            Session.is_revoked == False,  # noqa: E712
+            Session.refresh_expires_at > now,
+        )
+    )
+    session = result.scalar_one_or_none()
+    if not session:
+        return None
+
+    user = await get_user_by_id(db, session.user_id)
+    if not user or not user.is_active:
+        return None
+
+    # Generate new tokens
+    new_access_token = generate_token()
+    new_refresh_token = generate_token()
+
+    access_expires = now + timedelta(minutes=settings.access_token_expire_minutes)
+    refresh_expires = now + timedelta(days=settings.refresh_token_expire_days)
+
+    # Update session with new tokens
+    session.access_token_hash = hash_token(new_access_token)
+    session.refresh_token_hash = hash_token(new_refresh_token)
+    session.expires_at = access_expires
+    session.refresh_expires_at = refresh_expires
+    session.last_activity_at = now
+
+    await db.commit()
+    logger.info(f"Refreshed tokens for user: {user.username}")
+
+    return new_access_token, new_refresh_token
+
+
+async def revoke_session(db: AsyncSession, session: Session) -> None:
+    """Revoke a session."""
+    session.is_revoked = True
+    session.revoked_at = datetime.now(timezone.utc)
+    await db.commit()
+    logger.info(f"Revoked session: {session.session_id[:8]}...")
+
+
+async def revoke_all_user_sessions(db: AsyncSession, user_id: int) -> int:
+    """Revoke all sessions for a user. Returns count of revoked sessions."""
+    now = datetime.now(timezone.utc)
+    result = await db.execute(
+        select(Session).where(
+            Session.user_id == user_id,
+            Session.is_revoked == False,  # noqa: E712
+        )
+    )
+    sessions = result.scalars().all()
+
+    count = 0
+    for session in sessions:
+        session.is_revoked = True
+        session.revoked_at = now
+        count += 1
+
+    await db.commit()
+    logger.info(f"Revoked {count} sessions for user_id: {user_id}")
+    return count
+
+
+async def ensure_admin_user(db: AsyncSession) -> None:
+    """Ensure an admin user exists on startup if configured."""
+    logger.info(
+        f"ensure_admin_user: checking config "
+        f"(username={settings.admin_username!r}, "
+        f"password_set={bool(settings.admin_password)})"
+    )
+    if not settings.admin_username or not settings.admin_password:
+        logger.info(
+            "ensure_admin_user: skipping - admin credentials not fully configured"
+        )
+        return
+
+    existing = await get_user_by_username(db, settings.admin_username)
+    if existing:
+        # Update password and ensure admin privileges on each startup
+        # This allows password changes via .env to take effect
+        existing.password_hash = hash_password(settings.admin_password)
+        existing.is_admin = True
+        existing.is_active = True
+        await db.commit()
+        logger.info(f"Updated admin user: {settings.admin_username}")
+        return
+
+    await create_local_user(
+        db,
+        username=settings.admin_username,
+        password=settings.admin_password,
+        is_admin=True,
+        display_name="Administrator",
+    )
+    logger.info(f"Created initial admin user: {settings.admin_username}")

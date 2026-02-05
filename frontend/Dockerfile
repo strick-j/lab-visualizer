@@ -5,6 +5,9 @@
 # Build stage
 FROM node:18-alpine AS builder
 
+# Update npm to latest 10.x
+RUN npm install -g npm@10
+
 WORKDIR /app
 
 # Install dependencies
