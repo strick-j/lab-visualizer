@@ -20,6 +20,14 @@ from app.models.auth import Session, User
 logger = logging.getLogger(__name__)
 settings = get_settings()
 
+
+def _sanitize_for_log(value: Optional[str]) -> str:
+    """Sanitize a potentially user-controlled value for safe logging."""
+    if value is None:
+        return ""
+    # Remove CR/LF characters to prevent log injection via new lines.
+    return str(value).replace("\r", "").replace("\n", "")
+
 # Password hashing context
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -100,7 +108,8 @@ async def create_local_user(
     db.add(user)
     await db.commit()
     await db.refresh(user)
-    logger.info(f"Created local user: {username}")
+    safe_username = _sanitize_for_log(username)
+    logger.info(f"Created local user: {safe_username}")
     return user
 
 
@@ -123,7 +132,9 @@ async def create_federated_user(
     db.add(user)
     await db.commit()
     await db.refresh(user)
-    logger.info(f"Created federated user: {username} (provider: {provider})")
+    safe_username = _sanitize_for_log(username)
+    safe_provider = _sanitize_for_log(provider)
+    logger.info(f"Created federated user: {safe_username} (provider: {safe_provider})")
     return user
 
 
@@ -132,27 +143,28 @@ async def authenticate_local_user(
 ) -> Optional[User]:
     """Authenticate a local user by username and password."""
     user = await get_user_by_username(db, username)
+    safe_username = _sanitize_for_log(username)
     if not user:
-        logger.warning(f"Auth failed: user '{username}' not found")
+        logger.warning(f"Auth failed: user '{safe_username}' not found")
         return None
     if user.auth_provider != "local":
         logger.warning(
-            f"Auth failed: user '{username}' is not a local user "
+            f"Auth failed: user '{safe_username}' is not a local user "
             f"(provider: {user.auth_provider})"
         )
         return None
     if not user.password_hash:
-        logger.warning(f"Auth failed: user '{username}' has no password hash")
+        logger.warning(f"Auth failed: user '{safe_username}' has no password hash")
         return None
     if not verify_password(password, user.password_hash):
         logger.warning(
-            f"Auth failed: password verification failed for user '{username}'"
+            f"Auth failed: password verification failed for user '{safe_username}'"
         )
         return None
     if not user.is_active:
-        logger.warning(f"Auth failed: user '{username}' is not active")
+        logger.warning(f"Auth failed: user '{safe_username}' is not active")
         return None
-    logger.info(f"Auth succeeded for user '{username}'")
+    logger.info(f"Auth succeeded for user '{safe_username}'")
     return user
 
 
