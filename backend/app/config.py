@@ -54,8 +54,20 @@ class Settings(BaseSettings):
     )
 
     # -------------------------------------------------------------------------
-    # Authentication (OIDC)
+    # Authentication
     # -------------------------------------------------------------------------
+    # Local authentication
+    local_auth_enabled: bool = Field(
+        default=True, description="Enable local username/password authentication"
+    )
+    admin_username: Optional[str] = Field(
+        default=None, description="Initial admin username (created on first startup)"
+    )
+    admin_password: Optional[str] = Field(
+        default=None, description="Initial admin password (created on first startup)"
+    )
+
+    # OIDC authentication
     oidc_issuer: Optional[str] = Field(
         default=None, description="OIDC identity provider issuer URL"
     )
@@ -63,9 +75,17 @@ class Settings(BaseSettings):
     oidc_client_secret: Optional[str] = Field(
         default=None, description="OIDC client secret"
     )
+
+    # Session configuration
     session_secret: str = Field(
         default="change-me-in-production",
         description="Secret key for session signing",
+    )
+    access_token_expire_minutes: int = Field(
+        default=30, description="Access token expiration time in minutes"
+    )
+    refresh_token_expire_days: int = Field(
+        default=7, description="Refresh token expiration time in days"
     )
 
     # -------------------------------------------------------------------------
@@ -83,6 +103,12 @@ class Settings(BaseSettings):
         description="Comma-separated list of allowed CORS origins",
     )
 
+    # Frontend URL for SSO callback redirects
+    frontend_url: Optional[str] = Field(
+        default=None,
+        description="Frontend URL for SSO callback redirects (e.g., http://192.168.1.100:3000)",
+    )
+
     @property
     def cors_origins_list(self) -> List[str]:
         """Parse CORS origins string into a list."""
@@ -90,7 +116,12 @@ class Settings(BaseSettings):
 
     @property
     def auth_enabled(self) -> bool:
-        """Check if authentication is configured."""
+        """Check if any authentication method is configured."""
+        return self.local_auth_enabled or self.oidc_enabled
+
+    @property
+    def oidc_enabled(self) -> bool:
+        """Check if OIDC authentication is configured."""
         return bool(self.oidc_issuer and self.oidc_client_id)
 
     @model_validator(mode="after")

@@ -15,7 +15,7 @@ A web application that provides visual representation of AWS infrastructure stat
 - **Terraform Integration**: Aggregate multiple Terraform state files from S3 backend to identify managed resources
 - **Status Visualization**: Color-coded status indicators (running, stopped, pending, error)
 - **Configuration Drift Detection**: Compare live AWS state against Terraform state to identify drift
-- **SSO Authentication**: Secure access via SAML/OIDC identity providers
+- **SSO Authentication**: Secure access via OIDC identity providers
 - **Dark/Light Theme**: Toggle between themes for comfortable viewing
 
 ## Architecture
@@ -378,7 +378,7 @@ The application requires the following AWS permissions:
 - **AWS SDK**: Boto3
 - **Database**: SQLAlchemy + aiosqlite
 - **Validation**: Pydantic v2
-- **Auth**: Authlib (OIDC/SAML)
+- **Auth**: Authlib (OIDC)
 
 ### Frontend
 - **Framework**: React 18.2 + TypeScript 5.3

@@ -13,6 +13,15 @@ import type {
   TerraformStatesResponse,
   DriftResponse,
   ResourceFilters,
+  AuthConfig,
+  LoginCredentials,
+  TokenResponse,
+  User,
+  OIDCLoginResponse,
+  AuthSettingsResponse,
+  OIDCSettings,
+  OIDCSettingsUpdate,
+  TestConnectionResponse,
 } from "@/types";
 
 // Create axios instance with base configuration
@@ -42,8 +51,18 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Handle unauthorized - redirect to login
-      window.location.href = "/login";
+      // Clear stored tokens on 401
+      localStorage.removeItem("auth_token");
+      localStorage.removeItem("refresh_token");
+
+      // Only redirect if not already on login page or auth routes
+      const currentPath = window.location.pathname;
+      if (
+        !currentPath.startsWith("/login") &&
+        !currentPath.startsWith("/auth")
+      ) {
+        window.location.href = "/login";
+      }
     }
     return Promise.reject(error);
   },
@@ -277,6 +296,73 @@ export async function getTopology(filters?: {
   if (filters?.vpc_id) params.append("vpc_id", filters.vpc_id);
 
   const response = await api.get("/topology", { params });
+  return response.data;
+}
+
+// =============================================================================
+// Authentication
+// =============================================================================
+
+export async function getAuthConfig(): Promise<AuthConfig> {
+  const response = await api.get("/auth/config");
+  return response.data;
+}
+
+export async function login(
+  credentials: LoginCredentials,
+): Promise<TokenResponse> {
+  const response = await api.post("/auth/login", credentials);
+  return response.data;
+}
+
+export async function refreshToken(
+  refreshTokenValue: string,
+): Promise<TokenResponse> {
+  const response = await api.post("/auth/refresh", {
+    refresh_token: refreshTokenValue,
+  });
+  return response.data;
+}
+
+export async function logout(): Promise<void> {
+  await api.post("/auth/logout");
+}
+
+export async function getCurrentUser(): Promise<User> {
+  const response = await api.get("/auth/me");
+  return response.data;
+}
+
+export async function initiateOIDCLogin(): Promise<OIDCLoginResponse> {
+  const response = await api.get("/auth/oidc/login");
+  return response.data;
+}
+
+// =============================================================================
+// Settings (Admin only)
+// =============================================================================
+
+export async function getAuthSettings(): Promise<AuthSettingsResponse> {
+  const response = await api.get("/settings");
+  return response.data;
+}
+
+export async function getOIDCSettings(): Promise<OIDCSettings> {
+  const response = await api.get("/settings/oidc");
+  return response.data;
+}
+
+export async function updateOIDCSettings(
+  settings: OIDCSettingsUpdate,
+): Promise<OIDCSettings> {
+  const response = await api.put("/settings/oidc", settings);
+  return response.data;
+}
+
+export async function testOIDCConnection(
+  issuer: string,
+): Promise<TestConnectionResponse> {
+  const response = await api.post("/settings/oidc/test", { issuer });
   return response.data;
 }
 
