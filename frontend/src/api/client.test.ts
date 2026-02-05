@@ -21,6 +21,16 @@ import {
   getTerraformStates,
   getDrift,
   getTopology,
+  getAuthConfig,
+  login,
+  refreshToken,
+  logout,
+  getCurrentUser,
+  initiateOIDCLogin,
+  getAuthSettings,
+  getOIDCSettings,
+  updateOIDCSettings,
+  testOIDCConnection,
 } from "./client";
 
 // Mock axios - type assertion for self-reference
@@ -28,6 +38,7 @@ interface MockAxiosInstance {
   create: ReturnType<typeof vi.fn>;
   get: ReturnType<typeof vi.fn>;
   post: ReturnType<typeof vi.fn>;
+  put: ReturnType<typeof vi.fn>;
   interceptors: {
     request: { use: ReturnType<typeof vi.fn> };
     response: { use: ReturnType<typeof vi.fn> };
@@ -39,6 +50,7 @@ vi.mock("axios", () => {
     create: vi.fn(),
     get: vi.fn(),
     post: vi.fn(),
+    put: vi.fn(),
     interceptors: {
       request: { use: vi.fn() },
       response: { use: vi.fn() },
@@ -52,6 +64,7 @@ const mockedAxios = axios as unknown as {
   create: ReturnType<typeof vi.fn>;
   get: ReturnType<typeof vi.fn>;
   post: ReturnType<typeof vi.fn>;
+  put: ReturnType<typeof vi.fn>;
 };
 
 describe("API Client", () => {
@@ -447,6 +460,247 @@ describe("API Client", () => {
 
       const call = mockedAxios.get.mock.calls[0];
       expect(call[1].params.get("vpc_id")).toBe("vpc-123");
+    });
+  });
+
+  // ===========================================================================
+  // Authentication API
+  // ===========================================================================
+
+  describe("getAuthConfig", () => {
+    it("fetches auth configuration", async () => {
+      const mockResponse = {
+        data: {
+          local_auth_enabled: true,
+          oidc_enabled: false,
+          oidc_issuer: null,
+          oidc_display_name: null,
+        },
+      };
+      mockedAxios.get.mockResolvedValue(mockResponse);
+
+      const result = await getAuthConfig();
+
+      expect(mockedAxios.get).toHaveBeenCalledWith("/auth/config");
+      expect(result).toEqual(mockResponse.data);
+    });
+  });
+
+  describe("login", () => {
+    it("sends login credentials", async () => {
+      const mockResponse = {
+        data: {
+          access_token: "abc123",
+          refresh_token: "def456",
+          token_type: "bearer",
+          expires_in: 3600,
+        },
+      };
+      mockedAxios.post.mockResolvedValue(mockResponse);
+
+      const result = await login({ username: "admin", password: "pass123" });
+
+      expect(mockedAxios.post).toHaveBeenCalledWith("/auth/login", {
+        username: "admin",
+        password: "pass123",
+      });
+      expect(result).toEqual(mockResponse.data);
+    });
+  });
+
+  describe("refreshToken", () => {
+    it("sends refresh token request", async () => {
+      const mockResponse = {
+        data: {
+          access_token: "new-token",
+          refresh_token: "new-refresh",
+          token_type: "bearer",
+          expires_in: 3600,
+        },
+      };
+      mockedAxios.post.mockResolvedValue(mockResponse);
+
+      const result = await refreshToken("old-refresh-token");
+
+      expect(mockedAxios.post).toHaveBeenCalledWith("/auth/refresh", {
+        refresh_token: "old-refresh-token",
+      });
+      expect(result).toEqual(mockResponse.data);
+    });
+  });
+
+  describe("logout", () => {
+    it("sends logout request", async () => {
+      mockedAxios.post.mockResolvedValue({ data: {} });
+
+      await logout();
+
+      expect(mockedAxios.post).toHaveBeenCalledWith("/auth/logout");
+    });
+  });
+
+  describe("getCurrentUser", () => {
+    it("fetches current user", async () => {
+      const mockResponse = {
+        data: {
+          id: 1,
+          username: "admin",
+          email: null,
+          display_name: "Admin User",
+          auth_provider: "local",
+          is_active: true,
+          is_admin: true,
+          last_login_at: "2024-01-15T12:00:00Z",
+          created_at: "2024-01-01T00:00:00Z",
+        },
+      };
+      mockedAxios.get.mockResolvedValue(mockResponse);
+
+      const result = await getCurrentUser();
+
+      expect(mockedAxios.get).toHaveBeenCalledWith("/auth/me");
+      expect(result).toEqual(mockResponse.data);
+    });
+  });
+
+  describe("initiateOIDCLogin", () => {
+    it("initiates OIDC login flow", async () => {
+      const mockResponse = {
+        data: {
+          auth_url: "https://idp.example.com/authorize?client_id=abc",
+          state: "random-state-value",
+        },
+      };
+      mockedAxios.get.mockResolvedValue(mockResponse);
+
+      const result = await initiateOIDCLogin();
+
+      expect(mockedAxios.get).toHaveBeenCalledWith("/auth/oidc/login");
+      expect(result).toEqual(mockResponse.data);
+    });
+  });
+
+  // ===========================================================================
+  // Settings API (Admin)
+  // ===========================================================================
+
+  describe("getAuthSettings", () => {
+    it("fetches auth settings", async () => {
+      const mockResponse = {
+        data: {
+          local_auth_enabled: true,
+          oidc: {
+            enabled: false,
+            issuer: null,
+            client_id: null,
+            client_secret_configured: false,
+            display_name: "OIDC",
+            updated_at: null,
+            updated_by: null,
+          },
+        },
+      };
+      mockedAxios.get.mockResolvedValue(mockResponse);
+
+      const result = await getAuthSettings();
+
+      expect(mockedAxios.get).toHaveBeenCalledWith("/settings");
+      expect(result).toEqual(mockResponse.data);
+    });
+  });
+
+  describe("getOIDCSettings", () => {
+    it("fetches OIDC settings", async () => {
+      const mockResponse = {
+        data: {
+          enabled: true,
+          issuer: "https://idp.example.com",
+          client_id: "my-client",
+          client_secret_configured: true,
+          display_name: "Corporate SSO",
+          updated_at: "2024-01-15T12:00:00Z",
+          updated_by: "admin",
+        },
+      };
+      mockedAxios.get.mockResolvedValue(mockResponse);
+
+      const result = await getOIDCSettings();
+
+      expect(mockedAxios.get).toHaveBeenCalledWith("/settings/oidc");
+      expect(result).toEqual(mockResponse.data);
+    });
+  });
+
+  describe("updateOIDCSettings", () => {
+    it("updates OIDC settings", async () => {
+      const update = {
+        enabled: true,
+        issuer: "https://idp.example.com",
+        client_id: "new-client",
+        display_name: "New SSO",
+      };
+      const mockResponse = {
+        data: {
+          enabled: true,
+          issuer: "https://idp.example.com",
+          client_id: "new-client",
+          client_secret_configured: false,
+          display_name: "New SSO",
+          updated_at: "2024-01-15T12:00:00Z",
+          updated_by: "admin",
+        },
+      };
+      mockedAxios.put.mockResolvedValue(mockResponse);
+
+      const result = await updateOIDCSettings(update);
+
+      expect(mockedAxios.put).toHaveBeenCalledWith("/settings/oidc", update);
+      expect(result).toEqual(mockResponse.data);
+    });
+
+    it("includes client_secret when provided", async () => {
+      const update = {
+        enabled: true,
+        client_secret: "new-secret",
+      };
+      mockedAxios.put.mockResolvedValue({ data: {} });
+
+      await updateOIDCSettings(update);
+
+      expect(mockedAxios.put).toHaveBeenCalledWith("/settings/oidc", update);
+    });
+  });
+
+  describe("testOIDCConnection", () => {
+    it("tests OIDC connection", async () => {
+      const mockResponse = {
+        data: {
+          success: true,
+          message: "Successfully connected to OIDC provider",
+        },
+      };
+      mockedAxios.post.mockResolvedValue(mockResponse);
+
+      const result = await testOIDCConnection("https://idp.example.com");
+
+      expect(mockedAxios.post).toHaveBeenCalledWith("/settings/oidc/test", {
+        issuer: "https://idp.example.com",
+      });
+      expect(result).toEqual(mockResponse.data);
+    });
+
+    it("returns failure for invalid issuer", async () => {
+      const mockResponse = {
+        data: {
+          success: false,
+          message: "Failed to connect to OIDC provider",
+        },
+      };
+      mockedAxios.post.mockResolvedValue(mockResponse);
+
+      const result = await testOIDCConnection("https://invalid.example.com");
+
+      expect(result.success).toBe(false);
     });
   });
 });
