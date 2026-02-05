@@ -10,7 +10,7 @@ from typing import Optional
 from urllib.parse import urlencode
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -64,7 +64,9 @@ async def get_auth_config(db: AsyncSession = Depends(get_db)):
         local_auth_enabled=settings.local_auth_enabled,
         oidc_enabled=oidc_config["enabled"] and bool(oidc_config["issuer"]),
         oidc_issuer=oidc_config["issuer"] if oidc_config["enabled"] else None,
-        oidc_display_name=oidc_config.get("display_name") if oidc_config["enabled"] else None,
+        oidc_display_name=(
+            oidc_config.get("display_name") if oidc_config["enabled"] else None
+        ),
     )
 
 
@@ -179,10 +181,10 @@ async def get_current_user(
 # =============================================================================
 
 # Cache for OIDC discovery documents
-_oidc_discovery_cache: dict[str, dict] = {}
+_oidc_discovery_cache: dict[str, dict[str, object]] = {}
 
 
-async def get_oidc_discovery(issuer: str) -> dict:
+async def get_oidc_discovery(issuer: str) -> dict[str, object]:
     """Fetch OIDC discovery document from issuer's well-known endpoint."""
     if issuer in _oidc_discovery_cache:
         return _oidc_discovery_cache[issuer]
@@ -196,9 +198,10 @@ async def get_oidc_discovery(issuer: str) -> dict:
             response = await client.get(discovery_url, timeout=10.0)
             response.raise_for_status()
             discovery = response.json()
-            _oidc_discovery_cache[issuer] = discovery
+            data: dict[str, object] = discovery
+            _oidc_discovery_cache[issuer] = data
             logger.info(f"Fetched OIDC discovery from {discovery_url}")
-            return discovery
+            return data
         except httpx.HTTPError as e:
             logger.error(f"Failed to fetch OIDC discovery from {discovery_url}: {e}")
             raise HTTPException(
@@ -332,7 +335,9 @@ async def oidc_callback(
     user = await get_user_by_external_id(db, external_id, "oidc")
     if not user:
         # Create new user
-        username = userinfo.get("preferred_username") or userinfo.get("email") or external_id
+        username = (
+            userinfo.get("preferred_username") or userinfo.get("email") or external_id
+        )
         user = await create_federated_user(
             db,
             username=username,
@@ -351,14 +356,20 @@ async def oidc_callback(
     # Redirect to frontend with tokens in URL fragment
     # Using fragment (#) instead of query params for security (fragments aren't sent to server)
     # Use frontend_url if configured, otherwise fall back to first CORS origin
-    frontend_base = settings.frontend_url or (settings.cors_origins_list[0] if settings.cors_origins_list else "")
+    frontend_base = settings.frontend_url or (
+        settings.cors_origins_list[0] if settings.cors_origins_list else ""
+    )
     frontend_callback = f"{frontend_base}/auth/callback"
-    token_params = urlencode({
-        "access_token": access_token,
-        "refresh_token": refresh_token,
-        "token_type": "bearer",
-        "expires_in": settings.access_token_expire_minutes * 60,
-    })
+    token_params = urlencode(
+        {
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+            "token_type": "bearer",
+            "expires_in": settings.access_token_expire_minutes * 60,
+        }
+    )
     redirect_url = f"{frontend_callback}#{token_params}"
-    logger.info(f"OIDC auth successful for user {user.username}, redirecting to {frontend_base}")
+    logger.info(
+        f"OIDC auth successful for user {user.username}, redirecting to {frontend_base}"
+    )
     return RedirectResponse(url=redirect_url, status_code=status.HTTP_302_FOUND)

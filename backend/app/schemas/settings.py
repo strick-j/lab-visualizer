@@ -7,7 +7,7 @@ Defines request/response models for auth settings endpoints.
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, Field, HttpUrl
+from pydantic import BaseModel, Field
 
 
 class OIDCSettingsUpdate(BaseModel):
@@ -19,9 +19,7 @@ class OIDCSettingsUpdate(BaseModel):
         description="OIDC issuer URL (e.g., https://your-domain.okta.com)",
         max_length=500,
     )
-    client_id: Optional[str] = Field(
-        None, description="OIDC client ID", max_length=255
-    )
+    client_id: Optional[str] = Field(None, description="OIDC client ID", max_length=255)
     client_secret: Optional[str] = Field(
         None, description="OIDC client secret", max_length=500
     )

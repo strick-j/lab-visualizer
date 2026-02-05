@@ -40,7 +40,9 @@ class InternetGatewayCollector(BaseCollector):
             logger.info(f"Collected {len(igws)} Internet Gateways from {self.region}")
 
         except ClientError as e:
-            self._handle_client_error(e, f"Internet Gateway collection in {self.region}")
+            self._handle_client_error(
+                e, f"Internet Gateway collection in {self.region}"
+            )
         except Exception as e:
             logger.exception(f"Unexpected error collecting Internet Gateways: {e}")
 

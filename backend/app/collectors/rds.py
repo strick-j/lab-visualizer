@@ -127,9 +127,7 @@ class RDSCollector(BaseCollector):
             logger.warning(f"Error getting RDS tags: {e}")
             return {}
 
-    async def collect_instance(
-        self, db_identifier: str
-    ) -> Optional[Dict[str, Any]]:
+    async def collect_instance(self, db_identifier: str) -> Optional[Dict[str, Any]]:
         """
         Collect a specific RDS instance by identifier.
 

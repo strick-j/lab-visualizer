@@ -24,6 +24,7 @@ from app.collectors.vpc import VPCCollector
 from app.config import get_settings
 from app.models.database import get_db
 from app.models.resources import (
+    VPC,
     EC2Instance,
     ElasticIP,
     InternetGateway,
@@ -32,7 +33,6 @@ from app.models.resources import (
     Region,
     Subnet,
     SyncStatus,
-    VPC,
 )
 from app.parsers.terraform import TerraformStateAggregator
 from app.schemas.resources import (
@@ -101,8 +101,7 @@ async def _get_ec2_counts(db: AsyncSession) -> ResourceCount:
     for display_status, states in state_mapping.items():
         result = await db.execute(
             select(func.count(EC2Instance.id)).where(
-                EC2Instance.state.in_(states),
-                EC2Instance.is_deleted == False
+                EC2Instance.state.in_(states), EC2Instance.is_deleted == False
             )
         )
         counts[display_status] = result.scalar_one()
@@ -126,8 +125,7 @@ async def _get_rds_counts(db: AsyncSession) -> ResourceCount:
     for display_status, statuses in status_mapping.items():
         result = await db.execute(
             select(func.count(RDSInstance.id)).where(
-                RDSInstance.status.in_(statuses),
-                RDSInstance.is_deleted == False
+                RDSInstance.status.in_(statuses), RDSInstance.is_deleted == False
             )
         )
         counts[display_status] = result.scalar_one()
@@ -241,9 +239,7 @@ async def _get_or_create_region(db: AsyncSession, region_name: str) -> Region:
     return region
 
 
-async def _sync_ec2_instances(
-    db: AsyncSession, instances: list, region_id: int
-) -> int:
+async def _sync_ec2_instances(db: AsyncSession, instances: list, region_id: int) -> int:
     """Sync EC2 instances to database, marking deleted ones."""
     count = 0
 
@@ -311,7 +307,7 @@ async def _sync_ec2_instances(
         result = await db.execute(
             select(EC2Instance).where(
                 EC2Instance.instance_id.in_(deleted_ids),
-                EC2Instance.region_id == region_id
+                EC2Instance.region_id == region_id,
             )
         )
         for instance in result.scalars():
@@ -324,15 +320,15 @@ async def _sync_ec2_instances(
     return count
 
 
-async def _sync_rds_instances(
-    db: AsyncSession, instances: list, region_id: int
-) -> int:
+async def _sync_rds_instances(db: AsyncSession, instances: list, region_id: int) -> int:
     """Sync RDS instances to database, marking deleted ones."""
     count = 0
 
     # Get all existing instance identifiers for this region
     result = await db.execute(
-        select(RDSInstance.db_instance_identifier).where(RDSInstance.region_id == region_id)
+        select(RDSInstance.db_instance_identifier).where(
+            RDSInstance.region_id == region_id
+        )
     )
     existing_ids = set(row[0] for row in result.all())
 
@@ -396,14 +392,16 @@ async def _sync_rds_instances(
         result = await db.execute(
             select(RDSInstance).where(
                 RDSInstance.db_instance_identifier.in_(deleted_ids),
-                RDSInstance.region_id == region_id
+                RDSInstance.region_id == region_id,
             )
         )
         for instance in result.scalars():
             if not instance.is_deleted:
                 instance.is_deleted = True
                 instance.deleted_at = datetime.now(timezone.utc)
-                logger.info(f"Marked RDS instance as deleted: {instance.db_instance_identifier}")
+                logger.info(
+                    f"Marked RDS instance as deleted: {instance.db_instance_identifier}"
+                )
 
     await db.flush()
     return count
@@ -414,9 +412,7 @@ async def _sync_vpcs(db: AsyncSession, vpcs: list, region_id: int) -> int:
     count = 0
 
     # Get all existing VPC IDs for this region
-    result = await db.execute(
-        select(VPC.vpc_id).where(VPC.region_id == region_id)
-    )
+    result = await db.execute(select(VPC.vpc_id).where(VPC.region_id == region_id))
     existing_ids = set(row[0] for row in result.all())
 
     # Track which VPCs we see from AWS
@@ -427,9 +423,7 @@ async def _sync_vpcs(db: AsyncSession, vpcs: list, region_id: int) -> int:
         seen_ids.add(vpc_id)
 
         # Check if VPC exists
-        result = await db.execute(
-            select(VPC).where(VPC.vpc_id == vpc_id)
-        )
+        result = await db.execute(select(VPC).where(VPC.vpc_id == vpc_id))
         existing = result.scalar_one_or_none()
 
         if existing:
@@ -465,10 +459,7 @@ async def _sync_vpcs(db: AsyncSession, vpcs: list, region_id: int) -> int:
     deleted_ids = existing_ids - seen_ids
     if deleted_ids:
         result = await db.execute(
-            select(VPC).where(
-                VPC.vpc_id.in_(deleted_ids),
-                VPC.region_id == region_id
-            )
+            select(VPC).where(VPC.vpc_id.in_(deleted_ids), VPC.region_id == region_id)
         )
         for vpc in result.scalars():
             if not vpc.is_deleted:
@@ -498,9 +489,7 @@ async def _sync_subnets(db: AsyncSession, subnets: list, region_id: int) -> int:
         seen_ids.add(subnet_id)
 
         # Check if Subnet exists
-        result = await db.execute(
-            select(Subnet).where(Subnet.subnet_id == subnet_id)
-        )
+        result = await db.execute(select(Subnet).where(Subnet.subnet_id == subnet_id))
         existing = result.scalar_one_or_none()
 
         if existing:
@@ -512,7 +501,9 @@ async def _sync_subnets(db: AsyncSession, subnets: list, region_id: int) -> int:
             existing.subnet_type = subnet_data["subnet_type"]
             existing.state = subnet_data["state"]
             existing.available_ip_count = subnet_data.get("available_ip_count", 0)
-            existing.map_public_ip_on_launch = subnet_data.get("map_public_ip_on_launch", False)
+            existing.map_public_ip_on_launch = subnet_data.get(
+                "map_public_ip_on_launch", False
+            )
             existing.tags = json.dumps(subnet_data.get("tags", {}))
             existing.is_deleted = False
             existing.deleted_at = None
@@ -528,7 +519,9 @@ async def _sync_subnets(db: AsyncSession, subnets: list, region_id: int) -> int:
                 subnet_type=subnet_data["subnet_type"],
                 state=subnet_data["state"],
                 available_ip_count=subnet_data.get("available_ip_count", 0),
-                map_public_ip_on_launch=subnet_data.get("map_public_ip_on_launch", False),
+                map_public_ip_on_launch=subnet_data.get(
+                    "map_public_ip_on_launch", False
+                ),
                 tags=json.dumps(subnet_data.get("tags", {})),
                 is_deleted=False,
             )
@@ -541,8 +534,7 @@ async def _sync_subnets(db: AsyncSession, subnets: list, region_id: int) -> int:
     if deleted_ids:
         result = await db.execute(
             select(Subnet).where(
-                Subnet.subnet_id.in_(deleted_ids),
-                Subnet.region_id == region_id
+                Subnet.subnet_id.in_(deleted_ids), Subnet.region_id == region_id
             )
         )
         for subnet in result.scalars():
@@ -607,7 +599,7 @@ async def _sync_internet_gateways(db: AsyncSession, igws: list, region_id: int) 
         result = await db.execute(
             select(InternetGateway).where(
                 InternetGateway.igw_id.in_(deleted_ids),
-                InternetGateway.region_id == region_id
+                InternetGateway.region_id == region_id,
             )
         )
         for igw in result.scalars():
@@ -620,7 +612,9 @@ async def _sync_internet_gateways(db: AsyncSession, igws: list, region_id: int) 
     return count
 
 
-async def _sync_nat_gateways(db: AsyncSession, nat_gateways: list, region_id: int) -> int:
+async def _sync_nat_gateways(
+    db: AsyncSession, nat_gateways: list, region_id: int
+) -> int:
     """Sync NAT Gateways to database, marking deleted ones."""
     count = 0
 
@@ -684,7 +678,7 @@ async def _sync_nat_gateways(db: AsyncSession, nat_gateways: list, region_id: in
         result = await db.execute(
             select(NATGateway).where(
                 NATGateway.nat_gateway_id.in_(deleted_ids),
-                NATGateway.region_id == region_id
+                NATGateway.region_id == region_id,
             )
         )
         for nat_gw in result.scalars():
@@ -757,7 +751,7 @@ async def _sync_elastic_ips(db: AsyncSession, eips: list, region_id: int) -> int
         result = await db.execute(
             select(ElasticIP).where(
                 ElasticIP.allocation_id.in_(deleted_ids),
-                ElasticIP.region_id == region_id
+                ElasticIP.region_id == region_id,
             )
         )
         for eip in result.scalars():
@@ -836,7 +830,9 @@ async def _sync_terraform_state(db: AsyncSession) -> int:
         # Update Internet Gateways
         for tf_resource in tf_resources.get("igw", []):
             result = await db.execute(
-                select(InternetGateway).where(InternetGateway.igw_id == tf_resource.resource_id)
+                select(InternetGateway).where(
+                    InternetGateway.igw_id == tf_resource.resource_id
+                )
             )
             igw = result.scalar_one_or_none()
             if igw:
@@ -848,7 +844,9 @@ async def _sync_terraform_state(db: AsyncSession) -> int:
         # Update NAT Gateways
         for tf_resource in tf_resources.get("nat_gateway", []):
             result = await db.execute(
-                select(NATGateway).where(NATGateway.nat_gateway_id == tf_resource.resource_id)
+                select(NATGateway).where(
+                    NATGateway.nat_gateway_id == tf_resource.resource_id
+                )
             )
             nat_gw = result.scalar_one_or_none()
             if nat_gw:
@@ -860,7 +858,9 @@ async def _sync_terraform_state(db: AsyncSession) -> int:
         # Update Elastic IPs
         for tf_resource in tf_resources.get("eip", []):
             result = await db.execute(
-                select(ElasticIP).where(ElasticIP.allocation_id == tf_resource.resource_id)
+                select(ElasticIP).where(
+                    ElasticIP.allocation_id == tf_resource.resource_id
+                )
             )
             eip = result.scalar_one_or_none()
             if eip:

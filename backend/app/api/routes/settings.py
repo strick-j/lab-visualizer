@@ -21,10 +21,7 @@ from app.schemas.settings import (
     TestConnectionRequest,
     TestConnectionResponse,
 )
-from app.services.settings import (
-    get_or_create_auth_settings,
-    update_oidc_settings,
-)
+from app.services.settings import get_or_create_auth_settings, update_oidc_settings
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -120,7 +117,9 @@ async def test_oidc_connection(
 ):
     """Test OIDC connection by fetching the discovery document. Admin only."""
     try:
-        discovery_url = f"{test_data.issuer.rstrip('/')}/.well-known/openid-configuration"
+        discovery_url = (
+            f"{test_data.issuer.rstrip('/')}/.well-known/openid-configuration"
+        )
 
         async with httpx.AsyncClient(timeout=10.0) as client:
             response = await client.get(discovery_url)

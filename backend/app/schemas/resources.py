@@ -10,7 +10,6 @@ from typing import Any, Dict, Generic, List, Optional, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field
 
-
 # =============================================================================
 # Enums
 # =============================================================================

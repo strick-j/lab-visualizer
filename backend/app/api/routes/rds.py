@@ -29,7 +29,9 @@ router = APIRouter()
 
 @router.get("/rds", response_model=ListResponse[RDSInstanceResponse])
 async def list_rds_instances(
-    status: Optional[DisplayStatus] = Query(None, description="Filter by display status"),
+    status: Optional[DisplayStatus] = Query(
+        None, description="Filter by display status"
+    ),
     region: Optional[str] = Query(None, description="Filter by AWS region"),
     search: Optional[str] = Query(None, description="Search by name or identifier"),
     engine: Optional[str] = Query(None, description="Filter by database engine"),
@@ -50,8 +52,10 @@ async def list_rds_instances(
         List of RDS instances matching the filters
     """
     # Build query - exclude deleted instances by default
-    query = select(RDSInstance).options(joinedload(RDSInstance.region)).where(
-        RDSInstance.is_deleted == False
+    query = (
+        select(RDSInstance)
+        .options(joinedload(RDSInstance.region))
+        .where(RDSInstance.is_deleted == False)
     )
 
     # Apply filters
@@ -129,7 +133,11 @@ def _get_statuses_for_display(status: DisplayStatus) -> list[str]:
         DisplayStatus.ACTIVE: ["available"],
         DisplayStatus.INACTIVE: ["stopped"],
         DisplayStatus.TRANSITIONING: ["starting", "stopping", "creating", "deleting"],
-        DisplayStatus.ERROR: ["failed", "incompatible-restore", "incompatible-parameters"],
+        DisplayStatus.ERROR: [
+            "failed",
+            "incompatible-restore",
+            "incompatible-parameters",
+        ],
         DisplayStatus.UNKNOWN: [],
     }
     return mapping.get(status, [])

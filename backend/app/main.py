@@ -11,22 +11,9 @@ from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.deps import get_current_user
-
-from app.api.routes import (
-    auth,
-    ec2,
-    eip,
-    health,
-    igw,
-    nat_gateway,
-    rds,
-    resources,
-    settings as settings_routes,
-    subnet,
-    terraform,
-    topology,
-    vpc,
-)
+from app.api.routes import auth, ec2, eip, health, igw, nat_gateway, rds, resources
+from app.api.routes import settings as settings_routes
+from app.api.routes import subnet, terraform, topology, vpc
 from app.config import get_settings
 from app.models.database import init_db
 

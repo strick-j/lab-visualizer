@@ -49,7 +49,7 @@ export function LoginPage() {
       sessionStorage.setItem('oidc_state', response.state);
       // Redirect to IdP
       window.location.href = response.auth_url;
-    } catch (err) {
+    } catch {
       setLocalError('Failed to initiate OIDC login');
     }
   };

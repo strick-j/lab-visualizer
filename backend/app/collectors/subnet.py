@@ -17,7 +17,9 @@ logger = logging.getLogger(__name__)
 class SubnetCollector(BaseCollector):
     """Collector for Subnets."""
 
-    async def collect(self, route_tables: Optional[List[Dict[str, Any]]] = None) -> List[Dict[str, Any]]:
+    async def collect(
+        self, route_tables: Optional[List[Dict[str, Any]]] = None
+    ) -> List[Dict[str, Any]]:
         """
         Collect all Subnets from the configured region.
 
@@ -105,7 +107,9 @@ class SubnetCollector(BaseCollector):
                             gateway_id = route.get("GatewayId", "")
 
                             # Public subnet has route to IGW for 0.0.0.0/0
-                            if dest_cidr == "0.0.0.0/0" and gateway_id.startswith("igw-"):
+                            if dest_cidr == "0.0.0.0/0" and gateway_id.startswith(
+                                "igw-"
+                            ):
                                 return "public"
 
                         # Explicit route table without IGW route = private
@@ -121,7 +125,9 @@ class SubnetCollector(BaseCollector):
                             gateway_id = route.get("GatewayId", "")
 
                             # Public subnet has route to IGW for 0.0.0.0/0
-                            if dest_cidr == "0.0.0.0/0" and gateway_id.startswith("igw-"):
+                            if dest_cidr == "0.0.0.0/0" and gateway_id.startswith(
+                                "igw-"
+                            ):
                                 return "public"
 
                         # Main route table without IGW route = private

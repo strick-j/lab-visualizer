@@ -142,9 +142,7 @@ class Settings(BaseSettings):
                     "Set SESSION_SECRET environment variable to a secure random value."
                 )
             else:
-                logger.debug(
-                    "Using default session_secret (acceptable in debug mode)"
-                )
+                logger.debug("Using default session_secret (acceptable in debug mode)")
         return self
 
 

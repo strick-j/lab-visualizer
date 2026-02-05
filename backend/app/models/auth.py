@@ -22,7 +22,9 @@ class User(Base):
 
     # Identity
     username: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
-    email: Mapped[Optional[str]] = mapped_column(String(255), unique=True, nullable=True)
+    email: Mapped[Optional[str]] = mapped_column(
+        String(255), unique=True, nullable=True
+    )
 
     # Local auth (password hash, only for local users)
     password_hash: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
@@ -73,7 +75,9 @@ class Session(Base):
 
     # Expiration
     expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
-    refresh_expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    refresh_expires_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime, nullable=True
+    )
 
     # Status
     is_revoked: Mapped[bool] = mapped_column(Boolean, default=False)
@@ -99,7 +103,9 @@ class AuthSettings(Base):
     oidc_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
     oidc_issuer: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     oidc_client_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    oidc_client_secret: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    oidc_client_secret: Mapped[Optional[str]] = mapped_column(
+        String(500), nullable=True
+    )
     oidc_display_name: Mapped[Optional[str]] = mapped_column(
         String(100), nullable=True, default="OIDC"
     )

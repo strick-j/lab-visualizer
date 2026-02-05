@@ -29,13 +29,17 @@ router = APIRouter()
 
 @router.get("/nat-gateways", response_model=ListResponse[NATGatewayResponse])
 async def list_nat_gateways(
-    status: Optional[DisplayStatus] = Query(None, description="Filter by display status"),
+    status: Optional[DisplayStatus] = Query(
+        None, description="Filter by display status"
+    ),
     region: Optional[str] = Query(None, description="Filter by AWS region"),
     search: Optional[str] = Query(None, description="Search by name or NAT Gateway ID"),
     tf_managed: Optional[bool] = Query(None, description="Filter by Terraform managed"),
     vpc_id: Optional[str] = Query(None, description="Filter by VPC ID"),
     subnet_id: Optional[str] = Query(None, description="Filter by Subnet ID"),
-    connectivity_type: Optional[str] = Query(None, description="Filter by connectivity type (public/private)"),
+    connectivity_type: Optional[str] = Query(
+        None, description="Filter by connectivity type (public/private)"
+    ),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -54,7 +58,11 @@ async def list_nat_gateways(
         List of NAT Gateways matching the filters
     """
     # Build query - exclude deleted instances by default
-    query = select(NATGateway).options(joinedload(NATGateway.region)).where(NATGateway.is_deleted == False)
+    query = (
+        select(NATGateway)
+        .options(joinedload(NATGateway.region))
+        .where(NATGateway.is_deleted == False)
+    )
 
     # Apply filters
     if status:
@@ -67,7 +75,8 @@ async def list_nat_gateways(
     if search:
         search_term = f"%{search}%"
         query = query.where(
-            (NATGateway.name.ilike(search_term)) | (NATGateway.nat_gateway_id.ilike(search_term))
+            (NATGateway.name.ilike(search_term))
+            | (NATGateway.nat_gateway_id.ilike(search_term))
         )
 
     if tf_managed is not None:
@@ -83,7 +92,9 @@ async def list_nat_gateways(
         query = query.where(NATGateway.connectivity_type == connectivity_type)
 
     # Execute query
-    result = await db.execute(query.order_by(NATGateway.name, NATGateway.nat_gateway_id))
+    result = await db.execute(
+        query.order_by(NATGateway.name, NATGateway.nat_gateway_id)
+    )
     nat_gateways = result.scalars().unique().all()
 
     # Convert to response format
@@ -121,7 +132,9 @@ async def get_nat_gateway(
     nat_gw = result.scalar_one_or_none()
 
     if not nat_gw:
-        raise HTTPException(status_code=404, detail=f"NAT Gateway not found: {nat_gateway_id}")
+        raise HTTPException(
+            status_code=404, detail=f"NAT Gateway not found: {nat_gateway_id}"
+        )
 
     return _nat_gateway_to_detail(nat_gw)
 

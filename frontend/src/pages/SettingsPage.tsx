@@ -35,7 +35,7 @@ export function SettingsPage() {
       setError(null);
       const data = await getAuthSettings();
       setSettings(data);
-    } catch (err) {
+    } catch {
       setError('Failed to load settings');
     } finally {
       setIsLoading(false);
@@ -158,7 +158,7 @@ function OIDCSettingsForm({ settings, onUpdate }: OIDCSettingsFormProps) {
     try {
       const result = await testOIDCConnection(issuer);
       setTestResult(result);
-    } catch (err) {
+    } catch {
       setTestResult({ success: false, message: 'Failed to test connection' });
     } finally {
       setIsTesting(false);

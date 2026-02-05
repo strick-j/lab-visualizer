@@ -78,7 +78,9 @@ async def list_terraform_states(db: AsyncSession = Depends(get_db)):
 
     except Exception as e:
         logger.exception("Error fetching Terraform states")
-        raise HTTPException(status_code=500, detail=f"Failed to fetch Terraform states: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to fetch Terraform states: {str(e)}"
+        )
 
 
 @router.get("/drift", response_model=DriftResponse)

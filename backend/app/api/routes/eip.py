@@ -29,12 +29,20 @@ router = APIRouter()
 
 @router.get("/elastic-ips", response_model=ListResponse[ElasticIPResponse])
 async def list_elastic_ips(
-    status: Optional[DisplayStatus] = Query(None, description="Filter by display status"),
+    status: Optional[DisplayStatus] = Query(
+        None, description="Filter by display status"
+    ),
     region: Optional[str] = Query(None, description="Filter by AWS region"),
-    search: Optional[str] = Query(None, description="Search by name, allocation ID, or public IP"),
+    search: Optional[str] = Query(
+        None, description="Search by name, allocation ID, or public IP"
+    ),
     tf_managed: Optional[bool] = Query(None, description="Filter by Terraform managed"),
-    instance_id: Optional[str] = Query(None, description="Filter by associated instance ID"),
-    associated: Optional[bool] = Query(None, description="Filter by association status"),
+    instance_id: Optional[str] = Query(
+        None, description="Filter by associated instance ID"
+    ),
+    associated: Optional[bool] = Query(
+        None, description="Filter by association status"
+    ),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -52,7 +60,11 @@ async def list_elastic_ips(
         List of Elastic IPs matching the filters
     """
     # Build query - exclude deleted instances by default
-    query = select(ElasticIP).options(joinedload(ElasticIP.region)).where(ElasticIP.is_deleted == False)
+    query = (
+        select(ElasticIP)
+        .options(joinedload(ElasticIP.region))
+        .where(ElasticIP.is_deleted == False)
+    )
 
     # Apply filters
     if status:
@@ -124,7 +136,9 @@ async def get_elastic_ip(
     eip = result.scalar_one_or_none()
 
     if not eip:
-        raise HTTPException(status_code=404, detail=f"Elastic IP not found: {allocation_id}")
+        raise HTTPException(
+            status_code=404, detail=f"Elastic IP not found: {allocation_id}"
+        )
 
     return _elastic_ip_to_detail(eip)
 

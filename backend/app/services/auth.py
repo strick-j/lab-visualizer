@@ -26,12 +26,14 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 def hash_password(password: str) -> str:
     """Hash a password using bcrypt."""
-    return pwd_context.hash(password)
+    result: str = pwd_context.hash(password)
+    return result
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a password against a hash."""
-    return pwd_context.verify(plain_password, hashed_password)
+    result: bool = pwd_context.verify(plain_password, hashed_password)
+    return result
 
 
 def hash_token(token: str) -> str:
@@ -47,19 +49,22 @@ def generate_token() -> str:
 async def get_user_by_username(db: AsyncSession, username: str) -> Optional[User]:
     """Get a user by username."""
     result = await db.execute(select(User).where(User.username == username))
-    return result.scalar_one_or_none()
+    user: Optional[User] = result.scalar_one_or_none()
+    return user
 
 
 async def get_user_by_email(db: AsyncSession, email: str) -> Optional[User]:
     """Get a user by email."""
     result = await db.execute(select(User).where(User.email == email))
-    return result.scalar_one_or_none()
+    user: Optional[User] = result.scalar_one_or_none()
+    return user
 
 
 async def get_user_by_id(db: AsyncSession, user_id: int) -> Optional[User]:
     """Get a user by ID."""
     result = await db.execute(select(User).where(User.id == user_id))
-    return result.scalar_one_or_none()
+    user: Optional[User] = result.scalar_one_or_none()
+    return user
 
 
 async def get_user_by_external_id(
@@ -71,7 +76,8 @@ async def get_user_by_external_id(
             User.external_id == external_id, User.auth_provider == provider
         )
     )
-    return result.scalar_one_or_none()
+    user: Optional[User] = result.scalar_one_or_none()
+    return user
 
 
 async def create_local_user(
@@ -130,13 +136,17 @@ async def authenticate_local_user(
         logger.warning(f"Auth failed: user '{username}' not found")
         return None
     if user.auth_provider != "local":
-        logger.warning(f"Auth failed: user '{username}' is not a local user (provider: {user.auth_provider})")
+        logger.warning(
+            f"Auth failed: user '{username}' is not a local user (provider: {user.auth_provider})"
+        )
         return None
     if not user.password_hash:
         logger.warning(f"Auth failed: user '{username}' has no password hash")
         return None
     if not verify_password(password, user.password_hash):
-        logger.warning(f"Auth failed: password verification failed for user '{username}'")
+        logger.warning(
+            f"Auth failed: password verification failed for user '{username}'"
+        )
         return None
     if not user.is_active:
         logger.warning(f"Auth failed: user '{username}' is not active")
@@ -191,7 +201,7 @@ async def validate_access_token(
     result = await db.execute(
         select(Session).where(
             Session.access_token_hash == token_hash,
-            Session.is_revoked == False,
+            Session.is_revoked == False,  # noqa: E712
             Session.expires_at > now,
         )
     )
@@ -220,7 +230,7 @@ async def refresh_access_token(
     result = await db.execute(
         select(Session).where(
             Session.refresh_token_hash == token_hash,
-            Session.is_revoked == False,
+            Session.is_revoked == False,  # noqa: E712
             Session.refresh_expires_at > now,
         )
     )
@@ -266,7 +276,7 @@ async def revoke_all_user_sessions(db: AsyncSession, user_id: int) -> int:
     result = await db.execute(
         select(Session).where(
             Session.user_id == user_id,
-            Session.is_revoked == False,
+            Session.is_revoked == False,  # noqa: E712
         )
     )
     sessions = result.scalars().all()
@@ -284,9 +294,13 @@ async def revoke_all_user_sessions(db: AsyncSession, user_id: int) -> int:
 
 async def ensure_admin_user(db: AsyncSession) -> None:
     """Ensure an admin user exists on startup if configured."""
-    logger.info(f"ensure_admin_user: checking config (username={settings.admin_username!r}, password_set={bool(settings.admin_password)})")
+    logger.info(
+        f"ensure_admin_user: checking config (username={settings.admin_username!r}, password_set={bool(settings.admin_password)})"
+    )
     if not settings.admin_username or not settings.admin_password:
-        logger.info("ensure_admin_user: skipping - admin credentials not fully configured")
+        logger.info(
+            "ensure_admin_user: skipping - admin credentials not fully configured"
+        )
         return
 
     existing = await get_user_by_username(db, settings.admin_username)
