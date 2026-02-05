@@ -200,7 +200,7 @@ async def get_oidc_discovery(issuer: str) -> dict[str, object]:
             discovery = response.json()
             data: dict[str, object] = discovery
             _oidc_discovery_cache[issuer] = data
-            logger.info(f"Fetched OIDC discovery from {discovery_url}")
+            logger.info("Fetched OIDC discovery document successfully")
             return data
         except httpx.HTTPError as e:
             logger.error(f"Failed to fetch OIDC discovery from {discovery_url}: {e}")
