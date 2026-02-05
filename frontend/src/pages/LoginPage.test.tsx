@@ -50,12 +50,12 @@ describe("LoginPage", () => {
   it("renders the login page header", () => {
     render(<LoginPage />);
 
-    expect(
-      screen.getByText("AWS Infrastructure Visualizer"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Lab Visualizer")).toBeInTheDocument();
     expect(
       screen.getByText("Sign in to access the dashboard"),
     ).toBeInTheDocument();
+    // Check that the icon is rendered
+    expect(screen.getByAltText("Lab Visualizer")).toBeInTheDocument();
   });
 
   it("renders local login form when local auth is enabled", () => {
@@ -63,9 +63,7 @@ describe("LoginPage", () => {
 
     expect(screen.getByLabelText("Username")).toBeInTheDocument();
     expect(screen.getByLabelText("Password")).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Sign in" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Sign in" })).toBeInTheDocument();
   });
 
   it("does not render local login form when local auth is disabled", () => {

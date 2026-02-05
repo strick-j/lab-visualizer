@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 
 export function AuthCallbackPage() {
   const navigate = useNavigate();
@@ -11,16 +11,16 @@ export function AuthCallbackPage() {
     // Parse tokens from URL fragment
     const hash = window.location.hash.substring(1); // Remove the '#'
     if (!hash) {
-      setError('No authentication data received');
+      setError("No authentication data received");
       return;
     }
 
     const params = new URLSearchParams(hash);
-    const accessToken = params.get('access_token');
-    const refreshToken = params.get('refresh_token');
+    const accessToken = params.get("access_token");
+    const refreshToken = params.get("refresh_token");
 
     if (!accessToken || !refreshToken) {
-      setError('Invalid authentication response');
+      setError("Invalid authentication response");
       return;
     }
 
@@ -28,10 +28,10 @@ export function AuthCallbackPage() {
     setTokens(accessToken, refreshToken);
 
     // Clear the URL fragment for security
-    window.history.replaceState(null, '', window.location.pathname);
+    window.history.replaceState(null, "", window.location.pathname);
 
     // Navigate to dashboard
-    navigate('/', { replace: true });
+    navigate("/", { replace: true });
   }, [navigate, setTokens]);
 
   if (error) {
@@ -44,7 +44,7 @@ export function AuthCallbackPage() {
             </h1>
             <p className="mt-4 text-gray-600 dark:text-gray-400">{error}</p>
             <button
-              onClick={() => navigate('/login', { replace: true })}
+              onClick={() => navigate("/login", { replace: true })}
               className="mt-6 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
             >
               Return to Login

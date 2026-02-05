@@ -66,9 +66,7 @@ function TestConsumer() {
       <button
         data-testid="login-btn"
         onClick={() =>
-          auth
-            .login({ username: "admin", password: "pass" })
-            .catch(() => {})
+          auth.login({ username: "admin", password: "pass" }).catch(() => {})
         }
       >
         Login
@@ -374,10 +372,7 @@ describe("AuthContext", () => {
 
       // Verify tokens were stored via mocked setItem
       expect(mockSetItem).toHaveBeenCalledWith("auth_token", "oidc-access");
-      expect(mockSetItem).toHaveBeenCalledWith(
-        "refresh_token",
-        "oidc-refresh",
-      );
+      expect(mockSetItem).toHaveBeenCalledWith("refresh_token", "oidc-refresh");
     });
 
     it("clears tokens and sets error when user fetch fails", async () => {

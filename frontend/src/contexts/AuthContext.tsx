@@ -1,12 +1,23 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import type { User, AuthConfig, LoginCredentials, TokenResponse } from '@/types';
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  useCallback,
+} from "react";
+import type {
+  User,
+  AuthConfig,
+  LoginCredentials,
+  TokenResponse,
+} from "@/types";
 import {
   getAuthConfig,
   login as apiLogin,
   logout as apiLogout,
   getCurrentUser,
   refreshToken as apiRefreshToken,
-} from '@/api/client';
+} from "@/api/client";
 
 interface AuthContextType {
   user: User | null;
@@ -23,8 +34,8 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const TOKEN_KEY = 'auth_token';
-const REFRESH_TOKEN_KEY = 'refresh_token';
+const TOKEN_KEY = "auth_token";
+const REFRESH_TOKEN_KEY = "refresh_token";
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -79,25 +90,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [storeTokens, clearTokens]);
 
-  const login = useCallback(async (credentials: LoginCredentials) => {
-    setIsLoading(true);
-    setError(null);
+  const login = useCallback(
+    async (credentials: LoginCredentials) => {
+      setIsLoading(true);
+      setError(null);
 
-    try {
-      const tokens = await apiLogin(credentials);
-      storeTokens(tokens);
+      try {
+        const tokens = await apiLogin(credentials);
+        storeTokens(tokens);
 
-      const userData = await getCurrentUser();
-      setUser(userData);
-    } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Login failed';
-      const axiosError = err as { response?: { data?: { detail?: string } } };
-      setError(axiosError.response?.data?.detail || errorMessage);
-      throw err;
-    } finally {
-      setIsLoading(false);
-    }
-  }, [storeTokens]);
+        const userData = await getCurrentUser();
+        setUser(userData);
+      } catch (err: unknown) {
+        const errorMessage =
+          err instanceof Error ? err.message : "Login failed";
+        const axiosError = err as { response?: { data?: { detail?: string } } };
+        setError(axiosError.response?.data?.detail || errorMessage);
+        throw err;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [storeTokens],
+  );
 
   const logout = useCallback(async () => {
     setIsLoading(true);
@@ -124,27 +139,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [fetchUser]);
 
   // Set tokens from OIDC callback and fetch user
-  const setTokensCallback = useCallback(async (accessToken: string, refreshToken: string) => {
-    setIsLoading(true);
-    setError(null);
+  const setTokensCallback = useCallback(
+    async (accessToken: string, refreshToken: string) => {
+      setIsLoading(true);
+      setError(null);
 
-    try {
-      // Store tokens
-      localStorage.setItem(TOKEN_KEY, accessToken);
-      localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+      try {
+        // Store tokens
+        localStorage.setItem(TOKEN_KEY, accessToken);
+        localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
 
-      // Fetch user data
-      const userData = await getCurrentUser();
-      setUser(userData);
-    } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Authentication failed';
-      setError(errorMessage);
-      clearTokens();
-      throw err;
-    } finally {
-      setIsLoading(false);
-    }
-  }, [clearTokens]);
+        // Fetch user data
+        const userData = await getCurrentUser();
+        setUser(userData);
+      } catch (err: unknown) {
+        const errorMessage =
+          err instanceof Error ? err.message : "Authentication failed";
+        setError(errorMessage);
+        clearTokens();
+        throw err;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [clearTokens],
+  );
 
   // Initialize auth state on mount
   useEffect(() => {
@@ -205,7 +224,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 export function useAuth() {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
 }

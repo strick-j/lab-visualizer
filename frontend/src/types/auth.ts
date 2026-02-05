@@ -3,7 +3,7 @@ export interface User {
   username: string;
   email: string | null;
   display_name: string | null;
-  auth_provider: 'local' | 'oidc';
+  auth_provider: "local" | "oidc";
   is_active: boolean;
   is_admin: boolean;
   last_login_at: string | null;

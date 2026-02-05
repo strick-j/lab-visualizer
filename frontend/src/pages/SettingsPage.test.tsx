@@ -112,9 +112,7 @@ describe("SettingsPage", () => {
       render(<SettingsPage />);
 
       await waitFor(() => {
-        expect(
-          screen.getByText("OpenID Connect (OIDC)"),
-        ).toBeInTheDocument();
+        expect(screen.getByText("OpenID Connect (OIDC)")).toBeInTheDocument();
       });
     });
 

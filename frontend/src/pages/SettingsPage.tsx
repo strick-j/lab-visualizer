@@ -1,16 +1,16 @@
-import { useState, useEffect } from 'react';
-import { Shield, Key, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useState, useEffect } from "react";
+import { Shield, Key, AlertCircle, CheckCircle, Loader2 } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   getAuthSettings,
   updateOIDCSettings,
   testOIDCConnection,
-} from '@/api/client';
+} from "@/api/client";
 import type {
   AuthSettingsResponse,
   OIDCSettingsUpdate,
   TestConnectionResponse,
-} from '@/types';
+} from "@/types";
 
 export function SettingsPage() {
   const { user } = useAuth();
@@ -36,7 +36,7 @@ export function SettingsPage() {
       const data = await getAuthSettings();
       setSettings(data);
     } catch {
-      setError('Failed to load settings');
+      setError("Failed to load settings");
     } finally {
       setIsLoading(false);
     }
@@ -46,8 +46,12 @@ export function SettingsPage() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Settings</h1>
-          <p className="text-gray-500 dark:text-gray-400">Application settings and configuration</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+            Settings
+          </h1>
+          <p className="text-gray-500 dark:text-gray-400">
+            Application settings and configuration
+          </p>
         </div>
         <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-6 dark:border-yellow-800 dark:bg-yellow-900/20">
           <div className="flex items-center gap-3">
@@ -73,8 +77,12 @@ export function SettingsPage() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Settings</h1>
-          <p className="text-gray-500 dark:text-gray-400">Application settings and configuration</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+            Settings
+          </h1>
+          <p className="text-gray-500 dark:text-gray-400">
+            Application settings and configuration
+          </p>
         </div>
         <div className="rounded-lg border border-red-200 bg-red-50 p-6 dark:border-red-800 dark:bg-red-900/20">
           <div className="flex items-center gap-3">
@@ -89,7 +97,9 @@ export function SettingsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Settings</h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+          Settings
+        </h1>
         <p className="text-gray-500 dark:text-gray-400">
           Configure authentication providers for single sign-on
         </p>
@@ -101,7 +111,9 @@ export function SettingsPage() {
           <div className="flex items-center gap-3">
             <Key className="h-5 w-5 text-gray-500 dark:text-gray-400" />
             <div>
-              <h3 className="font-medium text-gray-900 dark:text-gray-100">Local Authentication</h3>
+              <h3 className="font-medium text-gray-900 dark:text-gray-100">
+                Local Authentication
+              </h3>
               <p className="text-sm text-gray-500 dark:text-gray-400">
                 Username and password authentication
               </p>
@@ -110,15 +122,16 @@ export function SettingsPage() {
           <span
             className={`rounded-full px-3 py-1 text-xs font-medium ${
               settings?.local_auth_enabled
-                ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
-                : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
+                ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
+                : "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400"
             }`}
           >
-            {settings?.local_auth_enabled ? 'Enabled' : 'Disabled'}
+            {settings?.local_auth_enabled ? "Enabled" : "Disabled"}
           </span>
         </div>
         <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-          Local authentication is configured via environment variables (LOCAL_AUTH_ENABLED)
+          Local authentication is configured via environment variables
+          (LOCAL_AUTH_ENABLED)
         </p>
       </div>
 
@@ -126,7 +139,10 @@ export function SettingsPage() {
       <div className="rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
         <div className="p-6">
           {settings && (
-            <OIDCSettingsForm settings={settings.oidc} onUpdate={() => loadSettings(false)} />
+            <OIDCSettingsForm
+              settings={settings.oidc}
+              onUpdate={() => loadSettings(false)}
+            />
           )}
         </div>
       </div>
@@ -135,25 +151,29 @@ export function SettingsPage() {
 }
 
 interface OIDCSettingsFormProps {
-  settings: AuthSettingsResponse['oidc'];
+  settings: AuthSettingsResponse["oidc"];
   onUpdate: () => void;
 }
 
 function OIDCSettingsForm({ settings, onUpdate }: OIDCSettingsFormProps) {
   const [enabled, setEnabled] = useState(settings.enabled);
-  const [issuer, setIssuer] = useState(settings.issuer || '');
-  const [clientId, setClientId] = useState(settings.client_id || '');
-  const [clientSecret, setClientSecret] = useState('');
-  const [displayName, setDisplayName] = useState(settings.display_name || 'OIDC');
+  const [issuer, setIssuer] = useState(settings.issuer || "");
+  const [clientId, setClientId] = useState(settings.client_id || "");
+  const [clientSecret, setClientSecret] = useState("");
+  const [displayName, setDisplayName] = useState(
+    settings.display_name || "OIDC",
+  );
   const [accessTokenExpireMinutes, setAccessTokenExpireMinutes] = useState(
-    settings.access_token_expire_minutes
+    settings.access_token_expire_minutes,
   );
   const [refreshTokenExpireDays, setRefreshTokenExpireDays] = useState(
-    settings.refresh_token_expire_days
+    settings.refresh_token_expire_days,
   );
   const [isSaving, setIsSaving] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
-  const [testResult, setTestResult] = useState<TestConnectionResponse | null>(null);
+  const [testResult, setTestResult] = useState<TestConnectionResponse | null>(
+    null,
+  );
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
 
@@ -165,7 +185,7 @@ function OIDCSettingsForm({ settings, onUpdate }: OIDCSettingsFormProps) {
       const result = await testOIDCConnection(issuer);
       setTestResult(result);
     } catch {
-      setTestResult({ success: false, message: 'Failed to test connection' });
+      setTestResult({ success: false, message: "Failed to test connection" });
     } finally {
       setIsTesting(false);
     }
@@ -193,12 +213,14 @@ function OIDCSettingsForm({ settings, onUpdate }: OIDCSettingsFormProps) {
     try {
       await updateOIDCSettings(update);
       setSaveSuccess(true);
-      setClientSecret(''); // Clear secret after save
+      setClientSecret(""); // Clear secret after save
       onUpdate();
       setTimeout(() => setSaveSuccess(false), 3000);
     } catch (err: unknown) {
       const axiosError = err as { response?: { data?: { detail?: string } } };
-      setSaveError(axiosError.response?.data?.detail || 'Failed to save settings');
+      setSaveError(
+        axiosError.response?.data?.detail || "Failed to save settings",
+      );
     } finally {
       setIsSaving(false);
     }
@@ -213,7 +235,8 @@ function OIDCSettingsForm({ settings, onUpdate }: OIDCSettingsFormProps) {
             OpenID Connect (OIDC)
           </h3>
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            Configure OIDC authentication with providers like Okta, Azure AD, Google, or Auth0
+            Configure OIDC authentication with providers like Okta, Azure AD,
+            Google, or Auth0
           </p>
         </div>
       </div>
@@ -221,7 +244,9 @@ function OIDCSettingsForm({ settings, onUpdate }: OIDCSettingsFormProps) {
       {/* Enable toggle */}
       <div className="flex items-center justify-between rounded-lg border border-gray-200 p-4 dark:border-gray-700">
         <div>
-          <p className="font-medium text-gray-900 dark:text-gray-100">Enable OIDC</p>
+          <p className="font-medium text-gray-900 dark:text-gray-100">
+            Enable OIDC
+          </p>
           <p className="text-sm text-gray-500 dark:text-gray-400">
             Allow users to sign in with OIDC
           </p>
@@ -229,12 +254,12 @@ function OIDCSettingsForm({ settings, onUpdate }: OIDCSettingsFormProps) {
         <button
           onClick={() => setEnabled(!enabled)}
           className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-            enabled ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-700'
+            enabled ? "bg-blue-600" : "bg-gray-200 dark:bg-gray-700"
           }`}
         >
           <span
             className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-              enabled ? 'translate-x-6' : 'translate-x-1'
+              enabled ? "translate-x-6" : "translate-x-1"
             }`}
           />
         </button>
@@ -259,7 +284,11 @@ function OIDCSettingsForm({ settings, onUpdate }: OIDCSettingsFormProps) {
               disabled={!issuer || isTesting}
               className="rounded-md bg-gray-100 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
             >
-              {isTesting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Test'}
+              {isTesting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                "Test"
+              )}
             </button>
           </div>
           <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
@@ -271,8 +300,8 @@ function OIDCSettingsForm({ settings, onUpdate }: OIDCSettingsFormProps) {
           <div
             className={`rounded-md p-3 ${
               testResult.success
-                ? 'bg-green-50 dark:bg-green-900/20'
-                : 'bg-red-50 dark:bg-red-900/20'
+                ? "bg-green-50 dark:bg-green-900/20"
+                : "bg-red-50 dark:bg-red-900/20"
             }`}
           >
             <div className="flex items-center gap-2">
@@ -284,8 +313,8 @@ function OIDCSettingsForm({ settings, onUpdate }: OIDCSettingsFormProps) {
               <p
                 className={`text-sm ${
                   testResult.success
-                    ? 'text-green-800 dark:text-green-200'
-                    : 'text-red-800 dark:text-red-200'
+                    ? "text-green-800 dark:text-green-200"
+                    : "text-red-800 dark:text-red-200"
                 }`}
               >
                 {testResult.message}
@@ -315,12 +344,17 @@ function OIDCSettingsForm({ settings, onUpdate }: OIDCSettingsFormProps) {
             type="password"
             value={clientSecret}
             onChange={(e) => setClientSecret(e.target.value)}
-            placeholder={settings.client_secret_configured ? '********' : 'Enter client secret'}
+            placeholder={
+              settings.client_secret_configured
+                ? "********"
+                : "Enter client secret"
+            }
             className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
           />
           {settings.client_secret_configured && (
             <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              A client secret is already configured. Leave blank to keep the existing secret.
+              A client secret is already configured. Leave blank to keep the
+              existing secret.
             </p>
           )}
         </div>
@@ -356,7 +390,9 @@ function OIDCSettingsForm({ settings, onUpdate }: OIDCSettingsFormProps) {
                 min={1}
                 max={1440}
                 value={accessTokenExpireMinutes}
-                onChange={(e) => setAccessTokenExpireMinutes(Number(e.target.value))}
+                onChange={(e) =>
+                  setAccessTokenExpireMinutes(Number(e.target.value))
+                }
                 className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
               />
               <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
@@ -372,7 +408,9 @@ function OIDCSettingsForm({ settings, onUpdate }: OIDCSettingsFormProps) {
                 min={1}
                 max={365}
                 value={refreshTokenExpireDays}
-                onChange={(e) => setRefreshTokenExpireDays(Number(e.target.value))}
+                onChange={(e) =>
+                  setRefreshTokenExpireDays(Number(e.target.value))
+                }
                 className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
               />
               <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
@@ -390,11 +428,15 @@ function OIDCSettingsForm({ settings, onUpdate }: OIDCSettingsFormProps) {
           disabled={isSaving}
           className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {isSaving ? 'Saving...' : 'Save Changes'}
+          {isSaving ? "Saving..." : "Save Changes"}
         </button>
-        {saveError && <p className="text-sm text-red-600 dark:text-red-400">{saveError}</p>}
+        {saveError && (
+          <p className="text-sm text-red-600 dark:text-red-400">{saveError}</p>
+        )}
         {saveSuccess && (
-          <p className="text-sm text-green-600 dark:text-green-400">Settings saved successfully</p>
+          <p className="text-sm text-green-600 dark:text-green-400">
+            Settings saved successfully
+          </p>
         )}
       </div>
 

@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
 import {
@@ -55,6 +55,9 @@ function App() {
                 <Route path="topology" element={<TopologyPage />} />
                 <Route path="settings" element={<SettingsPage />} />
               </Route>
+
+              {/* Catch-all route - redirect to home (which will redirect to login if not authenticated) */}
+              <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </BrowserRouter>
         </AuthProvider>

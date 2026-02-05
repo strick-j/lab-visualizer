@@ -13,13 +13,9 @@ vi.mock("@/pages", () => ({
   TerraformPage: () => (
     <div data-testid="terraform-page">Terraform Content</div>
   ),
-  TopologyPage: () => (
-    <div data-testid="topology-page">Topology Content</div>
-  ),
+  TopologyPage: () => <div data-testid="topology-page">Topology Content</div>,
   LoginPage: () => <div data-testid="login-page">Login Content</div>,
-  SettingsPage: () => (
-    <div data-testid="settings-page">Settings Content</div>
-  ),
+  SettingsPage: () => <div data-testid="settings-page">Settings Content</div>,
   AuthCallbackPage: () => (
     <div data-testid="auth-callback-page">Auth Callback</div>
   ),
