@@ -44,6 +44,14 @@ async def get_settings_endpoint(
             client_id=settings.oidc_client_id,
             client_secret_configured=bool(settings.oidc_client_secret),
             display_name=settings.oidc_display_name or "OIDC",
+            access_token_expire_minutes=(
+                settings.access_token_expire_minutes
+                or env_settings.access_token_expire_minutes
+            ),
+            refresh_token_expire_days=(
+                settings.refresh_token_expire_days
+                or env_settings.refresh_token_expire_days
+            ),
             updated_at=settings.updated_at,
             updated_by=settings.updated_by,
         ),
@@ -64,6 +72,13 @@ async def get_oidc_settings(
         client_id=settings.oidc_client_id,
         client_secret_configured=bool(settings.oidc_client_secret),
         display_name=settings.oidc_display_name or "OIDC",
+        access_token_expire_minutes=(
+            settings.access_token_expire_minutes
+            or env_settings.access_token_expire_minutes
+        ),
+        refresh_token_expire_days=(
+            settings.refresh_token_expire_days or env_settings.refresh_token_expire_days
+        ),
         updated_at=settings.updated_at,
         updated_by=settings.updated_by,
     )
@@ -96,6 +111,8 @@ async def update_oidc_settings_endpoint(
         client_id=update_data.client_id,
         client_secret=update_data.client_secret,
         display_name=update_data.display_name,
+        access_token_expire_minutes=update_data.access_token_expire_minutes,
+        refresh_token_expire_days=update_data.refresh_token_expire_days,
         updated_by=current_user.username,
     )
 
@@ -105,6 +122,13 @@ async def update_oidc_settings_endpoint(
         client_id=settings.oidc_client_id,
         client_secret_configured=bool(settings.oidc_client_secret),
         display_name=settings.oidc_display_name or "OIDC",
+        access_token_expire_minutes=(
+            settings.access_token_expire_minutes
+            or env_settings.access_token_expire_minutes
+        ),
+        refresh_token_expire_days=(
+            settings.refresh_token_expire_days or env_settings.refresh_token_expire_days
+        ),
         updated_at=settings.updated_at,
         updated_by=settings.updated_by,
     )

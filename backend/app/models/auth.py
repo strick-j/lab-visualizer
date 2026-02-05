@@ -110,6 +110,14 @@ class AuthSettings(Base):
         String(100), nullable=True, default="OIDC"
     )
 
+    # Token expiration settings (overrides config.py defaults if set)
+    access_token_expire_minutes: Mapped[Optional[int]] = mapped_column(
+        Integer, nullable=True, default=None
+    )
+    refresh_token_expire_days: Mapped[Optional[int]] = mapped_column(
+        Integer, nullable=True, default=None
+    )
+
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.now(), nullable=False

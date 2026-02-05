@@ -41,6 +41,8 @@ export interface OIDCSettings {
   client_id: string | null;
   client_secret_configured: boolean;
   display_name: string;
+  access_token_expire_minutes: number;
+  refresh_token_expire_days: number;
   updated_at: string | null;
   updated_by: string | null;
 }
@@ -56,6 +58,8 @@ export interface OIDCSettingsUpdate {
   client_id?: string;
   client_secret?: string;
   display_name?: string;
+  access_token_expire_minutes?: number;
+  refresh_token_expire_days?: number;
 }
 
 export interface TestConnectionResponse {

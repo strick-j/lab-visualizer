@@ -145,6 +145,12 @@ function OIDCSettingsForm({ settings, onUpdate }: OIDCSettingsFormProps) {
   const [clientId, setClientId] = useState(settings.client_id || '');
   const [clientSecret, setClientSecret] = useState('');
   const [displayName, setDisplayName] = useState(settings.display_name || 'OIDC');
+  const [accessTokenExpireMinutes, setAccessTokenExpireMinutes] = useState(
+    settings.access_token_expire_minutes
+  );
+  const [refreshTokenExpireDays, setRefreshTokenExpireDays] = useState(
+    settings.refresh_token_expire_days
+  );
   const [isSaving, setIsSaving] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
   const [testResult, setTestResult] = useState<TestConnectionResponse | null>(null);
@@ -175,6 +181,8 @@ function OIDCSettingsForm({ settings, onUpdate }: OIDCSettingsFormProps) {
       issuer: issuer || undefined,
       client_id: clientId || undefined,
       display_name: displayName || undefined,
+      access_token_expire_minutes: accessTokenExpireMinutes,
+      refresh_token_expire_days: refreshTokenExpireDays,
     };
 
     // Only include client secret if it was changed
@@ -331,6 +339,47 @@ function OIDCSettingsForm({ settings, onUpdate }: OIDCSettingsFormProps) {
           <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
             Text shown on the login button
           </p>
+        </div>
+
+        {/* Token Expiration Settings */}
+        <div className="border-t border-gray-200 pt-4 dark:border-gray-700">
+          <h4 className="mb-3 text-sm font-medium text-gray-900 dark:text-gray-100">
+            Token Expiration
+          </h4>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Access Token Expiry (minutes)
+              </label>
+              <input
+                type="number"
+                min={1}
+                max={1440}
+                value={accessTokenExpireMinutes}
+                onChange={(e) => setAccessTokenExpireMinutes(Number(e.target.value))}
+                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+              />
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                1-1440 minutes (default: 30)
+              </p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Refresh Token Expiry (days)
+              </label>
+              <input
+                type="number"
+                min={1}
+                max={365}
+                value={refreshTokenExpireDays}
+                onChange={(e) => setRefreshTokenExpireDays(Number(e.target.value))}
+                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+              />
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                1-365 days (default: 7)
+              </p>
+            </div>
+          </div>
         </div>
       </div>
 

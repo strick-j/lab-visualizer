@@ -42,6 +42,8 @@ async def get_or_create_auth_settings(db: AsyncSession) -> AuthSettings:
         oidc_issuer=env_settings.oidc_issuer,
         oidc_client_id=env_settings.oidc_client_id,
         oidc_client_secret=env_settings.oidc_client_secret,
+        access_token_expire_minutes=env_settings.access_token_expire_minutes,
+        refresh_token_expire_days=env_settings.refresh_token_expire_days,
     )
     db.add(settings)
     await db.commit()
@@ -57,6 +59,8 @@ async def update_oidc_settings(
     client_id: Optional[str] = None,
     client_secret: Optional[str] = None,
     display_name: Optional[str] = None,
+    access_token_expire_minutes: Optional[int] = None,
+    refresh_token_expire_days: Optional[int] = None,
     updated_by: Optional[str] = None,
 ) -> AuthSettings:
     """Update OIDC settings."""
@@ -71,6 +75,10 @@ async def update_oidc_settings(
         settings.oidc_client_secret = client_secret
     if display_name is not None:
         settings.oidc_display_name = display_name
+    if access_token_expire_minutes is not None:
+        settings.access_token_expire_minutes = access_token_expire_minutes
+    if refresh_token_expire_days is not None:
+        settings.refresh_token_expire_days = refresh_token_expire_days
     if updated_by:
         settings.updated_by = updated_by
 
@@ -96,6 +104,14 @@ async def get_effective_oidc_config(db: AsyncSession) -> dict:
             "client_id": db_settings.oidc_client_id,
             "client_secret": db_settings.oidc_client_secret,
             "display_name": db_settings.oidc_display_name or "OIDC",
+            "access_token_expire_minutes": (
+                db_settings.access_token_expire_minutes
+                or env_settings.access_token_expire_minutes
+            ),
+            "refresh_token_expire_days": (
+                db_settings.refresh_token_expire_days
+                or env_settings.refresh_token_expire_days
+            ),
         }
 
     # Fall back to environment variables
@@ -105,6 +121,34 @@ async def get_effective_oidc_config(db: AsyncSession) -> dict:
         "client_id": env_settings.oidc_client_id,
         "client_secret": env_settings.oidc_client_secret,
         "display_name": "OIDC",
+        "access_token_expire_minutes": env_settings.access_token_expire_minutes,
+        "refresh_token_expire_days": env_settings.refresh_token_expire_days,
+    }
+
+
+async def get_token_expiration_settings(db: AsyncSession) -> dict:
+    """
+    Get effective token expiration settings.
+
+    Database settings take precedence over environment variables.
+    """
+    db_settings = await get_auth_settings(db)
+
+    if db_settings:
+        return {
+            "access_token_expire_minutes": (
+                db_settings.access_token_expire_minutes
+                or env_settings.access_token_expire_minutes
+            ),
+            "refresh_token_expire_days": (
+                db_settings.refresh_token_expire_days
+                or env_settings.refresh_token_expire_days
+            ),
+        }
+
+    return {
+        "access_token_expire_minutes": env_settings.access_token_expire_minutes,
+        "refresh_token_expire_days": env_settings.refresh_token_expire_days,
     }
 
 

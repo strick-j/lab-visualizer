@@ -26,6 +26,12 @@ class OIDCSettingsUpdate(BaseModel):
     display_name: Optional[str] = Field(
         None, description="Display name for the login button", max_length=100
     )
+    access_token_expire_minutes: Optional[int] = Field(
+        None, description="Access token expiration in minutes", ge=1, le=1440
+    )
+    refresh_token_expire_days: Optional[int] = Field(
+        None, description="Refresh token expiration in days", ge=1, le=365
+    )
 
 
 class OIDCSettingsResponse(BaseModel):
@@ -36,6 +42,8 @@ class OIDCSettingsResponse(BaseModel):
     client_id: Optional[str] = None
     client_secret_configured: bool = False
     display_name: str = "OIDC"
+    access_token_expire_minutes: int = 30
+    refresh_token_expire_days: int = 7
     updated_at: Optional[datetime] = None
     updated_by: Optional[str] = None
 
