@@ -143,10 +143,6 @@ export function SettingsPage() {
             {settings?.local_auth_enabled ? "Enabled" : "Disabled"}
           </span>
         </div>
-        <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-          Local authentication is configured via environment variables
-          (LOCAL_AUTH_ENABLED)
-        </p>
       </div>
 
       {/* OIDC Configuration */}
