@@ -25,14 +25,14 @@ output "private_subnet_ids" {
 # ECR
 # -----------------------------------------------------------------------------
 
-output "ecr_repository_url" {
-  description = "URL of the ECR repository"
-  value       = module.ecr.repository_url
+output "ecr_backend_repository_url" {
+  description = "URL of the backend ECR repository"
+  value       = module.ecr.backend_repository_url
 }
 
-output "ecr_repository_name" {
-  description = "Name of the ECR repository"
-  value       = module.ecr.repository_name
+output "ecr_frontend_repository_url" {
+  description = "URL of the frontend ECR repository"
+  value       = module.ecr.frontend_repository_url
 }
 
 # -----------------------------------------------------------------------------
@@ -74,25 +74,42 @@ output "cloudwatch_log_group" {
 }
 
 # -----------------------------------------------------------------------------
+# Frontend ECS
+# -----------------------------------------------------------------------------
+
+output "ecs_frontend_service_name" {
+  description = "Name of the frontend ECS service"
+  value       = module.ecs_frontend.service_name
+}
+
+output "frontend_log_group" {
+  description = "Name of the frontend CloudWatch log group"
+  value       = module.ecs_frontend.log_group_name
+}
+
+# -----------------------------------------------------------------------------
 # Useful Commands
 # -----------------------------------------------------------------------------
 
 output "docker_push_commands" {
-  description = "Commands to build and push Docker image"
+  description = "Commands to build and push Docker images"
   value       = <<-EOT
     # Login to ECR
     aws ecr get-login-password --region ${var.aws_region} | docker login --username AWS --password-stdin ${local.account_id}.dkr.ecr.${var.aws_region}.amazonaws.com
 
-    # Build image
+    # Build and push backend
     cd backend
-    docker build -t ${module.ecr.repository_name} .
+    docker build -t ${module.ecr.backend_repository_url}:latest .
+    docker push ${module.ecr.backend_repository_url}:latest
 
-    # Tag and push
-    docker tag ${module.ecr.repository_name}:latest ${module.ecr.repository_url}:latest
-    docker push ${module.ecr.repository_url}:latest
+    # Build and push frontend
+    cd ../frontend
+    docker build -t ${module.ecr.frontend_repository_url}:latest .
+    docker push ${module.ecr.frontend_repository_url}:latest
 
-    # Force new deployment
+    # Force new deployments
     aws ecs update-service --cluster ${module.ecs.cluster_name} --service ${module.ecs.service_name} --force-new-deployment
+    aws ecs update-service --cluster ${module.ecs_frontend.cluster_name} --service ${module.ecs_frontend.service_name} --force-new-deployment
   EOT
 }
 

@@ -317,6 +317,17 @@ resource "aws_vpc_security_group_egress_rule" "alb_to_ecs" {
   referenced_security_group_id = aws_security_group.ecs_tasks.id
 }
 
+resource "aws_vpc_security_group_egress_rule" "alb_to_ecs_frontend" {
+  count = var.frontend_container_port > 0 ? 1 : 0
+
+  security_group_id            = aws_security_group.alb.id
+  description                  = "Allow outbound to ECS tasks on frontend container port"
+  from_port                    = var.frontend_container_port
+  to_port                      = var.frontend_container_port
+  ip_protocol                  = "tcp"
+  referenced_security_group_id = aws_security_group.ecs_tasks.id
+}
+
 # ECS Tasks Security Group
 resource "aws_security_group" "ecs_tasks" {
   name        = "${var.project_name}-${var.environment}-ecs-tasks-sg"
@@ -333,6 +344,17 @@ resource "aws_vpc_security_group_ingress_rule" "ecs_from_alb" {
   description                  = "Allow traffic from ALB"
   from_port                    = var.container_port
   to_port                      = var.container_port
+  ip_protocol                  = "tcp"
+  referenced_security_group_id = aws_security_group.alb.id
+}
+
+resource "aws_vpc_security_group_ingress_rule" "ecs_from_alb_frontend" {
+  count = var.frontend_container_port > 0 ? 1 : 0
+
+  security_group_id            = aws_security_group.ecs_tasks.id
+  description                  = "Allow frontend traffic from ALB"
+  from_port                    = var.frontend_container_port
+  to_port                      = var.frontend_container_port
   ip_protocol                  = "tcp"
   referenced_security_group_id = aws_security_group.alb.id
 }

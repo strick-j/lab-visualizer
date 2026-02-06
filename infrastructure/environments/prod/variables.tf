@@ -69,6 +69,28 @@ variable "health_check_path" {
 }
 
 # -----------------------------------------------------------------------------
+# Frontend Container Configuration
+# -----------------------------------------------------------------------------
+
+variable "frontend_container_image" {
+  description = "Docker image for the frontend container (leave empty to use ECR)"
+  type        = string
+  default     = ""
+}
+
+variable "frontend_container_port" {
+  description = "Port the frontend container listens on"
+  type        = number
+  default     = 3000
+}
+
+variable "frontend_health_check_path" {
+  description = "Path for frontend health checks"
+  type        = string
+  default     = "/health"
+}
+
+# -----------------------------------------------------------------------------
 # Domain Configuration (Required for production)
 # -----------------------------------------------------------------------------
 

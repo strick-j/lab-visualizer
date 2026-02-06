@@ -352,6 +352,39 @@ resource "aws_lb_target_group" "main" {
 }
 
 # -----------------------------------------------------------------------------
+# Frontend Target Group (conditional)
+# -----------------------------------------------------------------------------
+
+resource "aws_lb_target_group" "frontend" {
+  count = var.frontend_container_port > 0 ? 1 : 0
+
+  name        = "${var.project_name}-${var.environment}-fe-tg"
+  port        = var.frontend_container_port
+  protocol    = "HTTP"
+  vpc_id      = var.vpc_id
+  target_type = "ip"
+
+  health_check {
+    enabled             = true
+    healthy_threshold   = 2
+    unhealthy_threshold = 3
+    timeout             = 10
+    interval            = 30
+    path                = var.frontend_health_check_path
+    protocol            = "HTTP"
+    matcher             = "200"
+  }
+
+  tags = merge(var.tags, {
+    Name = "${var.project_name}-${var.environment}-fe-tg"
+  })
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+# -----------------------------------------------------------------------------
 # HTTP Listener
 # -----------------------------------------------------------------------------
 
@@ -374,8 +407,29 @@ resource "aws_lb_listener" "http" {
       }
     }
 
-    # Forward to target group if no certificate
-    target_group_arn = var.certificate_arn == "" ? aws_lb_target_group.main.arn : null
+    # Forward to frontend target group if available, otherwise backend
+    target_group_arn = var.certificate_arn == "" ? (
+      var.frontend_container_port > 0 ? aws_lb_target_group.frontend[0].arn : aws_lb_target_group.main.arn
+    ) : null
+  }
+}
+
+# Listener rule to route /api/* to backend target group (HTTP)
+resource "aws_lb_listener_rule" "http_api_backend" {
+  count = var.frontend_container_port > 0 && var.certificate_arn == "" ? 1 : 0
+
+  listener_arn = aws_lb_listener.http.arn
+  priority     = 100
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.main.arn
+  }
+
+  condition {
+    path_pattern {
+      values = ["/api/*"]
+    }
   }
 }
 
@@ -394,7 +448,26 @@ resource "aws_lb_listener" "https" {
 
   default_action {
     type             = "forward"
+    target_group_arn = var.frontend_container_port > 0 ? aws_lb_target_group.frontend[0].arn : aws_lb_target_group.main.arn
+  }
+}
+
+# Listener rule to route /api/* to backend target group (HTTPS)
+resource "aws_lb_listener_rule" "https_api_backend" {
+  count = var.frontend_container_port > 0 && var.certificate_arn != "" ? 1 : 0
+
+  listener_arn = aws_lb_listener.https[0].arn
+  priority     = 100
+
+  action {
+    type             = "forward"
     target_group_arn = aws_lb_target_group.main.arn
+  }
+
+  condition {
+    path_pattern {
+      values = ["/api/*"]
+    }
   }
 }
 
