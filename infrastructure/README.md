@@ -14,11 +14,14 @@ This directory contains Terraform modules and environment configurations for dep
 │  │  │     Public Subnets      │    │      Private Subnets        │  │  │
 │  │  │                         │    │                             │  │  │
 │  │  │  ┌───────────────────┐  │    │  ┌───────────────────────┐  │  │  │
-│  │  │  │        ALB        │  │    │  │    ECS Fargate        │  │  │  │
-│  │  │  │   (HTTPS:443)     │──┼────┼─▶│    (App Container)    │  │  │  │
-│  │  │  └───────────────────┘  │    │  └───────────────────────┘  │  │  │
-│  │  │                         │    │                             │  │  │
-│  │  │  ┌───────────────────┐  │    │                             │  │  │
+│  │  │  │        ALB        │  │    │  │  Backend ECS Service   │  │  │  │
+│  │  │  │  (HTTP:80/443)    │──┼────┼─▶│  FastAPI (port 8000)   │  │  │  │
+│  │  │  │                   │  │    │  └───────────────────────┘  │  │  │
+│  │  │  │  /api/* ──▶ :8000 │  │    │                             │  │  │
+│  │  │  │  /*     ──▶ :3000 │──┼────┼─▶┌───────────────────────┐  │  │  │
+│  │  │  └───────────────────┘  │    │  │  Frontend ECS Service  │  │  │  │
+│  │  │                         │    │  │  Nginx (port 3000)     │  │  │  │
+│  │  │  ┌───────────────────┐  │    │  └───────────────────────┘  │  │  │
 │  │  │  │    NAT Gateway    │◀─┼────┼──(Outbound traffic)        │  │  │
 │  │  │  └───────────────────┘  │    │                             │  │  │
 │  │  └─────────────────────────┘    └─────────────────────────────┘  │  │
@@ -31,6 +34,15 @@ This directory contains Terraform modules and environment configurations for dep
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
+### Traffic Routing
+
+The ALB uses **path-based routing** to direct traffic to the appropriate service:
+
+| Path Pattern | Target | Port | Service |
+|-------------|--------|------|---------|
+| `/api/*` | Backend target group | 8000 | FastAPI backend |
+| `/*` (default) | Frontend target group | 3000 | Nginx serving React SPA |
+
 ## Modules
 
 | Module | Description |
@@ -38,7 +50,7 @@ This directory contains Terraform modules and environment configurations for dep
 | `networking` | VPC, subnets, NAT gateway, security groups |
 | `ecr` | Elastic Container Registry for Docker images |
 | `alb` | Application Load Balancer with HTTPS |
-| `ecs` | ECS Fargate cluster, service, and task definition |
+| `ecs` | ECS Fargate cluster, service, and task definition (used for both backend and frontend) |
 | `secrets` | AWS Secrets Manager for sensitive configuration |
 
 ## Prerequisites
@@ -66,38 +78,60 @@ terraform plan
 terraform apply
 ```
 
-### 3. Build and push Docker image
+### 3. Build and push Docker images
 
-After infrastructure is deployed:
+After infrastructure is deployed, build and push both the backend and frontend images:
 
 ```bash
 # Get ECR login
-aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin <account_id>.dkr.ecr.us-east-1.amazonaws.com
+aws ecr get-login-password --region us-east-1 | \
+  docker login --username AWS --password-stdin <account_id>.dkr.ecr.us-east-1.amazonaws.com
 
-# Build and push
+# Build and push backend (FastAPI on port 8000)
 cd ../../backend
-docker build -t aws-infra-visualizer .
-docker tag aws-infra-visualizer:latest <ecr_repository_url>:latest
-docker push <ecr_repository_url>:latest
+docker build -t <ecr_backend_repository_url>:latest .
+docker push <ecr_backend_repository_url>:latest
+
+# Build and push frontend (Nginx on port 3000)
+cd ../frontend
+docker build -t <ecr_frontend_repository_url>:latest .
+docker push <ecr_frontend_repository_url>:latest
 ```
 
-### 4. Access the application
+Replace `<ecr_backend_repository_url>` and `<ecr_frontend_repository_url>` with the values from `terraform output`.
+
+### 4. Force new deployments
+
+After pushing new images, trigger ECS to pull the latest:
+
+```bash
+aws ecs update-service --cluster <ecs_cluster_name> --service <ecs_service_name> --force-new-deployment
+aws ecs update-service --cluster <ecs_cluster_name> --service <ecs_frontend_service_name> --force-new-deployment
+```
+
+### 5. Access the application
 
 - **Without custom domain**: Use the ALB DNS name from Terraform outputs
 - **With custom domain**: Access via your configured domain
+
+The frontend (React SPA) is served at the root URL. API requests to `/api/*` are routed to the backend.
 
 ## Environment Configuration
 
 ### Development (`environments/dev`)
 
 - Single NAT Gateway (cost optimization)
-- Smaller Fargate tasks (0.5 vCPU, 1GB RAM)
+- Backend: 0.5 vCPU, 1 GB RAM, 1 task
+- Frontend: 0.25 vCPU, 512 MB RAM, 1 task
+- Fargate Spot for cost savings
 - HTTP only (no HTTPS) unless domain configured
 
 ### Production (`environments/prod`)
 
 - NAT Gateway per AZ (high availability)
-- Larger Fargate tasks (1 vCPU, 2GB RAM)
+- Backend: 1 vCPU, 2 GB RAM, 2 tasks with auto-scaling (2-4)
+- Frontend: 0.5 vCPU, 1 GB RAM, 2 tasks with auto-scaling (2-4)
+- Standard Fargate (no Spot) for reliability
 - HTTPS required with ACM certificate
 - Multi-AZ deployment
 
@@ -105,13 +139,14 @@ docker push <ecr_repository_url>:latest
 
 | Resource | Dev | Prod |
 |----------|-----|------|
-| ECS Fargate | ~$15 | ~$30 |
+| ECS Fargate (backend) | ~$15 | ~$30 |
+| ECS Fargate (frontend) | ~$8 | ~$15 |
 | ALB | ~$20 | ~$20 |
 | NAT Gateway | ~$35 | ~$100 |
 | CloudWatch | ~$3 | ~$10 |
-| ECR | ~$1 | ~$1 |
+| ECR | ~$1 | ~$2 |
 | Secrets Manager | ~$1 | ~$1 |
-| **Total** | **~$75** | **~$162** |
+| **Total** | **~$83** | **~$178** |
 
 ## Outputs
 
@@ -120,9 +155,14 @@ After deployment, Terraform provides these outputs:
 | Output | Description |
 |--------|-------------|
 | `alb_dns_name` | ALB DNS name for accessing the app |
-| `ecr_repository_url` | ECR URL for pushing Docker images |
+| `app_url` | Full URL to access the application |
+| `ecr_backend_repository_url` | ECR URL for pushing backend Docker images |
+| `ecr_frontend_repository_url` | ECR URL for pushing frontend Docker images |
 | `ecs_cluster_name` | ECS cluster name |
-| `ecs_service_name` | ECS service name |
+| `ecs_service_name` | Backend ECS service name |
+| `ecs_frontend_service_name` | Frontend ECS service name |
+| `cloudwatch_log_group` | Backend CloudWatch log group |
+| `frontend_log_group` | Frontend CloudWatch log group |
 
 ## Destroying Infrastructure
 
@@ -131,8 +171,28 @@ cd environments/dev  # or prod
 terraform destroy
 ```
 
-**Note**: ECR repository must be empty before destruction. Delete images first:
+**Note**: ECR repositories must be empty before destruction. Delete images first:
 
 ```bash
-aws ecr batch-delete-image --repository-name aws-infra-visualizer --image-ids imageTag=latest
+aws ecr batch-delete-image --repository-name aws-infra-visualizer-dev-backend --image-ids imageTag=latest
+aws ecr batch-delete-image --repository-name aws-infra-visualizer-dev-frontend --image-ids imageTag=latest
 ```
+
+## Service Details
+
+### Backend Service
+
+- **Image source**: `backend/Dockerfile`
+- **Port**: 8000
+- **Health check**: `GET /api/health`
+- **Routes**: Receives all `/api/*` requests from ALB
+- **Runtime**: FastAPI + Uvicorn
+
+### Frontend Service
+
+- **Image source**: `frontend/Dockerfile` (multi-stage build: Node.js build + Nginx)
+- **Port**: 3000
+- **Health check**: `GET /health`
+- **Routes**: Receives all non-API requests (default ALB rule)
+- **Runtime**: Nginx serving static React SPA assets
+- **SPA routing**: Nginx `try_files` falls back to `index.html` for client-side routes
