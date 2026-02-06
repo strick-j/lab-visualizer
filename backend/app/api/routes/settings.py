@@ -4,14 +4,14 @@ Settings API routes.
 Provides admin-only endpoints for managing authentication configuration.
 """
 
+import ipaddress
 import logging
+import socket
+from urllib.parse import urlparse
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-import ipaddress
-import socket
-from urllib.parse import urlparse
 
 from app.api.deps import get_current_admin_user
 from app.config import get_settings
@@ -31,15 +31,20 @@ router = APIRouter()
 env_settings = get_settings()
 
 
-def _validate_external_https_url(url: str) -> str:
+def _validate_issuer_and_build_discovery_url(issuer_input: str) -> str:
     """
-    Validate that the given URL is a HTTPS URL and does not resolve to a
-    private, loopback, or otherwise non-public IP address.
+    Validate the OIDC issuer and return a safely-constructed discovery URL.
 
-    Raises HTTPException if the URL is invalid or not allowed.
+    Parses the issuer, enforces HTTPS, rejects IP-literal hosts and
+    private/internal addresses, then reconstructs the URL from validated
+    components to prevent SSRF (breaks the taint chain).
+
+    Raises HTTPException if validation fails.
     """
+    stripped = issuer_input.strip().rstrip("/")
+
     try:
-        parsed = urlparse(url)
+        parsed = urlparse(stripped)
     except Exception:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -54,7 +59,17 @@ def _validate_external_https_url(url: str) -> str:
 
     hostname = parsed.hostname
 
-   # Resolve the hostname and ensure all IPs are public.
+    # Reject raw IP addresses used as hostnames
+    try:
+        ipaddress.ip_address(hostname)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="OIDC issuer must use a domain name, not an IP address",
+        )
+    except ValueError:
+        pass  # Not an IP literal — expected for domain names
+
+    # Resolve the hostname and reject private / internal IPs
     try:
         addr_info = socket.getaddrinfo(hostname, None)
     except OSError:
@@ -63,17 +78,14 @@ def _validate_external_https_url(url: str) -> str:
             detail="Unable to resolve OIDC issuer host",
         )
 
-    for family, _, _, _, sockaddr in addr_info:
-        ip_str = None
-        if family == socket.AF_INET:
-            ip_str = sockaddr[0]
-        elif family == socket.AF_INET6:
-            ip_str = sockaddr[0]
+    if not addr_info:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="OIDC issuer hostname did not resolve to any address",
+        )
 
-        if not ip_str:
-            continue
-
-        ip = ipaddress.ip_address(ip_str)
+    for _, _, _, _, sockaddr in addr_info:
+        ip = ipaddress.ip_address(sockaddr[0])
         if (
             ip.is_private
             or ip.is_loopback
@@ -86,7 +98,15 @@ def _validate_external_https_url(url: str) -> str:
                 detail="OIDC issuer host must not resolve to a private or internal IP",
             )
 
-    return url
+    # Reconstruct the URL from validated components (breaks taint propagation)
+    port_suffix = f":{parsed.port}" if parsed.port and parsed.port != 443 else ""
+    base_path = parsed.path.rstrip("/") if parsed.path else ""
+    discovery_url = (
+        f"https://{hostname}{port_suffix}{base_path}"
+        "/.well-known/openid-configuration"
+    )
+
+    return discovery_url
 
 
 @router.get("", response_model=AuthSettingsResponse)
@@ -202,10 +222,7 @@ async def test_oidc_connection(
 ):
     """Test OIDC connection by fetching the discovery document. Admin only."""
     try:
-        discovery_url = (
-            f"{test_data.issuer.rstrip('/')}/.well-known/openid-configuration"
-        )
-        discovery_url = _validate_external_https_url(discovery_url)
+        discovery_url = _validate_issuer_and_build_discovery_url(test_data.issuer)
 
         async with httpx.AsyncClient(timeout=10.0) as client:
             response = await client.get(discovery_url)
