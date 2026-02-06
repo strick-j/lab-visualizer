@@ -33,7 +33,10 @@ export function hasActiveFilters(filters: TopologyFilters): boolean {
   );
 }
 
-function matchesSearch(search: string, ...values: (string | null | undefined)[]): boolean {
+function matchesSearch(
+  search: string,
+  ...values: (string | null | undefined)[]
+): boolean {
   const term = search.toLowerCase();
   return values.some((v) => v && v.toLowerCase().includes(term));
 }
