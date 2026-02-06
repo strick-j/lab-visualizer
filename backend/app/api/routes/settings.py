@@ -13,6 +13,7 @@ import httpx
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.api.deps import get_current_admin_user
 from app.config import get_settings
@@ -291,7 +292,9 @@ async def list_terraform_buckets(
     await _ensure_env_bucket(db)
 
     result = await db.execute(
-        select(TerraformStateBucket).order_by(TerraformStateBucket.created_at)
+        select(TerraformStateBucket)
+        .options(selectinload(TerraformStateBucket.paths))
+        .order_by(TerraformStateBucket.created_at)
     )
     buckets = result.scalars().unique().all()
 
@@ -321,7 +324,7 @@ async def create_terraform_bucket(
     )
     db.add(bucket)
     await db.commit()
-    await db.refresh(bucket)
+    await db.refresh(bucket, attribute_names=["paths"])
     logger.info(
         f"User {current_user.username} added terraform bucket: {data.bucket_name}"
     )
@@ -337,7 +340,9 @@ async def update_terraform_bucket(
 ):
     """Update a Terraform state bucket configuration. Admin only."""
     result = await db.execute(
-        select(TerraformStateBucket).where(TerraformStateBucket.id == bucket_id)
+        select(TerraformStateBucket)
+        .options(selectinload(TerraformStateBucket.paths))
+        .where(TerraformStateBucket.id == bucket_id)
     )
     bucket = result.scalar_one_or_none()
     if not bucket:
@@ -351,7 +356,7 @@ async def update_terraform_bucket(
         setattr(bucket, field, value)
 
     await db.commit()
-    await db.refresh(bucket)
+    await db.refresh(bucket, attribute_names=["paths"])
     logger.info(f"User {current_user.username} updated terraform bucket {bucket_id}")
     return TerraformBucketResponse.model_validate(bucket)
 
