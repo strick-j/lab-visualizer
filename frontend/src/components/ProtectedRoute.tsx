@@ -21,6 +21,12 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     );
   }
 
+  // Redirect to setup if initial admin setup is required
+  // Skip if already authenticated (authConfig may be stale after setup completes)
+  if (authConfig?.setup_required && !isAuthenticated) {
+    return <Navigate to="/setup" replace />;
+  }
+
   // If no auth methods are enabled, allow access
   if (
     authConfig &&

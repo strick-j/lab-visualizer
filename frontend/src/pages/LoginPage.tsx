@@ -18,12 +18,15 @@ export function LoginPage() {
   const from =
     (location.state as { from?: { pathname: string } })?.from?.pathname || "/";
 
-  // Redirect if already authenticated
+  // Redirect: authenticated users go to dashboard, otherwise setup if needed
   useEffect(() => {
-    if (isAuthenticated && !isLoading) {
+    if (isLoading) return;
+    if (isAuthenticated) {
       navigate(from, { replace: true });
+    } else if (authConfig?.setup_required) {
+      navigate("/setup", { replace: true });
     }
-  }, [isAuthenticated, isLoading, navigate, from]);
+  }, [isLoading, isAuthenticated, authConfig, navigate, from]);
 
   const handleLocalLogin = async (e: FormEvent) => {
     e.preventDefault();

@@ -19,6 +19,7 @@ vi.mock("@/pages", () => ({
   AuthCallbackPage: () => (
     <div data-testid="auth-callback-page">Auth Callback</div>
   ),
+  SetupPage: () => <div data-testid="setup-page">Setup Content</div>,
 }));
 
 // Mock the hooks used by Layout components
@@ -42,7 +43,11 @@ vi.mock("@/contexts/AuthContext", () => ({
   ),
   useAuth: () => ({
     user: { username: "admin", display_name: "Admin", auth_provider: "local" },
-    authConfig: { local_auth_enabled: true, oidc_enabled: false },
+    authConfig: {
+      local_auth_enabled: true,
+      oidc_enabled: false,
+      setup_required: false,
+    },
     isAuthenticated: true,
     isLoading: false,
     error: null,
@@ -61,6 +66,7 @@ vi.mock("@/api/client", () => ({
     oidc_enabled: false,
     oidc_issuer: null,
     oidc_display_name: null,
+    setup_required: false,
   }),
   getCurrentUser: vi.fn().mockResolvedValue({
     username: "admin",

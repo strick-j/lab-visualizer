@@ -23,6 +23,8 @@ import type {
   OIDCSettingsUpdate,
   TestConnectionResponse,
   PasswordChangeRequest,
+  AdminSetupRequest,
+  SetupStatusResponse,
 } from "@/types";
 
 // Create axios instance with base configuration
@@ -336,6 +338,18 @@ export async function getCurrentUser(): Promise<User> {
 
 export async function initiateOIDCLogin(): Promise<OIDCLoginResponse> {
   const response = await api.get("/auth/oidc/login");
+  return response.data;
+}
+
+export async function getSetupStatus(): Promise<SetupStatusResponse> {
+  const response = await api.get("/auth/setup-status");
+  return response.data;
+}
+
+export async function setupAdmin(
+  data: AdminSetupRequest,
+): Promise<TokenResponse> {
+  const response = await api.post("/auth/setup", data);
   return response.data;
 }
 

@@ -191,6 +191,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           oidc_enabled: false,
           oidc_issuer: null,
           oidc_display_name: null,
+          setup_required: false,
         });
       } finally {
         setIsLoading(false);
