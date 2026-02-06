@@ -46,6 +46,12 @@ variable "enable_nat_gateway" {
   default     = true
 }
 
+variable "allowed_ingress_cidrs" {
+  description = "CIDR blocks allowed to access the ALB (e.g., office IPs, VPN ranges). Defaults to open access."
+  type        = list(string)
+  default     = ["0.0.0.0/0"]
+}
+
 # -----------------------------------------------------------------------------
 # Container Configuration
 # -----------------------------------------------------------------------------

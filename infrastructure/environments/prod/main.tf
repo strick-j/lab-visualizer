@@ -99,8 +99,9 @@ module "networking" {
   availability_zones = var.availability_zones
   enable_nat_gateway = true
   single_nat_gateway = false # HA: NAT Gateway per AZ
-  container_port     = var.container_port
-  tags               = local.common_tags
+  container_port        = var.container_port
+  allowed_ingress_cidrs = var.allowed_ingress_cidrs
+  tags                  = local.common_tags
 }
 
 # -----------------------------------------------------------------------------
@@ -113,7 +114,7 @@ module "ecr" {
   project_name            = var.project_name
   environment             = var.environment
   services                = ["backend", "frontend"]
-  image_tag_mutability    = "IMMUTABLE" # Enforce unique tags in prod
+  image_tag_mutability    = "MUTABLE" # Mutable tags required for branch-based tagging (main, develop, latest)
   scan_on_push            = true
   image_retention_count   = 20
   pr_image_retention_days = 14

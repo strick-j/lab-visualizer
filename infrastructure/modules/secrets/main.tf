@@ -3,6 +3,11 @@
 # Creates AWS Secrets Manager secrets for sensitive configuration
 # =============================================================================
 
+# Unique suffix to avoid name collisions with secrets pending deletion
+resource "random_id" "secret_suffix" {
+  byte_length = 4
+}
+
 # -----------------------------------------------------------------------------
 # OIDC Client Secret
 # -----------------------------------------------------------------------------
@@ -10,7 +15,7 @@
 resource "aws_secretsmanager_secret" "oidc_client_secret" {
   count = var.create_oidc_secret ? 1 : 0
 
-  name        = "${var.project_name}/${var.environment}/oidc-client-secret"
+  name        = "${var.project_name}/${var.environment}/oidc-client-secret-${random_id.secret_suffix.hex}"
   description = "OIDC client secret for SSO authentication"
 
   tags = merge(var.tags, {
@@ -30,7 +35,7 @@ resource "aws_secretsmanager_secret_version" "oidc_client_secret" {
 # -----------------------------------------------------------------------------
 
 resource "aws_secretsmanager_secret" "session_secret" {
-  name        = "${var.project_name}/${var.environment}/session-secret"
+  name        = "${var.project_name}/${var.environment}/session-secret-${random_id.secret_suffix.hex}"
   description = "Secret key for session signing"
 
   tags = merge(var.tags, {
@@ -55,7 +60,7 @@ resource "aws_secretsmanager_secret_version" "session_secret" {
 resource "aws_secretsmanager_secret" "app_secrets" {
   count = length(var.app_secrets) > 0 ? 1 : 0
 
-  name        = "${var.project_name}/${var.environment}/app-secrets"
+  name        = "${var.project_name}/${var.environment}/app-secrets-${random_id.secret_suffix.hex}"
   description = "Application secrets"
 
   tags = merge(var.tags, {
