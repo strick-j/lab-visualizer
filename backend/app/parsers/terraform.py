@@ -37,6 +37,7 @@ class TerraformStateFile:
 
     name: str
     key: str
+    bucket: Optional[str]
     description: Optional[str]
     last_modified: Optional[datetime]
     resource_count: int
@@ -108,6 +109,7 @@ class TerraformStateParser:
             return TerraformStateFile(
                 name=name or key,
                 key=key,
+                bucket=self.bucket,
                 description=description,
                 last_modified=last_modified,
                 resource_count=len(resources),
@@ -121,6 +123,7 @@ class TerraformStateParser:
             return TerraformStateFile(
                 name=name or key,
                 key=key,
+                bucket=self.bucket,
                 description=description,
                 last_modified=None,
                 resource_count=0,
@@ -132,6 +135,7 @@ class TerraformStateParser:
             return TerraformStateFile(
                 name=name or key,
                 key=key,
+                bucket=self.bucket,
                 description=description,
                 last_modified=None,
                 resource_count=0,
@@ -143,6 +147,7 @@ class TerraformStateParser:
             return TerraformStateFile(
                 name=name or key,
                 key=key,
+                bucket=self.bucket,
                 description=description,
                 last_modified=None,
                 resource_count=0,
@@ -276,8 +281,45 @@ class TerraformStateAggregator:
 
     def __init__(self):
         """Initialize the aggregator."""
-        self.parser = TerraformStateParser()
         self._state_config: Optional[Dict[str, Any]] = None
+
+    def _get_parser(self, bucket: Optional[str] = None) -> TerraformStateParser:
+        """Get a parser for the given bucket."""
+        return TerraformStateParser(bucket=bucket)
+
+    async def _load_db_buckets(self) -> List[Dict[str, Any]]:
+        """
+        Load Terraform state bucket configurations from the database.
+
+        Returns:
+            List of bucket configurations with bucket_name, region, prefix.
+        """
+        from sqlalchemy import select
+
+        from app.models.database import async_session_maker
+        from app.models.resources import TerraformStateBucket
+
+        buckets = []
+        try:
+            async with async_session_maker() as session:
+                result = await session.execute(
+                    select(TerraformStateBucket).where(
+                        TerraformStateBucket.enabled == True  # noqa: E712
+                    )
+                )
+                for row in result.scalars().all():
+                    buckets.append(
+                        {
+                            "bucket_name": row.bucket_name,
+                            "region": row.region,
+                            "prefix": row.prefix,
+                            "description": row.description,
+                        }
+                    )
+        except Exception as e:
+            logger.warning(f"Failed to load buckets from database: {e}")
+
+        return buckets
 
     async def load_config(self) -> List[Dict[str, Any]]:
         """
@@ -308,14 +350,122 @@ class TerraformStateAggregator:
         logger.warning("No Terraform state configuration found")
         return []
 
+    async def _get_all_bucket_configs(
+        self,
+    ) -> List[Dict[str, Any]]:
+        """
+        Build a combined list of (bucket_name, state_configs) entries from
+        the YAML config file plus any database-configured buckets.
+
+        Each entry has:
+        - bucket_name: S3 bucket name
+        - state_configs: list of state file configs for that bucket
+        """
+        entries: List[Dict[str, Any]] = []
+
+        # 1. YAML / env-based config uses the legacy single TF_STATE_BUCKET
+        yaml_configs = await self.load_config()
+        if yaml_configs and settings.tf_state_bucket:
+            entries.append(
+                {
+                    "bucket_name": settings.tf_state_bucket,
+                    "region": None,
+                    "state_configs": yaml_configs,
+                }
+            )
+
+        # 2. Database-configured buckets (auto-discovered state files)
+        db_buckets = await self._load_db_buckets()
+        for db_bucket in db_buckets:
+            bucket_name = db_bucket["bucket_name"]
+            prefix = db_bucket.get("prefix") or ""
+            region = db_bucket.get("region")
+
+            # Discover state files in the bucket under the given prefix
+            discovered = await self._discover_state_files(
+                bucket_name, prefix, region
+            )
+            if discovered:
+                entries.append(
+                    {
+                        "bucket_name": bucket_name,
+                        "region": region,
+                        "state_configs": discovered,
+                    }
+                )
+
+        return entries
+
+    async def _discover_state_files(
+        self, bucket_name: str, prefix: str, region: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        """
+        Discover .tfstate files in an S3 bucket under the given prefix.
+
+        Args:
+            bucket_name: S3 bucket name
+            prefix: Key prefix to search under
+            region: AWS region for the S3 client
+
+        Returns:
+            List of state file configurations
+        """
+        try:
+            session_kwargs: Dict[str, Any] = {}
+            if settings.aws_profile:
+                session_kwargs["profile_name"] = settings.aws_profile
+            session = boto3.Session(**session_kwargs)
+            s3_client = session.client(
+                "s3", region_name=region or settings.aws_region
+            )
+
+            state_files: List[Dict[str, Any]] = []
+            paginator = s3_client.get_paginator("list_objects_v2")
+
+            for page in paginator.paginate(Bucket=bucket_name, Prefix=prefix):
+                for obj in page.get("Contents", []):
+                    key = obj["Key"]
+                    if key.endswith(".tfstate") and "/archive/" not in key and "/backup/" not in key:
+                        # Derive a human-readable name from the key
+                        name = key
+                        if prefix and key.startswith(prefix):
+                            name = key[len(prefix) :].lstrip("/")
+                        state_files.append(
+                            {
+                                "name": name,
+                                "key": key,
+                                "description": f"State file from s3://{bucket_name}/{key}",
+                                "enabled": True,
+                            }
+                        )
+
+            logger.info(
+                f"Discovered {len(state_files)} state files in "
+                f"s3://{bucket_name}/{prefix}"
+            )
+            return state_files
+
+        except ClientError as e:
+            error_code = e.response.get("Error", {}).get("Code")
+            logger.error(
+                f"Failed to list state files in s3://{bucket_name}/{prefix}: "
+                f"{error_code}"
+            )
+            return []
+        except Exception as e:
+            logger.exception(
+                f"Unexpected error discovering state files in "
+                f"s3://{bucket_name}/{prefix}: {e}"
+            )
+            return []
+
     async def aggregate_all(self) -> Dict[str, List[TerraformResource]]:
         """
-        Aggregate resources from all configured state files.
+        Aggregate resources from all configured state files across all buckets.
 
         Returns:
             Dictionary mapping resource type to list of resources
         """
-        state_configs = await self.load_config()
         all_resources: Dict[str, List[TerraformResource]] = {
             "ec2": [],
             "rds": [],
@@ -326,22 +476,38 @@ class TerraformStateAggregator:
             "eip": [],
         }
 
-        for config in state_configs:
-            if not config.get("enabled", True):
-                continue
+        bucket_entries = await self._get_all_bucket_configs()
 
-            state_file = await self.parser.parse_state_file(
-                key=config["key"],
-                name=config.get("name", ""),
-                description=config.get("description", ""),
-            )
+        for entry in bucket_entries:
+            bucket_name = entry["bucket_name"]
+            region = entry.get("region")
+            parser = self._get_parser(bucket=bucket_name)
+            # Override region if specified per bucket
+            if region:
+                session_kwargs: Dict[str, Any] = {}
+                if settings.aws_profile:
+                    session_kwargs["profile_name"] = settings.aws_profile
+                session = boto3.Session(**session_kwargs)
+                parser._s3_client = session.client("s3", region_name=region)
 
-            for resource in state_file.resources:
-                resource_category = TerraformStateParser.SUPPORTED_RESOURCE_TYPES.get(
-                    resource.resource_type
+            for config in entry["state_configs"]:
+                if not config.get("enabled", True):
+                    continue
+
+                state_file = await parser.parse_state_file(
+                    key=config["key"],
+                    name=config.get("name", ""),
+                    description=config.get("description", ""),
                 )
-                if resource_category and resource_category in all_resources:
-                    all_resources[resource_category].append(resource)
+
+                for resource in state_file.resources:
+                    resource_category = (
+                        TerraformStateParser.SUPPORTED_RESOURCE_TYPES.get(
+                            resource.resource_type
+                        )
+                    )
+                    if resource_category and resource_category in all_resources:
+                        all_resources[resource_category].append(resource)
 
         # Log summary
         for category, resources in all_resources.items():
@@ -353,23 +519,34 @@ class TerraformStateAggregator:
 
     async def get_state_info(self) -> List[TerraformStateFile]:
         """
-        Get information about all configured state files.
+        Get information about all configured state files across all buckets.
 
         Returns:
             List of TerraformStateFile objects with metadata
         """
-        state_configs = await self.load_config()
-        state_files = []
+        state_files: List[TerraformStateFile] = []
+        bucket_entries = await self._get_all_bucket_configs()
 
-        for config in state_configs:
-            if not config.get("enabled", True):
-                continue
+        for entry in bucket_entries:
+            bucket_name = entry["bucket_name"]
+            region = entry.get("region")
+            parser = self._get_parser(bucket=bucket_name)
+            if region:
+                session_kwargs: Dict[str, Any] = {}
+                if settings.aws_profile:
+                    session_kwargs["profile_name"] = settings.aws_profile
+                session = boto3.Session(**session_kwargs)
+                parser._s3_client = session.client("s3", region_name=region)
 
-            state_file = await self.parser.parse_state_file(
-                key=config["key"],
-                name=config.get("name", ""),
-                description=config.get("description", ""),
-            )
-            state_files.append(state_file)
+            for config in entry["state_configs"]:
+                if not config.get("enabled", True):
+                    continue
+
+                state_file = await parser.parse_state_file(
+                    key=config["key"],
+                    name=config.get("name", ""),
+                    description=config.get("description", ""),
+                )
+                state_files.append(state_file)
 
         return state_files

@@ -19,6 +19,7 @@ from app.parsers.terraform import TerraformStateAggregator
 from app.schemas.resources import (
     DriftItem,
     DriftResponse,
+    TerraformBucketInfo,
     TerraformStateInfo,
     TerraformStatesResponse,
 )
@@ -40,12 +41,6 @@ async def list_terraform_states(db: AsyncSession = Depends(get_db)):
     - Number of resources in the state
     - Sync status
     """
-    if not settings.tf_state_bucket:
-        raise HTTPException(
-            status_code=400,
-            detail="Terraform state bucket not configured. Set TF_STATE_BUCKET environment variable.",
-        )
-
     try:
         aggregator = TerraformStateAggregator()
         state_files = await aggregator.get_state_info()
@@ -54,6 +49,7 @@ async def list_terraform_states(db: AsyncSession = Depends(get_db)):
             TerraformStateInfo(
                 name=sf.name,
                 key=sf.key,
+                bucket=TerraformBucketInfo(name=sf.bucket) if sf.bucket else None,
                 description=sf.description,
                 last_modified=sf.last_modified,
                 resource_count=sf.resource_count,
@@ -94,12 +90,6 @@ async def detect_drift(db: AsyncSession = Depends(get_db)):
     - Orphaned resources: Defined in Terraform but not found in AWS
     - Modified resources: Exist in both but with different configurations (future)
     """
-    if not settings.tf_state_bucket:
-        raise HTTPException(
-            status_code=400,
-            detail="Terraform state bucket not configured. Set TF_STATE_BUCKET environment variable.",
-        )
-
     drift_items: List[DriftItem] = []
 
     try:

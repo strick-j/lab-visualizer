@@ -22,6 +22,10 @@ import type {
   OIDCSettings,
   OIDCSettingsUpdate,
   TestConnectionResponse,
+  TerraformBucket,
+  TerraformBucketsListResponse,
+  TerraformBucketCreate,
+  TerraformBucketUpdate,
 } from "@/types";
 
 // Create axios instance with base configuration
@@ -364,6 +368,34 @@ export async function testOIDCConnection(
 ): Promise<TestConnectionResponse> {
   const response = await api.post("/settings/oidc/test", { issuer });
   return response.data;
+}
+
+// =============================================================================
+// Terraform State Buckets (Admin only)
+// =============================================================================
+
+export async function getTerraformBuckets(): Promise<TerraformBucketsListResponse> {
+  const response = await api.get("/settings/terraform/buckets");
+  return response.data;
+}
+
+export async function createTerraformBucket(
+  data: TerraformBucketCreate,
+): Promise<TerraformBucket> {
+  const response = await api.post("/settings/terraform/buckets", data);
+  return response.data;
+}
+
+export async function updateTerraformBucket(
+  id: number,
+  data: TerraformBucketUpdate,
+): Promise<TerraformBucket> {
+  const response = await api.put(`/settings/terraform/buckets/${id}`, data);
+  return response.data;
+}
+
+export async function deleteTerraformBucket(id: number): Promise<void> {
+  await api.delete(`/settings/terraform/buckets/${id}`);
 }
 
 export default api;

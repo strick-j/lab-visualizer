@@ -13,14 +13,21 @@ import ipaddress
 import socket
 from urllib.parse import urlparse
 
+from sqlalchemy import select
+
 from app.api.deps import get_current_admin_user
 from app.config import get_settings
 from app.models.auth import User
 from app.models.database import get_db
+from app.models.resources import TerraformStateBucket
 from app.schemas.settings import (
     AuthSettingsResponse,
     OIDCSettingsResponse,
     OIDCSettingsUpdate,
+    TerraformBucketCreate,
+    TerraformBucketResponse,
+    TerraformBucketsListResponse,
+    TerraformBucketUpdate,
     TestConnectionRequest,
     TestConnectionResponse,
 )
@@ -240,3 +247,109 @@ async def test_oidc_connection(
             success=False,
             message=f"Error: {str(e)}",
         )
+
+
+# =============================================================================
+# Terraform State Bucket Management
+# =============================================================================
+
+
+@router.get("/terraform/buckets", response_model=TerraformBucketsListResponse)
+async def list_terraform_buckets(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_admin_user),
+):
+    """List all configured Terraform state buckets. Admin only."""
+    result = await db.execute(
+        select(TerraformStateBucket).order_by(TerraformStateBucket.created_at)
+    )
+    buckets = result.scalars().all()
+
+    return TerraformBucketsListResponse(
+        buckets=[TerraformBucketResponse.model_validate(b) for b in buckets],
+        total=len(buckets),
+    )
+
+
+@router.post(
+    "/terraform/buckets",
+    response_model=TerraformBucketResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_terraform_bucket(
+    data: TerraformBucketCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_admin_user),
+):
+    """Add a new Terraform state bucket configuration. Admin only."""
+    bucket = TerraformStateBucket(
+        bucket_name=data.bucket_name,
+        region=data.region,
+        description=data.description,
+        prefix=data.prefix,
+        enabled=data.enabled,
+    )
+    db.add(bucket)
+    await db.commit()
+    await db.refresh(bucket)
+    logger.info(
+        f"User {current_user.username} added terraform bucket: {data.bucket_name}"
+    )
+    return TerraformBucketResponse.model_validate(bucket)
+
+
+@router.put("/terraform/buckets/{bucket_id}", response_model=TerraformBucketResponse)
+async def update_terraform_bucket(
+    bucket_id: int,
+    data: TerraformBucketUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_admin_user),
+):
+    """Update a Terraform state bucket configuration. Admin only."""
+    result = await db.execute(
+        select(TerraformStateBucket).where(TerraformStateBucket.id == bucket_id)
+    )
+    bucket = result.scalar_one_or_none()
+    if not bucket:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Terraform bucket with id {bucket_id} not found",
+        )
+
+    update_data = data.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(bucket, field, value)
+
+    await db.commit()
+    await db.refresh(bucket)
+    logger.info(
+        f"User {current_user.username} updated terraform bucket {bucket_id}"
+    )
+    return TerraformBucketResponse.model_validate(bucket)
+
+
+@router.delete(
+    "/terraform/buckets/{bucket_id}", status_code=status.HTTP_204_NO_CONTENT
+)
+async def delete_terraform_bucket(
+    bucket_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_admin_user),
+):
+    """Remove a Terraform state bucket configuration. Admin only."""
+    result = await db.execute(
+        select(TerraformStateBucket).where(TerraformStateBucket.id == bucket_id)
+    )
+    bucket = result.scalar_one_or_none()
+    if not bucket:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Terraform bucket with id {bucket_id} not found",
+        )
+
+    await db.delete(bucket)
+    await db.commit()
+    logger.info(
+        f"User {current_user.username} deleted terraform bucket {bucket_id} "
+        f"({bucket.bucket_name})"
+    )

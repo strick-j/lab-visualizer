@@ -14,6 +14,27 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.models.database import Base
 
 
+class TerraformStateBucket(Base):
+    """Configuration for an S3 bucket containing Terraform state files."""
+
+    __tablename__ = "terraform_state_buckets"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    bucket_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    region: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
+    description: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    prefix: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+
+    # Timestamps
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+
 class SyncStatus(Base):
     """Tracks the last synchronization status for data sources."""
 
