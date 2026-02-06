@@ -113,7 +113,7 @@ module "ecr" {
   project_name            = var.project_name
   environment             = var.environment
   services                = ["backend", "frontend"]
-  image_tag_mutability    = "IMMUTABLE" # Enforce unique tags in prod
+  image_tag_mutability    = "MUTABLE" # Mutable tags required for branch-based tagging (main, develop, latest)
   scan_on_push            = true
   image_retention_count   = 20
   pr_image_retention_days = 14
