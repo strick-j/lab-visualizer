@@ -67,3 +67,8 @@ export interface TestConnectionResponse {
   message: string;
   details?: Record<string, string>;
 }
+
+export interface PasswordChangeRequest {
+  current_password: string;
+  new_password: string;
+}

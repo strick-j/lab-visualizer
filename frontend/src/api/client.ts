@@ -22,6 +22,7 @@ import type {
   OIDCSettings,
   OIDCSettingsUpdate,
   TestConnectionResponse,
+  PasswordChangeRequest,
 } from "@/types";
 
 // Create axios instance with base configuration
@@ -335,6 +336,18 @@ export async function getCurrentUser(): Promise<User> {
 
 export async function initiateOIDCLogin(): Promise<OIDCLoginResponse> {
   const response = await api.get("/auth/oidc/login");
+  return response.data;
+}
+
+// =============================================================================
+// User Management
+// =============================================================================
+
+export async function changeUserPassword(
+  userId: number,
+  data: PasswordChangeRequest,
+): Promise<User> {
+  const response = await api.put(`/users/${userId}/password`, data);
   return response.data;
 }
 
