@@ -6,6 +6,7 @@ Provides admin-only endpoints for managing authentication configuration.
 
 import ipaddress
 import logging
+import re
 import socket
 from urllib.parse import urlparse
 
@@ -39,6 +40,14 @@ from app.services.settings import get_or_create_auth_settings, update_oidc_setti
 logger = logging.getLogger(__name__)
 router = APIRouter()
 env_settings = get_settings()
+
+# Pattern to strip control characters that could forge log entries
+_CONTROL_CHARS = re.compile(r"[\x00-\x1f\x7f-\x9f]")
+
+
+def _sanitize_for_log(value: str) -> str:
+    """Strip control characters from a value before logging."""
+    return _CONTROL_CHARS.sub("", value)
 
 
 def _validate_issuer_and_build_discovery_url(issuer_input: str) -> str:
@@ -345,7 +354,7 @@ async def create_terraform_bucket(
     logger.info(
         "User %s added terraform bucket: %s",
         current_user.username,
-        data.bucket_name,
+        _sanitize_for_log(data.bucket_name),
     )
     return TerraformBucketResponse.model_validate(bucket)
 
@@ -367,7 +376,7 @@ async def update_terraform_bucket(
     if not bucket:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Terraform bucket with id {bucket_id} not found",
+            detail="Terraform bucket not found",
         )
 
     update_data = data.model_dump(exclude_unset=True)
@@ -394,7 +403,7 @@ async def delete_terraform_bucket(
     if not bucket:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Terraform bucket with id {bucket_id} not found",
+            detail="Terraform bucket not found",
         )
 
     await db.delete(bucket)
@@ -403,7 +412,7 @@ async def delete_terraform_bucket(
         "User %s deleted terraform bucket %s (%s)",
         current_user.username,
         bucket_id,
-        bucket.bucket_name,
+        _sanitize_for_log(bucket.bucket_name),
     )
 
 
@@ -431,7 +440,7 @@ async def create_terraform_path(
     if not bucket:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Terraform bucket with id {bucket_id} not found",
+            detail="Terraform bucket not found",
         )
 
     path = TerraformStatePath(
@@ -446,8 +455,8 @@ async def create_terraform_path(
     logger.info(
         "User %s added path '%s' to bucket %s",
         current_user.username,
-        data.path,
-        bucket.bucket_name,
+        _sanitize_for_log(data.path),
+        _sanitize_for_log(bucket.bucket_name),
     )
     return TerraformPathResponse.model_validate(path)
 
@@ -470,7 +479,7 @@ async def update_terraform_path(
     if not path:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Terraform path with id {path_id} not found",
+            detail="Terraform path not found",
         )
 
     update_data = data.model_dump(exclude_unset=True)
@@ -500,7 +509,7 @@ async def delete_terraform_path(
     if not path:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Terraform path with id {path_id} not found",
+            detail="Terraform path not found",
         )
 
     await db.delete(path)
@@ -509,5 +518,5 @@ async def delete_terraform_path(
         "User %s deleted terraform path %s (%s)",
         current_user.username,
         path_id,
-        path.path,
+        _sanitize_for_log(path.path),
     )
