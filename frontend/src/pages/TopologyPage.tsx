@@ -156,7 +156,7 @@ export function TopologyPage() {
   const details = selectedResource ? getResourceDetails(selectedResource) : [];
 
   return (
-    <div className="h-[calc(100vh-4rem-3rem)] -m-6 flex flex-col overflow-hidden">
+    <div className="h-[calc(100vh-var(--header-height))] flex flex-col overflow-hidden">
       {/* Main content - topology visualization */}
       <div className="flex-1 relative bg-gray-50 dark:bg-gray-900">
         <InfrastructureTopology onResourceSelect={handleResourceSelect} />

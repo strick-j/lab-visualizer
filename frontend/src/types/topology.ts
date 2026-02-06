@@ -188,6 +188,17 @@ export type TopologyNodeData =
 export type TopologyEdgeType = "contains" | "routes-to" | "associated-with";
 
 // =============================================================================
+// Topology Filter Types
+// =============================================================================
+
+export interface TopologyFilters {
+  search: string;
+  vpcId: string;
+  subnetType: "" | "public" | "private" | "unknown";
+  status: "" | DisplayStatus;
+}
+
+// =============================================================================
 // Layout Configuration
 // =============================================================================
 
