@@ -72,6 +72,7 @@ class AuthConfigResponse(BaseModel):
     oidc_enabled: bool
     oidc_issuer: Optional[str] = None
     oidc_display_name: Optional[str] = None
+    setup_required: bool = False
 
 
 class OIDCCallbackRequest(BaseModel):
@@ -85,3 +86,18 @@ class LogoutResponse(BaseModel):
     """Response model for logout."""
 
     message: str = "Successfully logged out"
+
+
+class AdminSetupRequest(BaseModel):
+    """Request model for initial admin setup."""
+
+    username: str = Field(..., min_length=3, max_length=100)
+    password: str = Field(..., min_length=12)
+    confirm_password: str = Field(..., min_length=12)
+
+
+class SetupStatusResponse(BaseModel):
+    """Response model for setup status check."""
+
+    setup_required: bool
+    message: str

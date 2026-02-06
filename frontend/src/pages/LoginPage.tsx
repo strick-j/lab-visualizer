@@ -18,6 +18,13 @@ export function LoginPage() {
   const from =
     (location.state as { from?: { pathname: string } })?.from?.pathname || "/";
 
+  // Redirect to setup if no admin exists yet
+  useEffect(() => {
+    if (!isLoading && authConfig?.setup_required) {
+      navigate("/setup", { replace: true });
+    }
+  }, [isLoading, authConfig, navigate]);
+
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated && !isLoading) {

@@ -17,16 +17,20 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import get_settings
 from app.models.database import get_db
 from app.schemas.auth import (
+    AdminSetupRequest,
     AuthConfigResponse,
     LoginRequest,
     LogoutResponse,
     RefreshTokenRequest,
+    SetupStatusResponse,
     TokenResponse,
     UserResponse,
 )
 from app.services.auth import (
     authenticate_local_user,
+    check_admin_exists,
     create_federated_user,
+    create_initial_admin,
     create_session,
     get_user_by_external_id,
     refresh_access_token,
@@ -59,6 +63,7 @@ def get_client_info(request: Request) -> tuple[Optional[str], Optional[str]]:
 async def get_auth_config(db: AsyncSession = Depends(get_db)):
     """Get authentication configuration for the frontend."""
     oidc_config = await get_effective_oidc_config(db)
+    admin_exists = await check_admin_exists(db)
 
     return AuthConfigResponse(
         local_auth_enabled=settings.local_auth_enabled,
@@ -67,6 +72,64 @@ async def get_auth_config(db: AsyncSession = Depends(get_db)):
         oidc_display_name=(
             oidc_config.get("display_name") if oidc_config["enabled"] else None
         ),
+        setup_required=not admin_exists,
+    )
+
+
+@router.get("/setup-status", response_model=SetupStatusResponse)
+async def get_setup_status(db: AsyncSession = Depends(get_db)):
+    """Check if initial admin setup is required."""
+    admin_exists = await check_admin_exists(db)
+
+    if admin_exists:
+        return SetupStatusResponse(
+            setup_required=False,
+            message="Setup is complete. An admin user already exists.",
+        )
+
+    return SetupStatusResponse(
+        setup_required=True,
+        message="Initial setup required. Please create an admin account.",
+    )
+
+
+@router.post("/setup", response_model=TokenResponse)
+async def setup_admin(
+    request: Request,
+    setup_data: AdminSetupRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """Create the initial admin user. Only works when no admin exists."""
+    # Verify passwords match
+    if setup_data.password != setup_data.confirm_password:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Passwords do not match",
+        )
+
+    try:
+        user = await create_initial_admin(
+            db,
+            username=setup_data.username,
+            password=setup_data.password,
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+
+    # Auto-login after setup
+    ip_address, user_agent = get_client_info(request)
+    access_token, refresh_token, session = await create_session(
+        db, user, user_agent=user_agent, ip_address=ip_address
+    )
+
+    return TokenResponse(
+        access_token=access_token,
+        refresh_token=refresh_token,
+        token_type="bearer",
+        expires_in=settings.access_token_expire_minutes * 60,
     )
 
 

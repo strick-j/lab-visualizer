@@ -27,6 +27,7 @@ export interface AuthConfig {
   oidc_enabled: boolean;
   oidc_issuer: string | null;
   oidc_display_name: string | null;
+  setup_required: boolean;
 }
 
 export interface OIDCLoginResponse {
@@ -71,4 +72,15 @@ export interface TestConnectionResponse {
 export interface PasswordChangeRequest {
   current_password: string;
   new_password: string;
+}
+
+export interface AdminSetupRequest {
+  username: string;
+  password: string;
+  confirm_password: string;
+}
+
+export interface SetupStatusResponse {
+  setup_required: boolean;
+  message: string;
 }

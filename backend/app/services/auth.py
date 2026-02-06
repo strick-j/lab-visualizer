@@ -306,6 +306,92 @@ async def revoke_all_user_sessions(db: AsyncSession, user_id: int) -> int:
     return count
 
 
+def validate_password_strength(password: str) -> list[str]:
+    """
+    Validate password meets strength requirements.
+
+    Requirements:
+    - Minimum 12 characters
+    - At least one uppercase letter
+    - At least one lowercase letter
+    - At least one number
+    - At least one special character
+
+    Returns a list of validation error messages (empty if valid).
+    """
+    errors: list[str] = []
+
+    if len(password) < 12:
+        errors.append("Password must be at least 12 characters long")
+
+    if not any(c.isupper() for c in password):
+        errors.append("Password must contain at least one uppercase letter")
+
+    if not any(c.islower() for c in password):
+        errors.append("Password must contain at least one lowercase letter")
+
+    if not any(c.isdigit() for c in password):
+        errors.append("Password must contain at least one number")
+
+    special_chars = set("!@#$%^&*()_+-=[]{}|;':\",./<>?`~\\")
+    if not any(c in special_chars for c in password):
+        errors.append("Password must contain at least one special character")
+
+    return errors
+
+
+async def check_admin_exists(db: AsyncSession) -> bool:
+    """Check if any admin user exists in the database."""
+    result = await db.execute(
+        select(User).where(User.is_admin == True, User.is_active == True)  # noqa: E712
+    )
+    return result.scalar_one_or_none() is not None
+
+
+async def create_initial_admin(
+    db: AsyncSession,
+    username: str,
+    password: str,
+) -> User:
+    """
+    Create the initial admin user during first-time setup.
+
+    Only succeeds if no admin user already exists.
+    Validates password strength requirements.
+    Raises ValueError if validation fails or an admin already exists.
+    """
+    # Check no admin exists
+    if await check_admin_exists(db):
+        raise ValueError("An admin user already exists. Setup has already been completed.")
+
+    # Validate username
+    username = username.strip()
+    if len(username) < 3:
+        raise ValueError("Username must be at least 3 characters long")
+    if len(username) > 100:
+        raise ValueError("Username must be at most 100 characters long")
+
+    # Validate password strength
+    errors = validate_password_strength(password)
+    if errors:
+        raise ValueError("; ".join(errors))
+
+    # Check username not already taken
+    existing = await get_user_by_username(db, username)
+    if existing:
+        raise ValueError("Username is already taken")
+
+    user = await create_local_user(
+        db,
+        username=username,
+        password=password,
+        is_admin=True,
+        display_name="Administrator",
+    )
+    logger.info(f"Initial admin user created via setup: {_sanitize_for_log(username)}")
+    return user
+
+
 async def change_user_password(
     db: AsyncSession,
     user: User,
@@ -334,34 +420,11 @@ async def change_user_password(
 
 
 async def ensure_admin_user(db: AsyncSession) -> None:
-    """Ensure an admin user exists on startup if configured."""
-    logger.info(
-        f"ensure_admin_user: checking config "
-        f"(username={settings.admin_username!r}, "
-        f"password_set={bool(settings.admin_password)})"
-    )
-    if not settings.admin_username or not settings.admin_password:
+    """Check if an admin user exists on startup and log setup status."""
+    admin_exists = await check_admin_exists(db)
+    if admin_exists:
+        logger.info("Admin user exists - setup is complete")
+    else:
         logger.info(
-            "ensure_admin_user: skipping - admin credentials not fully configured"
+            "No admin user found - initial setup required via /setup page"
         )
-        return
-
-    existing = await get_user_by_username(db, settings.admin_username)
-    if existing:
-        # Update password and ensure admin privileges on each startup
-        # This allows password changes via .env to take effect
-        existing.password_hash = hash_password(settings.admin_password)
-        existing.is_admin = True
-        existing.is_active = True
-        await db.commit()
-        logger.info(f"Updated admin user: {settings.admin_username}")
-        return
-
-    await create_local_user(
-        db,
-        username=settings.admin_username,
-        password=settings.admin_password,
-        is_admin=True,
-        display_name="Administrator",
-    )
-    logger.info(f"Created initial admin user: {settings.admin_username}")
