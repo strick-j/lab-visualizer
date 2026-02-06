@@ -35,7 +35,7 @@ on:
           - prod
 
 env:
-  AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+  AWS_REGION: ${{ vars.AWS_REGION || 'us-east-2' }}
   PROJECT_NAME: ${{ vars.PROJECT_NAME || 'lab-visualizer' }}
 
 # Permissions required for OIDC authentication with AWS
