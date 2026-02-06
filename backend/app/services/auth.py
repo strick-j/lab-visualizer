@@ -28,6 +28,7 @@ def _sanitize_for_log(value: Optional[str]) -> str:
     # Remove CR/LF characters to prevent log injection via new lines.
     return str(value).replace("\r", "").replace("\n", "")
 
+
 # Password hashing context
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -303,6 +304,33 @@ async def revoke_all_user_sessions(db: AsyncSession, user_id: int) -> int:
     await db.commit()
     logger.info(f"Revoked {count} sessions for user_id: {user_id}")
     return count
+
+
+async def change_user_password(
+    db: AsyncSession,
+    user: User,
+    current_password: str,
+    new_password: str,
+) -> None:
+    """
+    Change a local user's password.
+
+    Verifies the current password, then updates the hash.
+    Raises ValueError with a descriptive message on failure.
+    """
+    if user.auth_provider != "local":
+        raise ValueError("Password changes are only supported for local accounts")
+
+    if not user.password_hash:
+        raise ValueError("User account has no password configured")
+
+    if not verify_password(current_password, user.password_hash):
+        raise ValueError("Current password is incorrect")
+
+    user.password_hash = hash_password(new_password)
+    await db.commit()
+    safe_username = _sanitize_for_log(user.username)
+    logger.info(f"Password changed for user: {safe_username}")
 
 
 async def ensure_admin_user(db: AsyncSession) -> None:

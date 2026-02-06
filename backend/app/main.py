@@ -13,7 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.deps import get_current_user
 from app.api.routes import auth, ec2, eip, health, igw, nat_gateway, rds, resources
 from app.api.routes import settings as settings_routes
-from app.api.routes import subnet, terraform, topology, vpc
+from app.api.routes import subnet, terraform, topology, users, vpc
 from app.config import get_settings
 from app.models.database import init_db
 
@@ -121,6 +121,14 @@ app.include_router(
 )
 app.include_router(
     topology.router, prefix="/api", tags=["Topology"], dependencies=auth_dependency
+)
+
+# User management routes
+app.include_router(
+    users.router,
+    prefix="/api/users",
+    tags=["Users"],
+    dependencies=auth_dependency,
 )
 
 # Settings routes - admin only (auth is handled within the route handlers)
