@@ -605,9 +605,7 @@ function BucketAddForm({ onSave, onCancel }: BucketAddFormProps) {
       });
     } catch (err: unknown) {
       const axiosError = err as { response?: { data?: { detail?: string } } };
-      setSaveError(
-        axiosError.response?.data?.detail || "Failed to add bucket",
-      );
+      setSaveError(axiosError.response?.data?.detail || "Failed to add bucket");
     } finally {
       setIsSaving(false);
     }
