@@ -343,7 +343,9 @@ async def create_terraform_bucket(
     await db.commit()
     await db.refresh(bucket, attribute_names=["paths"])
     logger.info(
-        f"User {current_user.username} added terraform bucket: {data.bucket_name}"
+        "User %s added terraform bucket: %s",
+        current_user.username,
+        data.bucket_name,
     )
     return TerraformBucketResponse.model_validate(bucket)
 
@@ -374,7 +376,7 @@ async def update_terraform_bucket(
 
     await db.commit()
     await db.refresh(bucket, attribute_names=["paths"])
-    logger.info(f"User {current_user.username} updated terraform bucket {bucket_id}")
+    logger.info("User %s updated terraform bucket %s", current_user.username, bucket_id)
     return TerraformBucketResponse.model_validate(bucket)
 
 
@@ -398,8 +400,10 @@ async def delete_terraform_bucket(
     await db.delete(bucket)
     await db.commit()
     logger.info(
-        f"User {current_user.username} deleted terraform bucket {bucket_id} "
-        f"({bucket.bucket_name})"
+        "User %s deleted terraform bucket %s (%s)",
+        current_user.username,
+        bucket_id,
+        bucket.bucket_name,
     )
 
 
@@ -440,8 +444,10 @@ async def create_terraform_path(
     await db.commit()
     await db.refresh(path)
     logger.info(
-        f"User {current_user.username} added path '{data.path}' "
-        f"to bucket {bucket.bucket_name}"
+        "User %s added path '%s' to bucket %s",
+        current_user.username,
+        data.path,
+        bucket.bucket_name,
     )
     return TerraformPathResponse.model_validate(path)
 
@@ -473,7 +479,7 @@ async def update_terraform_path(
 
     await db.commit()
     await db.refresh(path)
-    logger.info(f"User {current_user.username} updated terraform path {path_id}")
+    logger.info("User %s updated terraform path %s", current_user.username, path_id)
     return TerraformPathResponse.model_validate(path)
 
 
@@ -500,6 +506,8 @@ async def delete_terraform_path(
     await db.delete(path)
     await db.commit()
     logger.info(
-        f"User {current_user.username} deleted terraform path {path_id} "
-        f"({path.path})"
+        "User %s deleted terraform path %s (%s)",
+        current_user.username,
+        path_id,
+        path.path,
     )

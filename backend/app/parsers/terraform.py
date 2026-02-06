@@ -94,7 +94,7 @@ class TerraformStateParser:
         Returns:
             TerraformStateFile with parsed resources
         """
-        logger.info(f"Parsing Terraform state: {key}")
+        logger.info("Parsing Terraform state: %s", key)
 
         try:
             # Get state file from S3
@@ -119,7 +119,7 @@ class TerraformStateParser:
 
         except ClientError as e:
             error_code = e.response.get("Error", {}).get("Code")
-            logger.error(f"Failed to fetch state file {key}: {error_code}")
+            logger.error("Failed to fetch state file %s: %s", key, error_code)
             return TerraformStateFile(
                 name=name or key,
                 key=key,
@@ -131,7 +131,7 @@ class TerraformStateParser:
                 resources=[],
             )
         except json.JSONDecodeError as e:
-            logger.error(f"Failed to parse state file {key}: {e}")
+            logger.error("Failed to parse state file %s: %s", key, e)
             return TerraformStateFile(
                 name=name or key,
                 key=key,
@@ -143,7 +143,7 @@ class TerraformStateParser:
                 resources=[],
             )
         except Exception as e:
-            logger.exception(f"Unexpected error parsing state file {key}: {e}")
+            logger.exception("Unexpected error parsing state file %s", key)
             return TerraformStateFile(
                 name=name or key,
                 key=key,
@@ -178,8 +178,9 @@ class TerraformStateParser:
             resources = self._extract_v4_resources(state_data, state_source)
         else:
             logger.warning(
-                f"Unsupported Terraform state version: {version}. "
-                "Only version 4+ is supported."
+                "Unsupported Terraform state version: %s. "
+                "Only version 4+ is supported.",
+                version,
             )
 
         return resources
@@ -331,7 +332,7 @@ class TerraformStateAggregator:
                         }
                     )
         except Exception as e:
-            logger.warning(f"Failed to load buckets from database: {e}")
+            logger.warning("Failed to load buckets from database: %s", e)
 
         return buckets
 
@@ -352,9 +353,9 @@ class TerraformStateAggregator:
                 config = yaml.safe_load(f)
                 return config.get("terraform_states", [])
         except FileNotFoundError:
-            logger.warning(f"Config file not found: {config_path}")
+            logger.warning("Config file not found: %s", config_path)
         except yaml.YAMLError as e:
-            logger.error(f"Failed to parse config file: {e}")
+            logger.error("Failed to parse config file: %s", e)
 
         # Fall back to environment variable
         if settings.tf_state_keys:
@@ -481,22 +482,27 @@ class TerraformStateAggregator:
                         )
 
             logger.info(
-                f"Discovered {len(state_files)} state files in "
-                f"s3://{bucket_name}/{prefix}"
+                "Discovered %d state files in s3://%s/%s",
+                len(state_files),
+                bucket_name,
+                prefix,
             )
             return state_files
 
         except ClientError as e:
             error_code = e.response.get("Error", {}).get("Code")
             logger.error(
-                f"Failed to list state files in s3://{bucket_name}/{prefix}: "
-                f"{error_code}"
+                "Failed to list state files in s3://%s/%s: %s",
+                bucket_name,
+                prefix,
+                error_code,
             )
             return []
         except Exception as e:
             logger.exception(
-                f"Unexpected error discovering state files in "
-                f"s3://{bucket_name}/{prefix}: {e}"
+                "Unexpected error discovering state files in s3://%s/%s",
+                bucket_name,
+                prefix,
             )
             return []
 
@@ -553,7 +559,9 @@ class TerraformStateAggregator:
         # Log summary
         for category, resources in all_resources.items():
             logger.info(
-                f"Aggregated {len(resources)} {category} resources from Terraform"
+                "Aggregated %d %s resources from Terraform",
+                len(resources),
+                category,
             )
 
         return all_resources
