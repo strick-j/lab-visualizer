@@ -7,3 +7,4 @@ export { TopologyPage } from "./TopologyPage";
 export { LoginPage } from "./LoginPage";
 export { SettingsPage } from "./SettingsPage";
 export { AuthCallbackPage } from "./AuthCallbackPage";
+export { SetupPage } from "./SetupPage";

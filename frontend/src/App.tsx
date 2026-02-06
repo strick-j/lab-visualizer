@@ -11,6 +11,7 @@ import {
   LoginPage,
   SettingsPage,
   AuthCallbackPage,
+  SetupPage,
 } from "@/pages";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { AuthProvider } from "@/contexts/AuthContext";
@@ -36,6 +37,7 @@ function App() {
             <Routes>
               {/* Public routes */}
               <Route path="/login" element={<LoginPage />} />
+              <Route path="/setup" element={<SetupPage />} />
               <Route path="/auth/callback" element={<AuthCallbackPage />} />
 
               {/* Protected routes - require authentication */}

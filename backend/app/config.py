@@ -60,12 +60,6 @@ class Settings(BaseSettings):
     local_auth_enabled: bool = Field(
         default=True, description="Enable local username/password authentication"
     )
-    admin_username: Optional[str] = Field(
-        default=None, description="Initial admin username (created on first startup)"
-    )
-    admin_password: Optional[str] = Field(
-        default=None, description="Initial admin password (created on first startup)"
-    )
 
     # OIDC authentication
     oidc_issuer: Optional[str] = Field(
