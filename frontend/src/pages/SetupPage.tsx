@@ -36,11 +36,25 @@ function ValidationItem({
 }) {
   if (!show) return null;
   return (
-    <li className={`flex items-center gap-2 text-sm ${met ? "text-green-600 dark:text-green-400" : "text-gray-500 dark:text-gray-400"}`}>
-      <span className={`inline-block h-4 w-4 rounded-full border-2 ${met ? "border-green-500 bg-green-500" : "border-gray-300 dark:border-gray-600"}`}>
+    <li
+      className={`flex items-center gap-2 text-sm ${met ? "text-green-600 dark:text-green-400" : "text-gray-500 dark:text-gray-400"}`}
+    >
+      <span
+        className={`inline-block h-4 w-4 rounded-full border-2 ${met ? "border-green-500 bg-green-500" : "border-gray-300 dark:border-gray-600"}`}
+      >
         {met && (
-          <svg className="h-full w-full text-white" viewBox="0 0 16 16" fill="none">
-            <path d="M4 8l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          <svg
+            className="h-full w-full text-white"
+            viewBox="0 0 16 16"
+            fill="none"
+          >
+            <path
+              d="M4 8l3 3 5-5"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
           </svg>
         )}
       </span>
@@ -61,7 +75,8 @@ export function SetupPage() {
   const [passwordTouched, setPasswordTouched] = useState(false);
 
   const validation = validatePassword(password);
-  const passwordsMatch = password === confirmPassword && confirmPassword.length > 0;
+  const passwordsMatch =
+    password === confirmPassword && confirmPassword.length > 0;
   const canSubmit =
     username.trim().length >= 3 &&
     isPasswordValid(validation) &&
@@ -191,11 +206,31 @@ export function SetupPage() {
               {/* Password requirements */}
               {passwordTouched && (
                 <ul className="mt-3 space-y-1.5">
-                  <ValidationItem label="At least 12 characters" met={validation.minLength} show={true} />
-                  <ValidationItem label="One uppercase letter" met={validation.hasUppercase} show={true} />
-                  <ValidationItem label="One lowercase letter" met={validation.hasLowercase} show={true} />
-                  <ValidationItem label="One number" met={validation.hasNumber} show={true} />
-                  <ValidationItem label="One special character" met={validation.hasSpecial} show={true} />
+                  <ValidationItem
+                    label="At least 12 characters"
+                    met={validation.minLength}
+                    show={true}
+                  />
+                  <ValidationItem
+                    label="One uppercase letter"
+                    met={validation.hasUppercase}
+                    show={true}
+                  />
+                  <ValidationItem
+                    label="One lowercase letter"
+                    met={validation.hasLowercase}
+                    show={true}
+                  />
+                  <ValidationItem
+                    label="One number"
+                    met={validation.hasNumber}
+                    show={true}
+                  />
+                  <ValidationItem
+                    label="One special character"
+                    met={validation.hasSpecial}
+                    show={true}
+                  />
                 </ul>
               )}
             </div>

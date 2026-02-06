@@ -43,7 +43,11 @@ vi.mock("@/contexts/AuthContext", () => ({
   ),
   useAuth: () => ({
     user: { username: "admin", display_name: "Admin", auth_provider: "local" },
-    authConfig: { local_auth_enabled: true, oidc_enabled: false, setup_required: false },
+    authConfig: {
+      local_auth_enabled: true,
+      oidc_enabled: false,
+      setup_required: false,
+    },
     isAuthenticated: true,
     isLoading: false,
     error: null,
