@@ -234,7 +234,7 @@ async def test_oidc_connection(
     try:
         discovery_url = _validate_issuer_and_build_discovery_url(test_data.issuer)
 
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with httpx.AsyncClient(timeout=10.0, follow_redirects=False) as client:
             response = await client.get(discovery_url)
             response.raise_for_status()
             config = response.json()
@@ -243,29 +243,29 @@ async def test_oidc_connection(
             success=True,
             message="Successfully connected to OIDC provider",
             details={
-                "issuer": config.get("issuer"),
-                "authorization_endpoint": config.get("authorization_endpoint"),
-                "token_endpoint": config.get("token_endpoint"),
-                "userinfo_endpoint": config.get("userinfo_endpoint"),
+                "issuer": config.get("issuer", ""),
             },
         )
 
     except httpx.HTTPStatusError as e:
+        logger.warning("OIDC test connection HTTP error: %s", e.response.status_code)
         return TestConnectionResponse(
             success=False,
-            message=f"HTTP error: {e.response.status_code}",
-            details={"url": discovery_url},
+            message="OIDC provider returned an error response",
         )
-    except httpx.RequestError as e:
+    except httpx.RequestError:
+        logger.warning("OIDC test connection request error", exc_info=True)
         return TestConnectionResponse(
             success=False,
-            message=f"Connection error: {str(e)}",
-            details={"url": discovery_url},
+            message="Could not connect to OIDC provider",
         )
-    except Exception as e:
+    except HTTPException:
+        raise  # Re-raise validation errors from _validate_issuer_...
+    except Exception:
+        logger.exception("Unexpected error testing OIDC connection")
         return TestConnectionResponse(
             success=False,
-            message=f"Error: {str(e)}",
+            message="An unexpected error occurred while testing the connection",
         )
 
 
