@@ -382,9 +382,7 @@ class TerraformStateAggregator:
             region = db_bucket.get("region")
 
             # Discover state files in the bucket under the given prefix
-            discovered = await self._discover_state_files(
-                bucket_name, prefix, region
-            )
+            discovered = await self._discover_state_files(bucket_name, prefix, region)
             if discovered:
                 entries.append(
                     {
@@ -415,9 +413,7 @@ class TerraformStateAggregator:
             if settings.aws_profile:
                 session_kwargs["profile_name"] = settings.aws_profile
             session = boto3.Session(**session_kwargs)
-            s3_client = session.client(
-                "s3", region_name=region or settings.aws_region
-            )
+            s3_client = session.client("s3", region_name=region or settings.aws_region)
 
             state_files: List[Dict[str, Any]] = []
             paginator = s3_client.get_paginator("list_objects_v2")
@@ -425,7 +421,11 @@ class TerraformStateAggregator:
             for page in paginator.paginate(Bucket=bucket_name, Prefix=prefix):
                 for obj in page.get("Contents", []):
                     key = obj["Key"]
-                    if key.endswith(".tfstate") and "/archive/" not in key and "/backup/" not in key:
+                    if (
+                        key.endswith(".tfstate")
+                        and "/archive/" not in key
+                        and "/backup/" not in key
+                    ):
                         # Derive a human-readable name from the key
                         name = key
                         if prefix and key.startswith(prefix):

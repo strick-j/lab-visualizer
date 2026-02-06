@@ -4,16 +4,15 @@ Settings API routes.
 Provides admin-only endpoints for managing authentication configuration.
 """
 
-import logging
-
-import httpx
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.ext.asyncio import AsyncSession
 import ipaddress
+import logging
 import socket
 from urllib.parse import urlparse
 
+import httpx
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_admin_user
 from app.config import get_settings
@@ -61,7 +60,7 @@ def _validate_external_https_url(url: str) -> str:
 
     hostname = parsed.hostname
 
-   # Resolve the hostname and ensure all IPs are public.
+    # Resolve the hostname and ensure all IPs are public.
     try:
         addr_info = socket.getaddrinfo(hostname, None)
     except OSError:
@@ -322,15 +321,11 @@ async def update_terraform_bucket(
 
     await db.commit()
     await db.refresh(bucket)
-    logger.info(
-        f"User {current_user.username} updated terraform bucket {bucket_id}"
-    )
+    logger.info(f"User {current_user.username} updated terraform bucket {bucket_id}")
     return TerraformBucketResponse.model_validate(bucket)
 
 
-@router.delete(
-    "/terraform/buckets/{bucket_id}", status_code=status.HTTP_204_NO_CONTENT
-)
+@router.delete("/terraform/buckets/{bucket_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_terraform_bucket(
     bucket_id: int,
     db: AsyncSession = Depends(get_db),
