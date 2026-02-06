@@ -102,8 +102,9 @@ module "networking" {
   availability_zones = var.availability_zones
   enable_nat_gateway = var.enable_nat_gateway
   single_nat_gateway = true # Cost optimization for dev
-  container_port     = var.container_port
-  tags               = local.common_tags
+  container_port        = var.container_port
+  allowed_ingress_cidrs = var.allowed_ingress_cidrs
+  tags                  = local.common_tags
 }
 
 # -----------------------------------------------------------------------------

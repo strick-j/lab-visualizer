@@ -41,6 +41,12 @@ variable "container_port" {
   default     = 8000
 }
 
+variable "allowed_ingress_cidrs" {
+  description = "CIDR blocks allowed to access the ALB (e.g., office IPs, VPN ranges). Defaults to open access."
+  type        = list(string)
+  default     = ["0.0.0.0/0"]
+}
+
 variable "tags" {
   description = "Additional tags for resources"
   type        = map(string)
