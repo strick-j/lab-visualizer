@@ -69,6 +69,28 @@ export interface TestConnectionResponse {
 }
 
 // Terraform State Bucket types
+export interface TerraformPath {
+  id: number;
+  bucket_id: number;
+  path: string;
+  description: string | null;
+  enabled: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TerraformPathCreate {
+  path: string;
+  description?: string;
+  enabled?: boolean;
+}
+
+export interface TerraformPathUpdate {
+  path?: string;
+  description?: string;
+  enabled?: boolean;
+}
+
 export interface TerraformBucket {
   id: number;
   bucket_name: string;
@@ -76,6 +98,8 @@ export interface TerraformBucket {
   description: string | null;
   prefix: string | null;
   enabled: boolean;
+  source: string;
+  paths: TerraformPath[];
   created_at: string;
   updated_at: string;
 }

@@ -289,12 +289,15 @@ class TerraformStateAggregator:
 
     async def _load_db_buckets(self) -> List[Dict[str, Any]]:
         """
-        Load Terraform state bucket configurations from the database.
+        Load Terraform state bucket configurations from the database,
+        including any explicitly configured paths per bucket.
 
         Returns:
-            List of bucket configurations with bucket_name, region, prefix.
+            List of bucket configurations with bucket_name, region, prefix,
+            and a list of explicit paths.
         """
         from sqlalchemy import select
+        from sqlalchemy.orm import selectinload
 
         from app.models.database import async_session_maker
         from app.models.resources import TerraformStateBucket
@@ -303,17 +306,28 @@ class TerraformStateAggregator:
         try:
             async with async_session_maker() as session:
                 result = await session.execute(
-                    select(TerraformStateBucket).where(
-                        TerraformStateBucket.enabled == True  # noqa: E712
-                    )
+                    select(TerraformStateBucket)
+                    .options(selectinload(TerraformStateBucket.paths))
+                    .where(TerraformStateBucket.enabled == True)  # noqa: E712
                 )
-                for row in result.scalars().all():
+                for row in result.scalars().unique().all():
+                    explicit_paths = [
+                        {
+                            "key": p.path,
+                            "name": p.path,
+                            "description": p.description or "",
+                            "enabled": p.enabled,
+                        }
+                        for p in row.paths
+                    ]
                     buckets.append(
                         {
                             "bucket_name": row.bucket_name,
                             "region": row.region,
                             "prefix": row.prefix,
                             "description": row.description,
+                            "source": row.source,
+                            "explicit_paths": explicit_paths,
                         }
                     )
         except Exception as e:
@@ -354,41 +368,68 @@ class TerraformStateAggregator:
         self,
     ) -> List[Dict[str, Any]]:
         """
-        Build a combined list of (bucket_name, state_configs) entries from
-        the YAML config file plus any database-configured buckets.
-
-        Each entry has:
+        Build a combined list of bucket entries.  Each entry has:
         - bucket_name: S3 bucket name
+        - region: optional AWS region override
         - state_configs: list of state file configs for that bucket
+
+        Resolution order per DB bucket:
+        1. If explicit paths are configured -> use those (no auto-discovery)
+        2. Otherwise -> auto-discover .tfstate files under the prefix
+
+        For "env"-sourced buckets, YAML configs are also merged in alongside
+        any explicit paths / auto-discovery results.
         """
         entries: List[Dict[str, Any]] = []
-
-        # 1. YAML / env-based config uses the legacy single TF_STATE_BUCKET
-        yaml_configs = await self.load_config()
-        if yaml_configs and settings.tf_state_bucket:
-            entries.append(
-                {
-                    "bucket_name": settings.tf_state_bucket,
-                    "region": None,
-                    "state_configs": yaml_configs,
-                }
-            )
-
-        # 2. Database-configured buckets (auto-discovered state files)
         db_buckets = await self._load_db_buckets()
+
+        # Track whether the legacy env bucket is already covered by DB
+        env_bucket_handled = False
+
         for db_bucket in db_buckets:
             bucket_name = db_bucket["bucket_name"]
             prefix = db_bucket.get("prefix") or ""
             region = db_bucket.get("region")
+            source = db_bucket.get("source", "manual")
+            explicit_paths = db_bucket.get("explicit_paths", [])
 
-            # Discover state files in the bucket under the given prefix
-            discovered = await self._discover_state_files(bucket_name, prefix, region)
-            if discovered:
+            state_configs: List[Dict[str, Any]] = []
+
+            # For env-sourced buckets, include YAML configs first
+            if source == "env" and bucket_name == settings.tf_state_bucket:
+                env_bucket_handled = True
+                yaml_configs = await self.load_config()
+                state_configs.extend(yaml_configs)
+
+            if explicit_paths:
+                # Use explicitly configured paths
+                state_configs.extend(explicit_paths)
+            elif not state_configs:
+                # No explicit paths and no YAML -> auto-discover
+                discovered = await self._discover_state_files(
+                    bucket_name, prefix, region
+                )
+                state_configs.extend(discovered)
+
+            if state_configs:
                 entries.append(
                     {
                         "bucket_name": bucket_name,
                         "region": region,
-                        "state_configs": discovered,
+                        "state_configs": state_configs,
+                    }
+                )
+
+        # Fallback: if TF_STATE_BUCKET is set but not in DB, still honour
+        # the YAML / env-key config (backwards-compat)
+        if not env_bucket_handled and settings.tf_state_bucket:
+            yaml_configs = await self.load_config()
+            if yaml_configs:
+                entries.append(
+                    {
+                        "bucket_name": settings.tf_state_bucket,
+                        "region": None,
+                        "state_configs": yaml_configs,
                     }
                 )
 

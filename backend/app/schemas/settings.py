@@ -112,6 +112,47 @@ class TerraformBucketUpdate(BaseModel):
     enabled: Optional[bool] = Field(None, description="Whether this bucket is active")
 
 
+class TerraformPathCreate(BaseModel):
+    """Request model for creating a state file path."""
+
+    path: str = Field(
+        ...,
+        description="S3 key path to a .tfstate file",
+        min_length=1,
+        max_length=1000,
+    )
+    description: Optional[str] = Field(
+        None,
+        description="Description of what this state file manages",
+        max_length=500,
+    )
+    enabled: bool = Field(True, description="Whether this path is active")
+
+
+class TerraformPathUpdate(BaseModel):
+    """Request model for updating a state file path."""
+
+    path: Optional[str] = Field(
+        None, description="S3 key path", min_length=1, max_length=1000
+    )
+    description: Optional[str] = Field(None, description="Description", max_length=500)
+    enabled: Optional[bool] = Field(None, description="Whether this path is active")
+
+
+class TerraformPathResponse(BaseModel):
+    """Response model for a state file path."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    bucket_id: int
+    path: str
+    description: Optional[str] = None
+    enabled: bool = True
+    created_at: datetime
+    updated_at: datetime
+
+
 class TerraformBucketResponse(BaseModel):
     """Response model for a Terraform state bucket configuration."""
 
@@ -123,6 +164,8 @@ class TerraformBucketResponse(BaseModel):
     description: Optional[str] = None
     prefix: Optional[str] = None
     enabled: bool = True
+    source: str = "manual"
+    paths: List[TerraformPathResponse] = []
     created_at: datetime
     updated_at: datetime
 

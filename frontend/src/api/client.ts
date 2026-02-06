@@ -26,6 +26,9 @@ import type {
   TerraformBucketsListResponse,
   TerraformBucketCreate,
   TerraformBucketUpdate,
+  TerraformPath,
+  TerraformPathCreate,
+  TerraformPathUpdate,
 } from "@/types";
 
 // Create axios instance with base configuration
@@ -396,6 +399,33 @@ export async function updateTerraformBucket(
 
 export async function deleteTerraformBucket(id: number): Promise<void> {
   await api.delete(`/settings/terraform/buckets/${id}`);
+}
+
+// =============================================================================
+// Terraform State Paths (Admin only)
+// =============================================================================
+
+export async function createTerraformPath(
+  bucketId: number,
+  data: TerraformPathCreate,
+): Promise<TerraformPath> {
+  const response = await api.post(
+    `/settings/terraform/buckets/${bucketId}/paths`,
+    data,
+  );
+  return response.data;
+}
+
+export async function updateTerraformPath(
+  pathId: number,
+  data: TerraformPathUpdate,
+): Promise<TerraformPath> {
+  const response = await api.put(`/settings/terraform/paths/${pathId}`, data);
+  return response.data;
+}
+
+export async function deleteTerraformPath(pathId: number): Promise<void> {
+  await api.delete(`/settings/terraform/paths/${pathId}`);
 }
 
 export default api;

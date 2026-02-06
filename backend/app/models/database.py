@@ -70,6 +70,7 @@ async def init_db() -> None:
         Region,
         SyncStatus,
         TerraformStateBucket,
+        TerraformStatePath,
     )
 
     async with engine.begin() as conn:
