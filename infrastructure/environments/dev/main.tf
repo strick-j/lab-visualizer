@@ -187,6 +187,7 @@ module "ecs" {
   environment_variables = local.environment_variables
   secrets               = local.secrets
   secrets_arns          = module.secrets.all_secret_arns
+  enable_secrets_access = true
 
   # Terraform state access
   tf_state_bucket_arn = var.tf_state_bucket != "" ? "arn:aws:s3:::${var.tf_state_bucket}" : ""

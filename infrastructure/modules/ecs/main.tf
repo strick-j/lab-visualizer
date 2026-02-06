@@ -134,7 +134,7 @@ resource "aws_iam_role_policy_attachment" "ecs_task_execution" {
 
 # Additional policy for Secrets Manager access
 resource "aws_iam_role_policy" "ecs_task_execution_secrets" {
-  count = length(var.secrets_arns) > 0 ? 1 : 0
+  count = var.enable_secrets_access ? 1 : 0
   name  = "secrets-access"
   role  = aws_iam_role.ecs_task_execution.id
 

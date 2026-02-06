@@ -116,6 +116,12 @@ variable "secrets_arns" {
   default     = []
 }
 
+variable "enable_secrets_access" {
+  description = "Whether to create IAM policy for Secrets Manager access (avoids count depending on computed values)"
+  type        = bool
+  default     = false
+}
+
 # -----------------------------------------------------------------------------
 # S3/Terraform State Access
 # -----------------------------------------------------------------------------
