@@ -68,6 +68,11 @@ export interface TestConnectionResponse {
   details?: Record<string, string>;
 }
 
+export interface PasswordChangeRequest {
+  current_password: string;
+  new_password: string;
+}
+
 // Terraform State Bucket types
 export interface TerraformPath {
   id: number;

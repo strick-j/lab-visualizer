@@ -6,6 +6,7 @@ import {
   updateOIDCSettings,
   testOIDCConnection,
 } from "@/api/client";
+import { PasswordChangeForm } from "@/components/common/PasswordChangeForm";
 import type {
   AuthSettingsResponse,
   OIDCSettingsUpdate,
@@ -14,13 +15,14 @@ import type {
 import { TerraformBucketsSettings } from "@/components/settings/TerraformBucketsSettings";
 
 export function SettingsPage() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const [settings, setSettings] = useState<AuthSettingsResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   // Check if user is admin
   const isAdmin = user?.is_admin ?? false;
+  const isLocalUser = user?.auth_provider === "local";
 
   useEffect(() => {
     if (isAdmin) {
@@ -43,6 +45,7 @@ export function SettingsPage() {
     }
   };
 
+  // Non-admin users: show password change form (if local) + admin required notice
   if (!isAdmin) {
     return (
       <div className="space-y-6">
@@ -54,11 +57,17 @@ export function SettingsPage() {
             Application settings and configuration
           </p>
         </div>
+
+        {/* Password change for non-admin local users */}
+        {isLocalUser && user && (
+          <PasswordChangeForm userId={user.id} onSuccess={logout} />
+        )}
+
         <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-6 dark:border-yellow-800 dark:bg-yellow-900/20">
           <div className="flex items-center gap-3">
             <AlertCircle className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
             <p className="text-yellow-800 dark:text-yellow-200">
-              Admin privileges required to access settings.
+              Admin privileges required to access additional settings.
             </p>
           </div>
         </div>
@@ -102,9 +111,14 @@ export function SettingsPage() {
           Settings
         </h1>
         <p className="text-gray-500 dark:text-gray-400">
-          Application settings and configuration
+          Configure authentication providers and account settings
         </p>
       </div>
+
+      {/* Password Change (for local admin users) */}
+      {isLocalUser && user && (
+        <PasswordChangeForm userId={user.id} onSuccess={logout} />
+      )}
 
       {/* Local Auth Status */}
       <div className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">

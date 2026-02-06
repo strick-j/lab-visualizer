@@ -57,7 +57,9 @@ describe("SettingsPage", () => {
       render(<SettingsPage />);
 
       expect(
-        screen.getByText("Admin privileges required to access settings."),
+        screen.getByText(
+          "Admin privileges required to access additional settings.",
+        ),
       ).toBeInTheDocument();
     });
 
