@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import ReactFlow, {
   Background,
   Controls,
@@ -51,8 +51,14 @@ export function TopologyCanvas({ data, onNodeClick }: TopologyCanvasProps) {
     };
   }, [data]);
 
-  const [nodes, , onNodesChange] = useNodesState(initialNodes);
-  const [edges, , onEdgesChange] = useEdgesState(initialEdges);
+  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+
+  // Sync nodes/edges when data changes (e.g. after filtering)
+  useEffect(() => {
+    setNodes(initialNodes);
+    setEdges(initialEdges);
+  }, [initialNodes, initialEdges, setNodes, setEdges]);
 
   const handleNodeClick = useCallback(
     (_event: React.MouseEvent, node: Node<TopologyNodeData>) => {

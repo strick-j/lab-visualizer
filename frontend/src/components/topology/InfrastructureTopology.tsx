@@ -1,10 +1,12 @@
-import { useCallback } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { AlertCircle, RefreshCw, Waypoints } from "lucide-react";
 import { useTopology, useRefreshData } from "@/hooks/useResources";
 import { TopologyCanvas } from "./TopologyCanvas";
 import { TopologyLegend } from "./TopologyLegend";
+import { TopologyFilterBar } from "./TopologyFilterBar";
+import { filterTopologyData, EMPTY_FILTERS } from "./utils/topologyFilter";
 import { Loading } from "@/components/common";
-import type { TopologyNodeData } from "@/types/topology";
+import type { TopologyNodeData, TopologyFilters } from "@/types/topology";
 
 interface InfrastructureTopologyProps {
   vpcId?: string;
@@ -19,6 +21,12 @@ export function InfrastructureTopology({
     vpcId ? { vpc_id: vpcId } : undefined,
   );
   const refreshMutation = useRefreshData();
+  const [filters, setFilters] = useState<TopologyFilters>(EMPTY_FILTERS);
+
+  const filteredData = useMemo(() => {
+    if (!data) return data;
+    return filterTopologyData(data, filters);
+  }, [data, filters]);
 
   const handleRefresh = useCallback(async () => {
     await refreshMutation.mutateAsync(false);
@@ -93,8 +101,16 @@ export function InfrastructureTopology({
 
   return (
     <div className="relative w-full h-full">
-      <TopologyCanvas data={data} onNodeClick={handleNodeClick} />
-      <TopologyLegend stats={data.meta} />
+      <TopologyCanvas
+        data={filteredData ?? data}
+        onNodeClick={handleNodeClick}
+      />
+      <TopologyFilterBar
+        filters={filters}
+        onChange={setFilters}
+        vpcs={data.vpcs}
+      />
+      <TopologyLegend stats={(filteredData ?? data).meta} />
     </div>
   );
 }
