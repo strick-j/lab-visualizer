@@ -104,9 +104,7 @@ describe("PasswordChangeForm", () => {
       "NewPassword456",
     );
 
-    await user.click(
-      screen.getByRole("button", { name: "Change Password" }),
-    );
+    await user.click(screen.getByRole("button", { name: "Change Password" }));
 
     await waitFor(() => {
       expect(mockChangeUserPassword).toHaveBeenCalledWith(1, {
@@ -145,9 +143,7 @@ describe("PasswordChangeForm", () => {
       "NewPassword456",
     );
 
-    await user.click(
-      screen.getByRole("button", { name: "Change Password" }),
-    );
+    await user.click(screen.getByRole("button", { name: "Change Password" }));
 
     await waitFor(() => {
       expect(
@@ -175,14 +171,10 @@ describe("PasswordChangeForm", () => {
       "NewPassword456",
     );
 
-    await user.click(
-      screen.getByRole("button", { name: "Change Password" }),
-    );
+    await user.click(screen.getByRole("button", { name: "Change Password" }));
 
     await waitFor(() => {
-      expect(
-        screen.getByText("Failed to change password"),
-      ).toBeInTheDocument();
+      expect(screen.getByText("Failed to change password")).toBeInTheDocument();
     });
   });
 
@@ -203,9 +195,7 @@ describe("PasswordChangeForm", () => {
     await user.type(newInput, "NewPassword456");
     await user.type(confirmInput, "NewPassword456");
 
-    await user.click(
-      screen.getByRole("button", { name: "Change Password" }),
-    );
+    await user.click(screen.getByRole("button", { name: "Change Password" }));
 
     await waitFor(() => {
       expect(currentInput).toHaveValue("");
