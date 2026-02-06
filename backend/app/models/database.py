@@ -135,7 +135,14 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 async def init_db() -> None:
     """Initialize the database and create all tables."""
     from app.models.auth import AuthSettings, Session, User
-    from app.models.resources import EC2Instance, RDSInstance, Region, SyncStatus
+    from app.models.resources import (
+        EC2Instance,
+        RDSInstance,
+        Region,
+        SyncStatus,
+        TerraformStateBucket,
+        TerraformStatePath,
+    )
 
     async with get_engine().begin() as conn:
         await conn.run_sync(Base.metadata.create_all)

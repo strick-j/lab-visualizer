@@ -6,21 +6,32 @@ Provides admin-only endpoints for managing authentication configuration.
 
 import ipaddress
 import logging
+import re
 import socket
 from urllib.parse import urlparse
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.api.deps import get_current_admin_user
 from app.config import get_settings
 from app.models.auth import User
 from app.models.database import get_db
+from app.models.resources import TerraformStateBucket, TerraformStatePath
 from app.schemas.settings import (
     AuthSettingsResponse,
     OIDCSettingsResponse,
     OIDCSettingsUpdate,
+    TerraformBucketCreate,
+    TerraformBucketResponse,
+    TerraformBucketsListResponse,
+    TerraformBucketUpdate,
+    TerraformPathCreate,
+    TerraformPathResponse,
+    TerraformPathUpdate,
     TestConnectionRequest,
     TestConnectionResponse,
 )
@@ -29,6 +40,14 @@ from app.services.settings import get_or_create_auth_settings, update_oidc_setti
 logger = logging.getLogger(__name__)
 router = APIRouter()
 env_settings = get_settings()
+
+# Pattern to strip control characters that could forge log entries
+_CONTROL_CHARS = re.compile(r"[\x00-\x1f\x7f-\x9f]")
+
+
+def _sanitize_for_log(value: str) -> str:
+    """Strip control characters from a value before logging."""
+    return _CONTROL_CHARS.sub("", value)
 
 
 def _validate_issuer_and_build_discovery_url(issuer_input: str) -> str:
@@ -224,7 +243,7 @@ async def test_oidc_connection(
     try:
         discovery_url = _validate_issuer_and_build_discovery_url(test_data.issuer)
 
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with httpx.AsyncClient(timeout=10.0, follow_redirects=False) as client:
             response = await client.get(discovery_url)
             response.raise_for_status()
             config = response.json()
@@ -233,27 +252,271 @@ async def test_oidc_connection(
             success=True,
             message="Successfully connected to OIDC provider",
             details={
-                "issuer": config.get("issuer"),
-                "authorization_endpoint": config.get("authorization_endpoint"),
-                "token_endpoint": config.get("token_endpoint"),
-                "userinfo_endpoint": config.get("userinfo_endpoint"),
+                "issuer": config.get("issuer", ""),
             },
         )
 
     except httpx.HTTPStatusError as e:
+        logger.warning("OIDC test connection HTTP error: %s", e.response.status_code)
         return TestConnectionResponse(
             success=False,
-            message=f"HTTP error: {e.response.status_code}",
-            details={"url": discovery_url},
+            message="OIDC provider returned an error response",
         )
-    except httpx.RequestError as e:
+    except httpx.RequestError:
+        logger.warning("OIDC test connection request error", exc_info=True)
         return TestConnectionResponse(
             success=False,
-            message=f"Connection error: {str(e)}",
-            details={"url": discovery_url},
+            message="Could not connect to OIDC provider",
         )
-    except Exception as e:
+    except HTTPException:
+        raise  # Re-raise validation errors from _validate_issuer_...
+    except Exception:
+        logger.exception("Unexpected error testing OIDC connection")
         return TestConnectionResponse(
             success=False,
-            message=f"Error: {str(e)}",
+            message="An unexpected error occurred while testing the connection",
         )
+
+
+# =============================================================================
+# Terraform State Bucket Management
+# =============================================================================
+
+
+async def _ensure_env_bucket(db: AsyncSession) -> None:
+    """
+    If TF_STATE_BUCKET is set in the environment but no matching DB row
+    exists, auto-create one so that admins can manage paths for it.
+    """
+    env_bucket = env_settings.tf_state_bucket
+    if not env_bucket:
+        return
+
+    result = await db.execute(
+        select(TerraformStateBucket).where(
+            TerraformStateBucket.bucket_name == env_bucket,
+            TerraformStateBucket.source == "env",
+        )
+    )
+    if result.scalar_one_or_none() is None:
+        bucket = TerraformStateBucket(
+            bucket_name=env_bucket,
+            description="Bucket from TF_STATE_BUCKET environment variable",
+            enabled=True,
+            source="env",
+        )
+        db.add(bucket)
+        await db.commit()
+
+
+@router.get("/terraform/buckets", response_model=TerraformBucketsListResponse)
+async def list_terraform_buckets(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_admin_user),
+):
+    """List all configured Terraform state buckets. Admin only."""
+    await _ensure_env_bucket(db)
+
+    result = await db.execute(
+        select(TerraformStateBucket)
+        .options(selectinload(TerraformStateBucket.paths))
+        .order_by(TerraformStateBucket.created_at)
+    )
+    buckets = result.scalars().unique().all()
+
+    return TerraformBucketsListResponse(
+        buckets=[TerraformBucketResponse.model_validate(b) for b in buckets],
+        total=len(buckets),
+    )
+
+
+@router.post(
+    "/terraform/buckets",
+    response_model=TerraformBucketResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_terraform_bucket(
+    data: TerraformBucketCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_admin_user),
+):
+    """Add a new Terraform state bucket configuration. Admin only."""
+    bucket = TerraformStateBucket(
+        bucket_name=data.bucket_name,
+        region=data.region,
+        description=data.description,
+        prefix=data.prefix,
+        enabled=data.enabled,
+    )
+    db.add(bucket)
+    await db.commit()
+    await db.refresh(bucket, attribute_names=["paths"])
+    logger.info(
+        "User %s added terraform bucket: %s",
+        current_user.username,
+        _sanitize_for_log(data.bucket_name),
+    )
+    return TerraformBucketResponse.model_validate(bucket)
+
+
+@router.put("/terraform/buckets/{bucket_id}", response_model=TerraformBucketResponse)
+async def update_terraform_bucket(
+    bucket_id: int,
+    data: TerraformBucketUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_admin_user),
+):
+    """Update a Terraform state bucket configuration. Admin only."""
+    result = await db.execute(
+        select(TerraformStateBucket)
+        .options(selectinload(TerraformStateBucket.paths))
+        .where(TerraformStateBucket.id == bucket_id)
+    )
+    bucket = result.scalar_one_or_none()
+    if not bucket:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Terraform bucket not found",
+        )
+
+    update_data = data.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(bucket, field, value)
+
+    await db.commit()
+    await db.refresh(bucket, attribute_names=["paths"])
+    logger.info("User %s updated terraform bucket %s", current_user.username, bucket_id)
+    return TerraformBucketResponse.model_validate(bucket)
+
+
+@router.delete("/terraform/buckets/{bucket_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_terraform_bucket(
+    bucket_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_admin_user),
+):
+    """Remove a Terraform state bucket configuration. Admin only."""
+    result = await db.execute(
+        select(TerraformStateBucket).where(TerraformStateBucket.id == bucket_id)
+    )
+    bucket = result.scalar_one_or_none()
+    if not bucket:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Terraform bucket not found",
+        )
+
+    await db.delete(bucket)
+    await db.commit()
+    logger.info(
+        "User %s deleted terraform bucket %s (%s)",
+        current_user.username,
+        bucket_id,
+        _sanitize_for_log(bucket.bucket_name),
+    )
+
+
+# =============================================================================
+# Terraform State Path Management
+# =============================================================================
+
+
+@router.post(
+    "/terraform/buckets/{bucket_id}/paths",
+    response_model=TerraformPathResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_terraform_path(
+    bucket_id: int,
+    data: TerraformPathCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_admin_user),
+):
+    """Add a state file path to a bucket. Admin only."""
+    result = await db.execute(
+        select(TerraformStateBucket).where(TerraformStateBucket.id == bucket_id)
+    )
+    bucket = result.scalar_one_or_none()
+    if not bucket:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Terraform bucket not found",
+        )
+
+    path = TerraformStatePath(
+        bucket_id=bucket_id,
+        path=data.path,
+        description=data.description,
+        enabled=data.enabled,
+    )
+    db.add(path)
+    await db.commit()
+    await db.refresh(path)
+    logger.info(
+        "User %s added path '%s' to bucket %s",
+        current_user.username,
+        _sanitize_for_log(data.path),
+        _sanitize_for_log(bucket.bucket_name),
+    )
+    return TerraformPathResponse.model_validate(path)
+
+
+@router.put(
+    "/terraform/paths/{path_id}",
+    response_model=TerraformPathResponse,
+)
+async def update_terraform_path(
+    path_id: int,
+    data: TerraformPathUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_admin_user),
+):
+    """Update a state file path. Admin only."""
+    result = await db.execute(
+        select(TerraformStatePath).where(TerraformStatePath.id == path_id)
+    )
+    path = result.scalar_one_or_none()
+    if not path:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Terraform path not found",
+        )
+
+    update_data = data.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(path, field, value)
+
+    await db.commit()
+    await db.refresh(path)
+    logger.info("User %s updated terraform path %s", current_user.username, path_id)
+    return TerraformPathResponse.model_validate(path)
+
+
+@router.delete(
+    "/terraform/paths/{path_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def delete_terraform_path(
+    path_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_admin_user),
+):
+    """Remove a state file path. Admin only."""
+    result = await db.execute(
+        select(TerraformStatePath).where(TerraformStatePath.id == path_id)
+    )
+    path = result.scalar_one_or_none()
+    if not path:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Terraform path not found",
+        )
+
+    await db.delete(path)
+    await db.commit()
+    logger.info(
+        "User %s deleted terraform path %s (%s)",
+        current_user.username,
+        path_id,
+        _sanitize_for_log(path.path),
+    )

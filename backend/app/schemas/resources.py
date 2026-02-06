@@ -343,11 +343,19 @@ class ElasticIPDetail(ElasticIPResponse):
 # =============================================================================
 
 
+class TerraformBucketInfo(BaseSchema):
+    """Brief info about the bucket hosting a state file."""
+
+    name: str
+    region: Optional[str] = None
+
+
 class TerraformStateInfo(BaseSchema):
     """Information about a Terraform state file."""
 
     name: str
     key: str
+    bucket: Optional[TerraformBucketInfo] = None
     description: Optional[str] = None
     last_modified: Optional[datetime] = None
     resource_count: int = 0

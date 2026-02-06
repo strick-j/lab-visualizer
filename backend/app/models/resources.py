@@ -14,6 +14,60 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.models.database import Base
 
 
+class TerraformStateBucket(Base):
+    """Configuration for an S3 bucket containing Terraform state files."""
+
+    __tablename__ = "terraform_state_buckets"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    bucket_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    region: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
+    description: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    prefix: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    source: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="manual"
+    )  # "manual" or "env"
+
+    # Timestamps
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+    # Relationships
+    paths: Mapped[list["TerraformStatePath"]] = relationship(
+        back_populates="bucket", cascade="all, delete-orphan"
+    )
+
+
+class TerraformStatePath(Base):
+    """An explicit state file path within an S3 bucket."""
+
+    __tablename__ = "terraform_state_paths"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    bucket_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("terraform_state_buckets.id"), nullable=False
+    )
+    path: Mapped[str] = mapped_column(String(1000), nullable=False)
+    description: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+
+    # Timestamps
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+    # Relationships
+    bucket: Mapped["TerraformStateBucket"] = relationship(back_populates="paths")
+
+
 class SyncStatus(Base):
     """Tracks the last synchronization status for data sources."""
 

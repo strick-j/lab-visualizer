@@ -5,7 +5,7 @@ Defines request/response models for auth settings endpoints.
 """
 
 from datetime import datetime
-from typing import Optional
+from typing import List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -71,3 +71,107 @@ class TestConnectionResponse(BaseModel):
     success: bool
     message: str
     details: Optional[dict] = None
+
+
+# =============================================================================
+# Terraform State Bucket Schemas
+# =============================================================================
+
+
+class TerraformBucketCreate(BaseModel):
+    """Request model for creating a Terraform state bucket configuration."""
+
+    bucket_name: str = Field(
+        ..., description="S3 bucket name", min_length=3, max_length=255
+    )
+    region: Optional[str] = Field(
+        None,
+        description="AWS region for the bucket (defaults to app region)",
+        max_length=30,
+    )
+    description: Optional[str] = Field(
+        None, description="Description of what this bucket contains", max_length=500
+    )
+    prefix: Optional[str] = Field(
+        None,
+        description="S3 key prefix to filter state files (e.g., 'lab/')",
+        max_length=500,
+    )
+    enabled: bool = Field(True, description="Whether this bucket is active")
+
+
+class TerraformBucketUpdate(BaseModel):
+    """Request model for updating a Terraform state bucket configuration."""
+
+    bucket_name: Optional[str] = Field(
+        None, description="S3 bucket name", min_length=3, max_length=255
+    )
+    region: Optional[str] = Field(None, description="AWS region", max_length=30)
+    description: Optional[str] = Field(None, description="Description", max_length=500)
+    prefix: Optional[str] = Field(None, description="S3 key prefix", max_length=500)
+    enabled: Optional[bool] = Field(None, description="Whether this bucket is active")
+
+
+class TerraformPathCreate(BaseModel):
+    """Request model for creating a state file path."""
+
+    path: str = Field(
+        ...,
+        description="S3 key path to a .tfstate file",
+        min_length=1,
+        max_length=1000,
+    )
+    description: Optional[str] = Field(
+        None,
+        description="Description of what this state file manages",
+        max_length=500,
+    )
+    enabled: bool = Field(True, description="Whether this path is active")
+
+
+class TerraformPathUpdate(BaseModel):
+    """Request model for updating a state file path."""
+
+    path: Optional[str] = Field(
+        None, description="S3 key path", min_length=1, max_length=1000
+    )
+    description: Optional[str] = Field(None, description="Description", max_length=500)
+    enabled: Optional[bool] = Field(None, description="Whether this path is active")
+
+
+class TerraformPathResponse(BaseModel):
+    """Response model for a state file path."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    bucket_id: int
+    path: str
+    description: Optional[str] = None
+    enabled: bool = True
+    created_at: datetime
+    updated_at: datetime
+
+
+class TerraformBucketResponse(BaseModel):
+    """Response model for a Terraform state bucket configuration."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    bucket_name: str
+    region: Optional[str] = None
+    description: Optional[str] = None
+    prefix: Optional[str] = None
+    enabled: bool = True
+    source: str = "manual"
+    paths: List[TerraformPathResponse] = []
+    created_at: datetime
+    updated_at: datetime
+
+
+class TerraformBucketsListResponse(BaseModel):
+    """Response model for listing all configured Terraform state buckets."""
+
+    buckets: List[TerraformBucketResponse]
+    total: int

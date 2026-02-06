@@ -25,6 +25,13 @@ import type {
   PasswordChangeRequest,
   AdminSetupRequest,
   SetupStatusResponse,
+  TerraformBucket,
+  TerraformBucketsListResponse,
+  TerraformBucketCreate,
+  TerraformBucketUpdate,
+  TerraformPath,
+  TerraformPathCreate,
+  TerraformPathUpdate,
 } from "@/types";
 
 // Create axios instance with base configuration
@@ -391,6 +398,61 @@ export async function testOIDCConnection(
 ): Promise<TestConnectionResponse> {
   const response = await api.post("/settings/oidc/test", { issuer });
   return response.data;
+}
+
+// =============================================================================
+// Terraform State Buckets (Admin only)
+// =============================================================================
+
+export async function getTerraformBuckets(): Promise<TerraformBucketsListResponse> {
+  const response = await api.get("/settings/terraform/buckets");
+  return response.data;
+}
+
+export async function createTerraformBucket(
+  data: TerraformBucketCreate,
+): Promise<TerraformBucket> {
+  const response = await api.post("/settings/terraform/buckets", data);
+  return response.data;
+}
+
+export async function updateTerraformBucket(
+  id: number,
+  data: TerraformBucketUpdate,
+): Promise<TerraformBucket> {
+  const response = await api.put(`/settings/terraform/buckets/${id}`, data);
+  return response.data;
+}
+
+export async function deleteTerraformBucket(id: number): Promise<void> {
+  await api.delete(`/settings/terraform/buckets/${id}`);
+}
+
+// =============================================================================
+// Terraform State Paths (Admin only)
+// =============================================================================
+
+export async function createTerraformPath(
+  bucketId: number,
+  data: TerraformPathCreate,
+): Promise<TerraformPath> {
+  const response = await api.post(
+    `/settings/terraform/buckets/${bucketId}/paths`,
+    data,
+  );
+  return response.data;
+}
+
+export async function updateTerraformPath(
+  pathId: number,
+  data: TerraformPathUpdate,
+): Promise<TerraformPath> {
+  const response = await api.put(`/settings/terraform/paths/${pathId}`, data);
+  return response.data;
+}
+
+export async function deleteTerraformPath(pathId: number): Promise<void> {
+  await api.delete(`/settings/terraform/paths/${pathId}`);
 }
 
 export default api;

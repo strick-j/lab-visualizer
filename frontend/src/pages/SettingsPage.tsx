@@ -12,6 +12,7 @@ import type {
   OIDCSettingsUpdate,
   TestConnectionResponse,
 } from "@/types";
+import { TerraformBucketsSettings } from "@/components/settings/TerraformBucketsSettings";
 
 export function SettingsPage() {
   const { user, logout } = useAuth();
@@ -154,6 +155,13 @@ export function SettingsPage() {
               onUpdate={() => loadSettings(false)}
             />
           )}
+        </div>
+      </div>
+
+      {/* Terraform State Buckets */}
+      <div className="rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
+        <div className="p-6">
+          <TerraformBucketsSettings />
         </div>
       </div>
     </div>
