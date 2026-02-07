@@ -97,23 +97,23 @@ variable "frontend_health_check_path" {
 }
 
 # -----------------------------------------------------------------------------
-# Domain Configuration (Optional)
+# Domain and TLS Configuration (Optional)
 # -----------------------------------------------------------------------------
 
 variable "domain_name" {
-  description = "Domain name for the application (leave empty for ALB DNS)"
+  description = "Domain name for the application (used for CORS origin; leave empty to use ALB DNS)"
   type        = string
   default     = ""
 }
 
 variable "route53_zone_id" {
-  description = "Route53 hosted zone ID"
+  description = "Route53 hosted zone ID (only needed if using Route53 for DNS and auto-creating ACM certificates)"
   type        = string
   default     = ""
 }
 
 variable "certificate_arn" {
-  description = "ARN of existing ACM certificate"
+  description = "ARN of an existing ACM certificate for HTTPS. When provided, enables HTTPS listener and HTTP-to-HTTPS redirect."
   type        = string
   default     = ""
 }

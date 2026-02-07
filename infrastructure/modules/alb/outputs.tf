@@ -54,5 +54,5 @@ output "frontend_target_group_arn" {
 
 output "app_url" {
   description = "URL to access the application"
-  value       = var.domain_name != "" ? "https://${var.domain_name}" : "http://${aws_lb.main.dns_name}"
+  value       = "${var.certificate_arn != "" ? "https" : "http"}://${var.domain_name != "" ? var.domain_name : aws_lb.main.dns_name}"
 }
