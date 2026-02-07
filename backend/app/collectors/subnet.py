@@ -36,6 +36,12 @@ class SubnetCollector(BaseCollector):
         if route_tables is None:
             route_tables = await self._collect_route_tables()
 
+        if not route_tables:
+            logger.warning(
+                "No route tables found - all subnets will be classified as 'unknown'. "
+                "Verify IAM permissions include ec2:DescribeRouteTables."
+            )
+
         try:
             ec2 = self._get_client("ec2")
             paginator = ec2.get_paginator("describe_subnets")
