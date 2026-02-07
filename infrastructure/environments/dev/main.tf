@@ -63,6 +63,11 @@ locals {
     Environment = var.environment
   }
 
+  # HTTPS is enabled when an ACM certificate is provided
+  https_enabled = var.certificate_arn != ""
+  protocol      = local.https_enabled ? "https" : "http"
+  hostname      = var.domain_name != "" ? var.domain_name : module.alb.alb_dns_name
+
   # Container images - use ECR or provided image
   container_image          = var.container_image != "" ? var.container_image : "${module.ecr.backend_repository_url}:latest"
   frontend_container_image = var.frontend_container_image != "" ? var.frontend_container_image : "${module.ecr.frontend_repository_url}:latest"
@@ -76,7 +81,7 @@ locals {
     DATABASE_URL     = "sqlite:///./data/app.db"
     LOG_LEVEL        = var.log_level
     DEBUG            = tostring(var.debug)
-    CORS_ORIGINS     = var.domain_name != "" ? "https://${var.domain_name}" : "http://${module.alb.alb_dns_name}"
+    CORS_ORIGINS     = "${local.protocol}://${local.hostname}"
     OIDC_ISSUER      = var.oidc_issuer
     OIDC_CLIENT_ID   = var.oidc_client_id
   }
@@ -178,7 +183,7 @@ module "ecs" {
   private_subnet_ids = module.networking.private_subnet_ids
   security_group_id  = module.networking.ecs_tasks_security_group_id
   target_group_arn   = module.alb.target_group_arn
-  alb_listener_arn   = module.alb.http_listener_arn
+  alb_listener_arn   = local.https_enabled ? module.alb.https_listener_arn : module.alb.http_listener_arn
 
   # Container configuration
   container_name    = "backend"
@@ -224,7 +229,7 @@ module "ecs_frontend" {
   private_subnet_ids = module.networking.private_subnet_ids
   security_group_id  = module.networking.ecs_tasks_security_group_id
   target_group_arn   = module.alb.frontend_target_group_arn
-  alb_listener_arn   = module.alb.http_listener_arn
+  alb_listener_arn   = local.https_enabled ? module.alb.https_listener_arn : module.alb.http_listener_arn
 
   # Container configuration
   container_name    = "frontend"
