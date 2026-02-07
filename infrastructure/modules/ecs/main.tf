@@ -187,6 +187,7 @@ resource "aws_iam_role_policy" "ecs_task_aws_access" {
           "ec2:DescribeTags",
           "ec2:DescribeVpcs",
           "ec2:DescribeSubnets",
+          "ec2:DescribeRouteTables",
           "ec2:DescribeNatGateways",
           "ec2:DescribeAddresses",
           "ec2:DescribeInternetGateways"
