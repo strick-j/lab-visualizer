@@ -1,5 +1,13 @@
 import { useState, useEffect } from "react";
-import { Shield, Key, AlertCircle, CheckCircle, Loader2 } from "lucide-react";
+import {
+  Shield,
+  Key,
+  AlertCircle,
+  CheckCircle,
+  Loader2,
+  Copy,
+  Check,
+} from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   getAuthSettings,
@@ -176,6 +184,31 @@ function OIDCSettingsForm({ settings, onUpdate }: OIDCSettingsFormProps) {
   );
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [copiedCallback, setCopiedCallback] = useState(false);
+
+  // Generate the OIDC callback URL based on current origin
+  const callbackUrl =
+    typeof window !== "undefined"
+      ? `${window.location.origin}/api/auth/oidc/callback`
+      : "/api/auth/oidc/callback";
+
+  const handleCopyCallback = async () => {
+    try {
+      await navigator.clipboard.writeText(callbackUrl);
+      setCopiedCallback(true);
+      setTimeout(() => setCopiedCallback(false), 2000);
+    } catch {
+      // Fallback for older browsers
+      const textArea = document.createElement("textarea");
+      textArea.value = callbackUrl;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textArea);
+      setCopiedCallback(true);
+      setTimeout(() => setCopiedCallback(false), 2000);
+    }
+  };
 
   const handleTest = async () => {
     if (!issuer) return;
@@ -357,6 +390,43 @@ function OIDCSettingsForm({ settings, onUpdate }: OIDCSettingsFormProps) {
               existing secret.
             </p>
           )}
+        </div>
+
+        {/* Callback URL - for IdP configuration */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            Callback URL (Redirect URI)
+          </label>
+          <div className="mt-1 flex gap-2">
+            <input
+              type="text"
+              value={callbackUrl}
+              readOnly
+              className="block w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-600 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-400"
+            />
+            <button
+              onClick={handleCopyCallback}
+              className="flex items-center gap-1 rounded-md bg-gray-100 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+              title="Copy to clipboard"
+            >
+              {copiedCallback ? (
+                <>
+                  <Check className="h-4 w-4 text-green-600 dark:text-green-400" />
+                  <span className="text-green-600 dark:text-green-400">
+                    Copied
+                  </span>
+                </>
+              ) : (
+                <>
+                  <Copy className="h-4 w-4" />
+                  <span>Copy</span>
+                </>
+              )}
+            </button>
+          </div>
+          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            Add this URL to your Identity Provider&apos;s allowed redirect URIs
+          </p>
         </div>
 
         <div>
