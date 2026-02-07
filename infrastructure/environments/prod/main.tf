@@ -63,7 +63,8 @@ locals {
     Environment = var.environment
   }
 
-  container_image = var.container_image != "" ? var.container_image : "${module.ecr.repository_url}:latest"
+  container_image          = var.container_image != "" ? var.container_image : "${module.ecr.backend_repository_url}:latest"
+  frontend_container_image = var.frontend_container_image != "" ? var.frontend_container_image : "${module.ecr.frontend_repository_url}:latest"
 
   environment_variables = {
     AWS_REGION       = local.region
@@ -99,9 +100,10 @@ module "networking" {
   availability_zones = var.availability_zones
   enable_nat_gateway = true
   single_nat_gateway = false # HA: NAT Gateway per AZ
-  container_port        = var.container_port
-  allowed_ingress_cidrs = var.allowed_ingress_cidrs
-  tags                  = local.common_tags
+  container_port            = var.container_port
+  frontend_container_port   = var.frontend_container_port
+  allowed_ingress_cidrs     = var.allowed_ingress_cidrs
+  tags                      = local.common_tags
 }
 
 # -----------------------------------------------------------------------------
@@ -154,6 +156,10 @@ module "alb" {
   certificate_arn   = var.certificate_arn
   tags              = local.common_tags
 
+  # Frontend routing
+  frontend_container_port    = var.frontend_container_port
+  frontend_health_check_path = var.frontend_health_check_path
+
   enable_deletion_protection = true # Protect production ALB
 }
 
@@ -173,7 +179,7 @@ module "ecs" {
   alb_listener_arn   = var.domain_name != "" ? module.alb.https_listener_arn : module.alb.http_listener_arn
 
   # Container configuration
-  container_name    = "app"
+  container_name    = "backend"
   container_image   = local.container_image
   container_port    = var.container_port
   health_check_path = var.health_check_path
@@ -198,6 +204,51 @@ module "ecs" {
 
   # Production settings
   use_fargate_spot    = false # Standard Fargate for reliability
+  enable_autoscaling  = true
+  min_capacity        = 2
+  max_capacity        = 4
+  cpu_target_value    = 70
+  memory_target_value = 80
+
+  tags = local.common_tags
+}
+
+# -----------------------------------------------------------------------------
+# Frontend ECS Module
+# -----------------------------------------------------------------------------
+
+module "ecs_frontend" {
+  source = "../../modules/ecs"
+
+  project_name       = "${var.project_name}-fe"
+  environment        = var.environment
+  aws_region         = local.region
+  private_subnet_ids = module.networking.private_subnet_ids
+  security_group_id  = module.networking.ecs_tasks_security_group_id
+  target_group_arn   = module.alb.frontend_target_group_arn
+  alb_listener_arn   = var.domain_name != "" ? module.alb.https_listener_arn : module.alb.http_listener_arn
+
+  # Container configuration
+  container_name    = "frontend"
+  container_image   = local.frontend_container_image
+  container_port    = var.frontend_container_port
+  health_check_path = var.frontend_health_check_path
+
+  # Task sizing (frontend is lightweight)
+  task_cpu      = 512  # 0.5 vCPU
+  task_memory   = 1024 # 1 GB
+  desired_count = 2    # Multi-AZ
+
+  # No environment secrets needed for frontend
+  environment_variables = {}
+  secrets               = {}
+
+  # Logging
+  log_retention_days        = 90
+  enable_container_insights = true
+
+  # Production settings
+  use_fargate_spot    = false
   enable_autoscaling  = true
   min_capacity        = 2
   max_capacity        = 4

@@ -41,6 +41,12 @@ variable "container_port" {
   default     = 8000
 }
 
+variable "frontend_container_port" {
+  description = "Port the frontend container listens on (set > 0 to enable frontend security group rules)"
+  type        = number
+  default     = 0
+}
+
 variable "allowed_ingress_cidrs" {
   description = "CIDR blocks allowed to access the ALB (e.g., office IPs, VPN ranges). Defaults to open access."
   type        = list(string)

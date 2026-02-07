@@ -102,3 +102,19 @@ variable "access_logs_prefix" {
   type        = string
   default     = "alb-logs"
 }
+
+# -----------------------------------------------------------------------------
+# Frontend Configuration (Optional)
+# -----------------------------------------------------------------------------
+
+variable "frontend_container_port" {
+  description = "Port the frontend container listens on (set > 0 to enable frontend routing)"
+  type        = number
+  default     = 0
+}
+
+variable "frontend_health_check_path" {
+  description = "Path for frontend health check"
+  type        = string
+  default     = "/health"
+}
