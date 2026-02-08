@@ -225,9 +225,15 @@ export interface RefreshResponse {
 // Terraform Types
 // =============================================================================
 
+export interface TerraformBucketInfo {
+  name: string;
+  region: string | null;
+}
+
 export interface TerraformStateInfo {
   name: string;
   key: string;
+  bucket: TerraformBucketInfo | null;
   description: string | null;
   last_modified: string | null;
   resource_count: number;
