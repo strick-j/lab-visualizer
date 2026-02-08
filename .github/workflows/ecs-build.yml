@@ -54,6 +54,7 @@ jobs:
     outputs:
       backend: ${{ steps.changes.outputs.backend }}
       frontend: ${{ steps.changes.outputs.frontend }}
+      environment: ${{ steps.env.outputs.environment }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -67,6 +68,17 @@ jobs:
               - 'backend/**'
             frontend:
               - 'frontend/**'
+
+      - name: Determine target environment
+        id: env
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "environment=${{ inputs.environment }}" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            echo "environment=prod" >> $GITHUB_OUTPUT
+          else
+            echo "environment=dev" >> $GITHUB_OUTPUT
+          fi
 
   # ===========================================================================
   # Build Backend Image
@@ -120,8 +132,8 @@ jobs:
           file: ./backend/Dockerfile
           push: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.push_to_ecr == 'true') }}
           tags: |
-            ${{ steps.login-ecr.outputs.registry && format('{0}/{1}-{2}-backend:{3}', steps.login-ecr.outputs.registry, env.PROJECT_NAME, github.event.inputs.environment || 'dev', steps.meta.outputs.version) || '' }}
-            ${{ steps.login-ecr.outputs.registry && github.ref == 'refs/heads/main' && format('{0}/{1}-{2}-backend:latest', steps.login-ecr.outputs.registry, env.PROJECT_NAME, github.event.inputs.environment || 'dev') || '' }}
+            ${{ steps.login-ecr.outputs.registry && format('{0}/{1}-{2}-backend:{3}', steps.login-ecr.outputs.registry, env.PROJECT_NAME, needs.changes.outputs.environment, steps.meta.outputs.version) || '' }}
+            ${{ steps.login-ecr.outputs.registry && github.event_name == 'push' && format('{0}/{1}-{2}-backend:latest', steps.login-ecr.outputs.registry, env.PROJECT_NAME, needs.changes.outputs.environment) || '' }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -133,6 +145,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
           echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Environment | \`${{ needs.changes.outputs.environment }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "| Image Tag | \`${{ steps.meta.outputs.version }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "| Pushed | ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.push_to_ecr == 'true') }} |" >> $GITHUB_STEP_SUMMARY
           if [ -n "${{ steps.build.outputs.digest }}" ]; then
@@ -190,8 +203,8 @@ jobs:
           file: ./frontend/Dockerfile
           push: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.push_to_ecr == 'true') }}
           tags: |
-            ${{ steps.login-ecr.outputs.registry && format('{0}/{1}-{2}-frontend:{3}', steps.login-ecr.outputs.registry, env.PROJECT_NAME, github.event.inputs.environment || 'dev', steps.meta.outputs.version) || '' }}
-            ${{ steps.login-ecr.outputs.registry && github.ref == 'refs/heads/main' && format('{0}/{1}-{2}-frontend:latest', steps.login-ecr.outputs.registry, env.PROJECT_NAME, github.event.inputs.environment || 'dev') || '' }}
+            ${{ steps.login-ecr.outputs.registry && format('{0}/{1}-{2}-frontend:{3}', steps.login-ecr.outputs.registry, env.PROJECT_NAME, needs.changes.outputs.environment, steps.meta.outputs.version) || '' }}
+            ${{ steps.login-ecr.outputs.registry && github.event_name == 'push' && format('{0}/{1}-{2}-frontend:latest', steps.login-ecr.outputs.registry, env.PROJECT_NAME, needs.changes.outputs.environment) || '' }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -203,6 +216,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
           echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Environment | \`${{ needs.changes.outputs.environment }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "| Image Tag | \`${{ steps.meta.outputs.version }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "| Pushed | ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.push_to_ecr == 'true') }} |" >> $GITHUB_STEP_SUMMARY
           if [ -n "${{ steps.build.outputs.digest }}" ]; then
@@ -242,7 +256,7 @@ jobs:
             | Backend | ${statusEmoji(backendResult)} ${backendResult} | \`${backendTag}\` |
             | Frontend | ${statusEmoji(frontendResult)} ${frontendResult} | \`${frontendTag}\` |
 
-            > **Note:** Images are only pushed to ECR on merge to main/develop branches.
+            > **Note:** Images are pushed to the **dev** ECR on merge to \`develop\` and to the **prod** ECR on merge to \`main\`.
             > To push from this PR, use the workflow dispatch with \`push_to_ecr: true\`.
             `;
 
