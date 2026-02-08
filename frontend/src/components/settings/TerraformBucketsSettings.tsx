@@ -8,11 +8,15 @@ import {
   Check,
   Loader2,
   AlertCircle,
+  CheckCircle,
   FolderArchive,
   FileText,
   ChevronDown,
   ChevronRight,
   Server,
+  Wifi,
+  Folder,
+  ArrowLeft,
 } from "lucide-react";
 import {
   getTerraformBuckets,
@@ -22,6 +26,8 @@ import {
   createTerraformPath,
   deleteTerraformPath,
   updateTerraformPath,
+  testS3Bucket,
+  listS3BucketObjects,
 } from "@/api/client";
 import type {
   TerraformBucket,
@@ -29,6 +35,8 @@ import type {
   TerraformBucketUpdate,
   TerraformPath,
   TerraformPathCreate,
+  S3BucketTestResponse,
+  S3ObjectInfo,
 } from "@/types";
 
 export function TerraformBucketsSettings() {
@@ -243,9 +251,33 @@ function BucketCard({
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [showAddPath, setShowAddPath] = useState(false);
+  const [isTesting, setIsTesting] = useState(false);
+  const [testResult, setTestResult] = useState<S3BucketTestResponse | null>(
+    null,
+  );
+  const [showBrowser, setShowBrowser] = useState(false);
 
   const isEnvBucket = bucket.source === "env";
   const pathCount = bucket.paths.length;
+
+  const handleTest = async () => {
+    setIsTesting(true);
+    setTestResult(null);
+    try {
+      const result = await testS3Bucket(
+        bucket.bucket_name,
+        bucket.region || undefined,
+      );
+      setTestResult(result);
+    } catch {
+      setTestResult({
+        success: false,
+        message: "Failed to test bucket connectivity",
+      });
+    } finally {
+      setIsTesting(false);
+    }
+  };
 
   return (
     <div
@@ -310,6 +342,18 @@ function BucketCard({
         </div>
         <div className="ml-4 flex items-center gap-1 flex-shrink-0">
           <button
+            onClick={handleTest}
+            disabled={isTesting}
+            className="rounded p-1.5 text-gray-400 hover:bg-blue-50 hover:text-blue-600 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-blue-900/20 dark:hover:text-blue-400"
+            title="Test connectivity"
+          >
+            {isTesting ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Wifi className="h-4 w-4" />
+            )}
+          </button>
+          <button
             onClick={onToggleEnabled}
             className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
               bucket.enabled ? "bg-blue-600" : "bg-gray-200 dark:bg-gray-700"
@@ -359,6 +403,37 @@ function BucketCard({
         </div>
       </div>
 
+      {/* Test result banner */}
+      {testResult && (
+        <div className="px-4 pb-2">
+          <div
+            className={`flex items-center gap-2 rounded-md p-2 text-sm ${
+              testResult.success
+                ? "bg-green-50 text-green-800 dark:bg-green-900/20 dark:text-green-200"
+                : "bg-red-50 text-red-800 dark:bg-red-900/20 dark:text-red-200"
+            }`}
+          >
+            {testResult.success ? (
+              <CheckCircle className="h-4 w-4 flex-shrink-0 text-green-600 dark:text-green-400" />
+            ) : (
+              <AlertCircle className="h-4 w-4 flex-shrink-0 text-red-600 dark:text-red-400" />
+            )}
+            <span>{testResult.message}</span>
+            {testResult.success && testResult.details?.region && (
+              <span className="text-xs opacity-75">
+                (region: {testResult.details.region})
+              </span>
+            )}
+            <button
+              onClick={() => setTestResult(null)}
+              className="ml-auto text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Expanded: paths section */}
       {expanded && (
         <div className="border-t border-gray-100 px-4 pb-4 pt-3 dark:border-gray-700">
@@ -366,7 +441,7 @@ function BucketCard({
             <h5 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
               State File Paths
             </h5>
-            {bucket.paths.length === 0 && !showAddPath ? (
+            {bucket.paths.length === 0 && !showAddPath && !showBrowser ? (
               <p className="text-xs text-gray-400 dark:text-gray-500 italic">
                 No explicit paths configured &mdash; all .tfstate files under
                 the prefix will be auto-discovered.
@@ -392,7 +467,22 @@ function BucketCard({
               </div>
             )}
 
-            {showAddPath ? (
+            {showBrowser ? (
+              <S3PathBrowser
+                bucketName={bucket.bucket_name}
+                region={bucket.region || undefined}
+                existingPaths={bucket.paths.map((p) => p.path)}
+                onSelectPath={async (path) => {
+                  const data: TerraformPathCreate = {
+                    path,
+                    enabled: true,
+                  };
+                  const created = await createTerraformPath(bucket.id, data);
+                  onPathAdded(created);
+                }}
+                onClose={() => setShowBrowser(false)}
+              />
+            ) : showAddPath ? (
               <PathAddForm
                 bucketId={bucket.id}
                 onSave={(newPath) => {
@@ -402,19 +492,217 @@ function BucketCard({
                 onCancel={() => setShowAddPath(false)}
               />
             ) : (
-              <button
-                onClick={() => setShowAddPath(true)}
-                className="mt-2 flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
-              >
-                <Plus className="h-3 w-3" />
-                Add Path
-              </button>
+              <div className="mt-2 flex items-center gap-2">
+                <button
+                  onClick={() => setShowAddPath(true)}
+                  className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+                >
+                  <Plus className="h-3 w-3" />
+                  Add Path
+                </button>
+                <span className="text-gray-300 dark:text-gray-600">|</span>
+                <button
+                  onClick={() => setShowBrowser(true)}
+                  className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+                >
+                  <Folder className="h-3 w-3" />
+                  Browse Bucket
+                </button>
+              </div>
             )}
           </div>
         </div>
       )}
     </div>
   );
+}
+
+// ---------------------------------------------------------------------------
+// S3 Path Browser
+// ---------------------------------------------------------------------------
+
+interface S3PathBrowserProps {
+  bucketName: string;
+  region?: string;
+  existingPaths: string[];
+  onSelectPath: (path: string) => Promise<void>;
+  onClose: () => void;
+}
+
+function S3PathBrowser({
+  bucketName,
+  region,
+  existingPaths,
+  onSelectPath,
+  onClose,
+}: S3PathBrowserProps) {
+  const [prefix, setPrefix] = useState("");
+  const [objects, setObjects] = useState<S3ObjectInfo[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [addingPath, setAddingPath] = useState<string | null>(null);
+
+  useEffect(() => {
+    loadObjects(prefix);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefix]);
+
+  const loadObjects = async (currentPrefix: string) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const result = await listS3BucketObjects(
+        bucketName,
+        currentPrefix,
+        region,
+      );
+      if (result.success) {
+        setObjects(result.objects);
+      } else {
+        setError(result.message);
+        setObjects([]);
+      }
+    } catch {
+      setError("Failed to browse bucket");
+      setObjects([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const navigateUp = () => {
+    const trimmed = prefix.replace(/\/$/, "");
+    const lastSlash = trimmed.lastIndexOf("/");
+    setPrefix(lastSlash >= 0 ? trimmed.substring(0, lastSlash + 1) : "");
+  };
+
+  const handleAddPath = async (path: string) => {
+    setAddingPath(path);
+    try {
+      await onSelectPath(path);
+    } catch {
+      // Error handled by parent
+    } finally {
+      setAddingPath(null);
+    }
+  };
+
+  const isTfState = (key: string) =>
+    key.endsWith(".tfstate") || key.endsWith(".tfstate.backup");
+
+  return (
+    <div className="mt-2 rounded border border-blue-200 bg-blue-50/50 p-3 dark:border-blue-800 dark:bg-blue-900/10">
+      <div className="mb-2 flex items-center justify-between">
+        <h6 className="text-xs font-semibold text-gray-700 dark:text-gray-300">
+          Browse: {bucketName}
+        </h6>
+        <button
+          onClick={onClose}
+          className="rounded p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
+      </div>
+
+      {/* Current path breadcrumb */}
+      <div className="mb-2 flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+        {prefix && (
+          <button
+            onClick={navigateUp}
+            className="flex items-center gap-0.5 text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+          >
+            <ArrowLeft className="h-3 w-3" />
+            Up
+          </button>
+        )}
+        <span className="font-mono">/{prefix || ""}</span>
+      </div>
+
+      {isLoading ? (
+        <div className="flex items-center justify-center py-4">
+          <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+        </div>
+      ) : error ? (
+        <div className="flex items-center gap-2 py-2 text-xs text-red-600 dark:text-red-400">
+          <AlertCircle className="h-3.5 w-3.5" />
+          {error}
+        </div>
+      ) : objects.length === 0 ? (
+        <p className="py-2 text-xs text-gray-400 italic">
+          No objects found at this prefix
+        </p>
+      ) : (
+        <div className="max-h-60 space-y-1 overflow-y-auto">
+          {objects.map((obj) => {
+            const isFolder = obj.is_prefix;
+            const isState = isTfState(obj.key);
+            const alreadyAdded = existingPaths.includes(obj.key);
+            const displayKey = obj.key.replace(prefix, "");
+
+            return (
+              <div
+                key={obj.key}
+                className="flex items-center justify-between rounded px-2 py-1.5 text-xs hover:bg-white dark:hover:bg-gray-800"
+              >
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  {isFolder ? (
+                    <Folder className="h-3.5 w-3.5 text-yellow-500 flex-shrink-0" />
+                  ) : (
+                    <FileText
+                      className={`h-3.5 w-3.5 flex-shrink-0 ${isState ? "text-purple-500" : "text-gray-400"}`}
+                    />
+                  )}
+                  {isFolder ? (
+                    <button
+                      onClick={() => setPrefix(obj.key)}
+                      className="font-mono text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 truncate"
+                    >
+                      {displayKey}
+                    </button>
+                  ) : (
+                    <span
+                      className={`font-mono truncate ${isState ? "text-gray-800 dark:text-gray-200" : "text-gray-500 dark:text-gray-400"}`}
+                    >
+                      {displayKey}
+                    </span>
+                  )}
+                  {obj.size !== undefined && obj.size !== null && !isFolder && (
+                    <span className="text-gray-400 flex-shrink-0">
+                      {formatSize(obj.size)}
+                    </span>
+                  )}
+                </div>
+                {isState && (
+                  <div className="ml-2 flex-shrink-0">
+                    {alreadyAdded ? (
+                      <span className="text-xs text-green-600 dark:text-green-400">
+                        Added
+                      </span>
+                    ) : addingPath === obj.key ? (
+                      <Loader2 className="h-3 w-3 animate-spin text-blue-600" />
+                    ) : (
+                      <button
+                        onClick={() => handleAddPath(obj.key)}
+                        className="rounded bg-blue-600 px-2 py-0.5 text-xs text-white hover:bg-blue-700"
+                      >
+                        Add
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function formatSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 // ---------------------------------------------------------------------------

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import {
+  Settings,
   Shield,
   Key,
   AlertCircle,
@@ -15,6 +16,10 @@ import {
   testOIDCConnection,
 } from "@/api/client";
 import { PasswordChangeForm } from "@/components/common/PasswordChangeForm";
+import {
+  SettingsTabNavigation,
+  type SettingsTabType,
+} from "@/components/settings/SettingsTabNavigation";
 import type {
   AuthSettingsResponse,
   OIDCSettingsUpdate,
@@ -27,6 +32,7 @@ export function SettingsPage() {
   const [settings, setSettings] = useState<AuthSettingsResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<SettingsTabType>("authentication");
 
   // Check if user is admin
   const isAdmin = user?.is_admin ?? false;
@@ -114,63 +120,80 @@ export function SettingsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-          Settings
-        </h1>
-        <p className="text-gray-500 dark:text-gray-400">
-          Configure authentication providers and account settings
-        </p>
+      {/* Page Header */}
+      <div className="flex items-center gap-3">
+        <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900">
+          <Settings className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+        </div>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+            Settings
+          </h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Configure authentication providers and S3 bucket sources
+          </p>
+        </div>
       </div>
 
-      {/* Password Change (for local admin users) */}
-      {isLocalUser && user && (
-        <PasswordChangeForm userId={user.id} onSuccess={logout} />
-      )}
+      {/* Tab Navigation */}
+      <SettingsTabNavigation activeTab={activeTab} onTabChange={setActiveTab} />
 
-      {/* Local Auth Status */}
-      <div className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Key className="h-5 w-5 text-gray-500 dark:text-gray-400" />
-            <div>
-              <h3 className="font-medium text-gray-900 dark:text-gray-100">
-                Local Authentication
-              </h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                Username and password authentication
-              </p>
+      {/* Tab Content */}
+      <div>
+        {activeTab === "authentication" && (
+          <div className="space-y-6">
+            {/* Password Change (for local admin users) */}
+            {isLocalUser && user && (
+              <PasswordChangeForm userId={user.id} onSuccess={logout} />
+            )}
+
+            {/* Local Auth Status */}
+            <div className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Key className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+                  <div>
+                    <h3 className="font-medium text-gray-900 dark:text-gray-100">
+                      Local Authentication
+                    </h3>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      Username and password authentication
+                    </p>
+                  </div>
+                </div>
+                <span
+                  className={`rounded-full px-3 py-1 text-xs font-medium ${
+                    settings?.local_auth_enabled
+                      ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
+                      : "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400"
+                  }`}
+                >
+                  {settings?.local_auth_enabled ? "Enabled" : "Disabled"}
+                </span>
+              </div>
+            </div>
+
+            {/* OIDC Configuration */}
+            <div className="rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
+              <div className="p-6">
+                {settings && (
+                  <OIDCSettingsForm
+                    settings={settings.oidc}
+                    onUpdate={() => loadSettings(false)}
+                  />
+                )}
+              </div>
             </div>
           </div>
-          <span
-            className={`rounded-full px-3 py-1 text-xs font-medium ${
-              settings?.local_auth_enabled
-                ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
-                : "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400"
-            }`}
-          >
-            {settings?.local_auth_enabled ? "Enabled" : "Disabled"}
-          </span>
-        </div>
-      </div>
+        )}
 
-      {/* OIDC Configuration */}
-      <div className="rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
-        <div className="p-6">
-          {settings && (
-            <OIDCSettingsForm
-              settings={settings.oidc}
-              onUpdate={() => loadSettings(false)}
-            />
-          )}
-        </div>
-      </div>
-
-      {/* Terraform State Buckets */}
-      <div className="rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
-        <div className="p-6">
-          <TerraformBucketsSettings />
-        </div>
+        {activeTab === "s3-buckets" && (
+          <div className="rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
+            <div className="p-6">
+              <TerraformBucketsSettings />
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
