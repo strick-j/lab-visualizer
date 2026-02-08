@@ -1,9 +1,11 @@
 # =============================================================================
-# ECS Container Build & Push
-# Builds Docker images and pushes to AWS ECR on pull requests and merges
+# ECS Container Build, Push & Deploy
+# Builds Docker images, pushes to AWS ECR, and deploys to ECS Fargate
+# On pull requests: build only (no push, no deploy)
+# On push to main/develop: build, push to ECR, deploy to ECS
 # =============================================================================
 
-name: ECS Build
+name: ECS Build & Deploy
 
 on:
   push:
@@ -26,6 +28,11 @@ on:
         description: 'Push images to ECR (even from PR)'
         required: false
         default: 'false'
+        type: boolean
+      deploy_to_ecs:
+        description: 'Deploy to ECS after pushing images'
+        required: false
+        default: 'true'
         type: boolean
       environment:
         description: 'Target environment'
@@ -57,6 +64,7 @@ jobs:
       backend: ${{ steps.changes.outputs.backend }}
       frontend: ${{ steps.changes.outputs.frontend }}
       app_version: ${{ steps.version.outputs.version }}
+      environment: ${{ steps.env.outputs.environment }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -301,3 +309,121 @@ jobs:
                 body: body
               });
             }
+
+  # ===========================================================================
+  # Deploy to ECS
+  # Triggers force-new-deployment and waits for services to stabilize
+  # ===========================================================================
+  deploy:
+    name: Deploy to ECS
+    runs-on: ubuntu-latest
+    needs: [changes, build-backend, build-frontend]
+    # Run when images were pushed and at least one build succeeded
+    if: |
+      always() &&
+      (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.push_to_ecr == true)) &&
+      (github.event_name != 'workflow_dispatch' || inputs.deploy_to_ecs != false) &&
+      (needs.build-backend.result == 'success' || needs.build-frontend.result == 'success')
+    env:
+      # TF_PROJECT_NAME must match the Terraform project_name variable used when deploying infrastructure.
+      # The ECS cluster/service names are derived from this value.
+      # Override via GitHub repository variable if your Terraform project_name differs.
+      TF_PROJECT_NAME: ${{ vars.TF_PROJECT_NAME || 'aws-infra-visualizer' }}
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_OIDC_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: GitHub-Actions-ECS-Deploy
+
+      - name: Set deployment targets
+        id: targets
+        run: |
+          ENV="${{ needs.changes.outputs.environment }}"
+
+          # Backend ECS resources
+          echo "backend_cluster=${TF_PROJECT_NAME}-${ENV}-cluster" >> $GITHUB_OUTPUT
+          echo "backend_service=${TF_PROJECT_NAME}-${ENV}-service" >> $GITHUB_OUTPUT
+
+          # Frontend ECS resources (uses -fe suffix per Terraform convention)
+          echo "frontend_cluster=${TF_PROJECT_NAME}-fe-${ENV}-cluster" >> $GITHUB_OUTPUT
+          echo "frontend_service=${TF_PROJECT_NAME}-fe-${ENV}-service" >> $GITHUB_OUTPUT
+
+          echo "## Deployment Targets" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Service | Cluster | Service Name |" >> $GITHUB_STEP_SUMMARY
+          echo "|---------|---------|--------------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Backend | \`${TF_PROJECT_NAME}-${ENV}-cluster\` | \`${TF_PROJECT_NAME}-${ENV}-service\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Frontend | \`${TF_PROJECT_NAME}-fe-${ENV}-cluster\` | \`${TF_PROJECT_NAME}-fe-${ENV}-service\` |" >> $GITHUB_STEP_SUMMARY
+
+      - name: Deploy backend service
+        if: needs.build-backend.result == 'success'
+        run: |
+          echo "Triggering force-new-deployment for backend..."
+          aws ecs update-service \
+            --cluster "${{ steps.targets.outputs.backend_cluster }}" \
+            --service "${{ steps.targets.outputs.backend_service }}" \
+            --force-new-deployment \
+            --query 'service.deployments[0].{status:status,desired:desiredCount,running:runningCount}' \
+            --output table
+
+      - name: Deploy frontend service
+        if: needs.build-frontend.result == 'success'
+        run: |
+          echo "Triggering force-new-deployment for frontend..."
+          aws ecs update-service \
+            --cluster "${{ steps.targets.outputs.frontend_cluster }}" \
+            --service "${{ steps.targets.outputs.frontend_service }}" \
+            --force-new-deployment \
+            --query 'service.deployments[0].{status:status,desired:desiredCount,running:runningCount}' \
+            --output table
+
+      - name: Wait for backend deployment to stabilize
+        if: needs.build-backend.result == 'success'
+        timeout-minutes: 15
+        run: |
+          echo "Waiting for backend service to reach steady state..."
+          aws ecs wait services-stable \
+            --cluster "${{ steps.targets.outputs.backend_cluster }}" \
+            --services "${{ steps.targets.outputs.backend_service }}"
+          echo "Backend deployment stable."
+
+      - name: Wait for frontend deployment to stabilize
+        if: needs.build-frontend.result == 'success'
+        timeout-minutes: 15
+        run: |
+          echo "Waiting for frontend service to reach steady state..."
+          aws ecs wait services-stable \
+            --cluster "${{ steps.targets.outputs.frontend_cluster }}" \
+            --services "${{ steps.targets.outputs.frontend_service }}"
+          echo "Frontend deployment stable."
+
+      - name: Generate deployment summary
+        if: always()
+        run: |
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Deployment Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Service | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|---------|--------|" >> $GITHUB_STEP_SUMMARY
+
+          BACKEND_STATUS="${{ needs.build-backend.result }}"
+          FRONTEND_STATUS="${{ needs.build-frontend.result }}"
+
+          if [ "$BACKEND_STATUS" = "success" ]; then
+            echo "| Backend | Deployed |" >> $GITHUB_STEP_SUMMARY
+          elif [ "$BACKEND_STATUS" = "skipped" ]; then
+            echo "| Backend | Skipped (no changes) |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| Backend | Not deployed ($BACKEND_STATUS) |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ "$FRONTEND_STATUS" = "success" ]; then
+            echo "| Frontend | Deployed |" >> $GITHUB_STEP_SUMMARY
+          elif [ "$FRONTEND_STATUS" = "skipped" ]; then
+            echo "| Frontend | Skipped (no changes) |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| Frontend | Not deployed ($FRONTEND_STATUS) |" >> $GITHUB_STEP_SUMMARY
+          fi

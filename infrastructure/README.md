@@ -100,13 +100,21 @@ docker push <ecr_frontend_repository_url>:latest
 
 Replace `<ecr_backend_repository_url>` and `<ecr_frontend_repository_url>` with the values from `terraform output`.
 
-### 4. Force new deployments
+### 4. ECS Deployment
 
-After pushing new images, trigger ECS to pull the latest:
+**Automated (CI/CD):** The `ECS Build & Deploy` GitHub Actions workflow automatically triggers
+`force-new-deployment` on both backend and frontend ECS services after pushing images to ECR.
+It then polls until services reach a steady state. See [CI/CD Deployment](#cicd-deployment) for setup details.
+
+**Manual:** If you need to trigger a deployment manually (e.g., after a local image push):
 
 ```bash
 aws ecs update-service --cluster <ecs_cluster_name> --service <ecs_service_name> --force-new-deployment
 aws ecs update-service --cluster <ecs_cluster_name> --service <ecs_frontend_service_name> --force-new-deployment
+
+# Wait for services to stabilize
+aws ecs wait services-stable --cluster <ecs_cluster_name> --services <ecs_service_name>
+aws ecs wait services-stable --cluster <ecs_cluster_name> --services <ecs_frontend_service_name>
 ```
 
 ### 5. Access the application
@@ -196,3 +204,112 @@ aws ecr batch-delete-image --repository-name aws-infra-visualizer-dev-frontend -
 - **Routes**: Receives all non-API requests (default ALB rule)
 - **Runtime**: Nginx serving static React SPA assets
 - **SPA routing**: Nginx `try_files` falls back to `index.html` for client-side routes
+
+## CI/CD Deployment
+
+The `ECS Build & Deploy` workflow (`.github/workflows/ecs-build.yml`) automates the full
+build-push-deploy pipeline. After pushing images to ECR, it triggers `force-new-deployment` on the
+ECS services and waits for them to reach a steady state (healthy tasks).
+
+### GitHub Repository Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `AWS_REGION` | AWS region for ECR and ECS | `us-east-2` |
+| `PROJECT_NAME` | Project name for ECR repository naming | `lab-visualizer` |
+| `TF_PROJECT_NAME` | Terraform `project_name` variable (used to derive ECS cluster/service names) | `aws-infra-visualizer` |
+
+### GitHub Repository Secrets
+
+| Secret | Description |
+|--------|-------------|
+| `AWS_OIDC_ROLE_ARN` | ARN of the IAM role assumed via OIDC for GitHub Actions |
+
+### Required IAM Permissions for GitHub Actions OIDC Role
+
+The role referenced by `AWS_OIDC_ROLE_ARN` requires the following permissions:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ECRAuthentication",
+      "Effect": "Allow",
+      "Action": [
+        "ecr:GetAuthorizationToken"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "ECRPushPull",
+      "Effect": "Allow",
+      "Action": [
+        "ecr:BatchCheckLayerAvailability",
+        "ecr:GetDownloadUrlForLayer",
+        "ecr:BatchGetImage",
+        "ecr:PutImage",
+        "ecr:InitiateLayerUpload",
+        "ecr:UploadLayerPart",
+        "ecr:CompleteLayerUpload"
+      ],
+      "Resource": [
+        "arn:aws:ecr:<region>:<account_id>:repository/lab-visualizer-*-backend",
+        "arn:aws:ecr:<region>:<account_id>:repository/lab-visualizer-*-frontend"
+      ]
+    },
+    {
+      "Sid": "ECSDeployment",
+      "Effect": "Allow",
+      "Action": [
+        "ecs:UpdateService",
+        "ecs:DescribeServices",
+        "ecs:DescribeTasks",
+        "ecs:DescribeTaskDefinition",
+        "ecs:ListTasks"
+      ],
+      "Resource": [
+        "arn:aws:ecs:<region>:<account_id>:service/aws-infra-visualizer-*/*",
+        "arn:aws:ecs:<region>:<account_id>:task/aws-infra-visualizer-*/*",
+        "arn:aws:ecs:<region>:<account_id>:task-definition/aws-infra-visualizer-*:*"
+      ]
+    },
+    {
+      "Sid": "ECSClusterRead",
+      "Effect": "Allow",
+      "Action": [
+        "ecs:DescribeClusters"
+      ],
+      "Resource": [
+        "arn:aws:ecs:<region>:<account_id>:cluster/aws-infra-visualizer-*"
+      ]
+    }
+  ]
+}
+```
+
+> **Note:** Replace `<region>` and `<account_id>` with your actual values. The wildcard patterns
+> cover both `dev` and `prod` environments. Tighten the resource ARNs if you need stricter
+> environment separation.
+
+### Deployment Flow
+
+```
+Push to main/develop
+  → GitHub Actions: Detect changes (backend/frontend)
+  → Build Docker images (parallel)
+  → Push to ECR with tags (SHA, branch, latest)
+  → Force new deployment on ECS services
+  → Wait for services to stabilize (healthy tasks)
+  → Generate deployment summary
+```
+
+### Workflow Dispatch Options
+
+When triggering the workflow manually, these options are available:
+
+| Input | Description | Default |
+|-------|-------------|---------|
+| `push_to_ecr` | Push images to ECR | `false` |
+| `deploy_to_ecs` | Deploy to ECS after pushing | `true` |
+| `environment` | Target environment (dev/prod) | `dev` |
