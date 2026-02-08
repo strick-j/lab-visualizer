@@ -32,6 +32,8 @@ import type {
   TerraformPath,
   TerraformPathCreate,
   TerraformPathUpdate,
+  S3BucketTestResponse,
+  S3BucketListResponse,
 } from "@/types";
 
 // Create axios instance with base configuration
@@ -453,6 +455,34 @@ export async function updateTerraformPath(
 
 export async function deleteTerraformPath(pathId: number): Promise<void> {
   await api.delete(`/settings/terraform/paths/${pathId}`);
+}
+
+// =============================================================================
+// S3 Bucket Test & Browse (Admin only)
+// =============================================================================
+
+export async function testS3Bucket(
+  bucketName: string,
+  region?: string,
+): Promise<S3BucketTestResponse> {
+  const response = await api.post("/settings/terraform/buckets/test", {
+    bucket_name: bucketName,
+    region: region || undefined,
+  });
+  return response.data;
+}
+
+export async function listS3BucketObjects(
+  bucketName: string,
+  prefix: string = "",
+  region?: string,
+): Promise<S3BucketListResponse> {
+  const response = await api.post("/settings/terraform/buckets/list-objects", {
+    bucket_name: bucketName,
+    prefix,
+    region: region || undefined,
+  });
+  return response.data;
 }
 
 export default api;

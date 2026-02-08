@@ -25,6 +25,11 @@ from app.schemas.settings import (
     AuthSettingsResponse,
     OIDCSettingsResponse,
     OIDCSettingsUpdate,
+    S3BucketListRequest,
+    S3BucketListResponse,
+    S3BucketTestRequest,
+    S3BucketTestResponse,
+    S3ObjectInfo,
     TerraformBucketCreate,
     TerraformBucketResponse,
     TerraformBucketsListResponse,
@@ -520,3 +525,201 @@ async def delete_terraform_path(
         path_id,
         _sanitize_for_log(path.path),
     )
+
+
+# =============================================================================
+# S3 Bucket Test & Browse
+# =============================================================================
+
+
+def _get_s3_client(region: str | None = None):
+    """Create an S3 client with the configured AWS profile."""
+    import boto3
+    from botocore.config import Config
+
+    session_kwargs = {}
+    if env_settings.aws_profile:
+        session_kwargs["profile_name"] = env_settings.aws_profile
+
+    boto_config = Config(
+        retries={"max_attempts": 2, "mode": "adaptive"},
+        connect_timeout=5,
+        read_timeout=10,
+    )
+
+    session = boto3.Session(**session_kwargs)
+    return session.client(
+        "s3",
+        region_name=region or env_settings.aws_region,
+        config=boto_config,
+    )
+
+
+@router.post("/terraform/buckets/test", response_model=S3BucketTestResponse)
+async def test_s3_bucket(
+    data: S3BucketTestRequest,
+    current_user: User = Depends(get_current_admin_user),
+):
+    """Test S3 bucket connectivity and read access. Admin only."""
+    from botocore.exceptions import ClientError, NoCredentialsError
+
+    bucket_name = data.bucket_name.strip()
+    logger.info(
+        "User %s testing S3 bucket: %s",
+        current_user.username,
+        _sanitize_for_log(bucket_name),
+    )
+
+    try:
+        s3 = _get_s3_client(data.region)
+
+        # Test 1: Check bucket exists and we have access (HeadBucket)
+        s3.head_bucket(Bucket=bucket_name)
+
+        # Test 2: Verify we can list objects (read access)
+        list_resp = s3.list_objects_v2(Bucket=bucket_name, MaxKeys=1)
+        object_count_sample = list_resp.get("KeyCount", 0)
+
+        # Test 3: Get bucket location for info
+        location_resp = s3.get_bucket_location(Bucket=bucket_name)
+        location = location_resp.get("LocationConstraint") or "us-east-1"
+
+        return S3BucketTestResponse(
+            success=True,
+            message="Bucket is accessible and readable",
+            details={
+                "bucket": bucket_name,
+                "region": location,
+                "has_objects": str(object_count_sample > 0),
+            },
+        )
+
+    except ClientError as e:
+        error_code = e.response.get("Error", {}).get("Code", "Unknown")
+        if error_code == "404" or error_code == "NoSuchBucket":
+            return S3BucketTestResponse(
+                success=False,
+                message=f"Bucket '{bucket_name}' does not exist",
+            )
+        elif error_code == "403" or error_code == "AccessDenied":
+            return S3BucketTestResponse(
+                success=False,
+                message="Access denied. Check IAM permissions for s3:HeadBucket and s3:ListBucket.",
+            )
+        else:
+            logger.warning(
+                "S3 bucket test failed for %s: [%s] %s",
+                _sanitize_for_log(bucket_name),
+                error_code,
+                e.response.get("Error", {}).get("Message", ""),
+            )
+            return S3BucketTestResponse(
+                success=False,
+                message=f"AWS error: {error_code}",
+            )
+    except NoCredentialsError:
+        return S3BucketTestResponse(
+            success=False,
+            message="No AWS credentials configured. Check AWS configuration.",
+        )
+    except Exception:
+        logger.exception("Unexpected error testing S3 bucket %s", _sanitize_for_log(bucket_name))
+        return S3BucketTestResponse(
+            success=False,
+            message="An unexpected error occurred while testing the bucket",
+        )
+
+
+@router.post("/terraform/buckets/list-objects", response_model=S3BucketListResponse)
+async def list_s3_bucket_objects(
+    data: S3BucketListRequest,
+    current_user: User = Depends(get_current_admin_user),
+):
+    """List objects and prefixes in an S3 bucket. Admin only.
+
+    Returns up to 100 objects/prefixes at the given prefix level,
+    using "/" as the delimiter to simulate folder browsing.
+    """
+    from botocore.exceptions import ClientError, NoCredentialsError
+
+    bucket_name = data.bucket_name.strip()
+    prefix = data.prefix.strip()
+
+    # Ensure prefix ends with "/" if non-empty (for folder-like browsing)
+    if prefix and not prefix.endswith("/"):
+        prefix += "/"
+
+    try:
+        s3 = _get_s3_client(data.region)
+
+        resp = s3.list_objects_v2(
+            Bucket=bucket_name,
+            Prefix=prefix,
+            Delimiter="/",
+            MaxKeys=100,
+        )
+
+        objects: list[S3ObjectInfo] = []
+
+        # Add "directories" (common prefixes)
+        for cp in resp.get("CommonPrefixes", []):
+            objects.append(
+                S3ObjectInfo(
+                    key=cp["Prefix"],
+                    is_prefix=True,
+                )
+            )
+
+        # Add files
+        for obj in resp.get("Contents", []):
+            key = obj["Key"]
+            # Skip the prefix itself if it appears as an object
+            if key == prefix:
+                continue
+            objects.append(
+                S3ObjectInfo(
+                    key=key,
+                    is_prefix=False,
+                    size=obj.get("Size"),
+                    last_modified=(
+                        obj["LastModified"].isoformat() if obj.get("LastModified") else None
+                    ),
+                )
+            )
+
+        return S3BucketListResponse(
+            success=True,
+            message=f"Found {len(objects)} items",
+            objects=objects,
+            prefix=prefix,
+            bucket_name=bucket_name,
+        )
+
+    except ClientError as e:
+        error_code = e.response.get("Error", {}).get("Code", "Unknown")
+        logger.warning(
+            "S3 list-objects failed for %s: [%s]",
+            _sanitize_for_log(bucket_name),
+            error_code,
+        )
+        return S3BucketListResponse(
+            success=False,
+            message=f"AWS error: {error_code}",
+            bucket_name=bucket_name,
+            prefix=prefix,
+        )
+    except NoCredentialsError:
+        return S3BucketListResponse(
+            success=False,
+            message="No AWS credentials configured",
+            bucket_name=bucket_name,
+            prefix=prefix,
+        )
+    except Exception:
+        logger.exception("Unexpected error listing S3 bucket %s", _sanitize_for_log(bucket_name))
+        return S3BucketListResponse(
+            success=False,
+            message="An unexpected error occurred",
+            bucket_name=bucket_name,
+            prefix=prefix,
+        )
