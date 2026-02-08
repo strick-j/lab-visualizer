@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   getStatusSummary,
+  getAppInfo,
   getEC2Instances,
   getEC2Instance,
   getRDSInstances,
@@ -27,6 +28,7 @@ import type { ResourceFilters } from "@/types";
 // =============================================================================
 
 export const queryKeys = {
+  appInfo: ["app-info"] as const,
   statusSummary: ["status-summary"] as const,
   ec2Instances: (filters?: ResourceFilters) =>
     ["ec2-instances", filters] as const,
@@ -60,6 +62,18 @@ export function useStatusSummary() {
     queryKey: queryKeys.statusSummary,
     queryFn: getStatusSummary,
     refetchInterval: 60000, // Refresh every minute
+  });
+}
+
+// =============================================================================
+// App Info
+// =============================================================================
+
+export function useAppInfo() {
+  return useQuery({
+    queryKey: queryKeys.appInfo,
+    queryFn: getAppInfo,
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
   });
 }
 

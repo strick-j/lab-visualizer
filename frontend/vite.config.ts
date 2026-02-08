@@ -1,10 +1,23 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
+import fs from 'fs';
+
+// Read version from root VERSION file
+const version = (() => {
+  try {
+    return fs.readFileSync(path.resolve(__dirname, '../VERSION'), 'utf-8').trim();
+  } catch {
+    return process.env.APP_VERSION || '0.0.0-unknown';
+  }
+})();
 
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
+  define: {
+    __APP_VERSION__: JSON.stringify(process.env.APP_VERSION || version),
+  },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),

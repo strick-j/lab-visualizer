@@ -35,6 +35,7 @@ services:
     volumes:
       - ./backend/app:/app/app:ro
       - ./config:/app/config:ro
+      - ./VERSION:/app/VERSION:ro
       - backend-data:/app/data
       # Mount AWS credentials for local development (appuser's home)
       - ~/.aws:/home/appuser/.aws:ro
@@ -62,6 +63,7 @@ services:
       - ./frontend/public:/app/public:ro
       - ./frontend/index.html:/app/index.html:ro
       - ./frontend/vite.config.ts:/app/vite.config.ts:ro
+      - ./VERSION:/app/VERSION:ro
       - ./frontend/tsconfig.json:/app/tsconfig.json:ro
       - ./frontend/tsconfig.node.json:/app/tsconfig.node.json:ro
       - ./frontend/tailwind.config.js:/app/tailwind.config.js:ro
