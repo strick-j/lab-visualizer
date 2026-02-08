@@ -46,25 +46,25 @@ variable "enable_deletion_protection" {
 }
 
 variable "certificate_arn" {
-  description = "ARN of existing ACM certificate (leave empty to create new)"
+  description = "ARN of an existing ACM certificate for HTTPS. When provided, enables HTTPS listener and HTTP-to-HTTPS redirect."
   type        = string
   default     = ""
 }
 
 variable "domain_name" {
-  description = "Domain name for the application"
+  description = "Domain name for the application (used for auto-creating ACM certs and Route53 records; leave empty if managing DNS externally)"
   type        = string
   default     = ""
 }
 
 variable "subject_alternative_names" {
-  description = "Subject alternative names for the certificate"
+  description = "Subject alternative names for auto-created ACM certificates"
   type        = list(string)
   default     = []
 }
 
 variable "route53_zone_id" {
-  description = "Route53 hosted zone ID"
+  description = "Route53 hosted zone ID (only needed for auto-creating ACM certs with DNS validation and Route53 A records)"
   type        = string
   default     = ""
 }
@@ -101,4 +101,20 @@ variable "access_logs_prefix" {
   description = "S3 key prefix for ALB access logs"
   type        = string
   default     = "alb-logs"
+}
+
+# -----------------------------------------------------------------------------
+# Frontend Configuration (Optional)
+# -----------------------------------------------------------------------------
+
+variable "frontend_container_port" {
+  description = "Port the frontend container listens on (set > 0 to enable frontend routing)"
+  type        = number
+  default     = 0
+}
+
+variable "frontend_health_check_path" {
+  description = "Path for frontend health check"
+  type        = string
+  default     = "/health"
 }

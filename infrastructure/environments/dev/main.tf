@@ -63,8 +63,14 @@ locals {
     Environment = var.environment
   }
 
-  # Container image - use ECR or provided image
-  container_image = var.container_image != "" ? var.container_image : "${module.ecr.repository_url}:latest"
+  # HTTPS is enabled when an ACM certificate is provided
+  https_enabled = var.certificate_arn != ""
+  protocol      = local.https_enabled ? "https" : "http"
+  hostname      = var.domain_name != "" ? var.domain_name : module.alb.alb_dns_name
+
+  # Container images - use ECR or provided image
+  container_image          = var.container_image != "" ? var.container_image : "${module.ecr.backend_repository_url}:latest"
+  frontend_container_image = var.frontend_container_image != "" ? var.frontend_container_image : "${module.ecr.frontend_repository_url}:latest"
 
   # Environment variables for the container
   environment_variables = {
@@ -75,7 +81,7 @@ locals {
     DATABASE_URL     = "sqlite:///./data/app.db"
     LOG_LEVEL        = var.log_level
     DEBUG            = tostring(var.debug)
-    CORS_ORIGINS     = var.domain_name != "" ? "https://${var.domain_name}" : "http://${module.alb.alb_dns_name}"
+    CORS_ORIGINS     = "${local.protocol}://${local.hostname}"
     OIDC_ISSUER      = var.oidc_issuer
     OIDC_CLIENT_ID   = var.oidc_client_id
   }
@@ -102,8 +108,10 @@ module "networking" {
   availability_zones = var.availability_zones
   enable_nat_gateway = var.enable_nat_gateway
   single_nat_gateway = true # Cost optimization for dev
-  container_port     = var.container_port
-  tags               = local.common_tags
+  container_port            = var.container_port
+  frontend_container_port   = var.frontend_container_port
+  allowed_ingress_cidrs     = var.allowed_ingress_cidrs
+  tags                      = local.common_tags
 }
 
 # -----------------------------------------------------------------------------
@@ -115,7 +123,8 @@ module "ecr" {
 
   project_name          = var.project_name
   environment           = var.environment
-  image_tag_mutability  = "IMMUTABLE" # Enforce immutable tags for security
+  services              = ["backend", "frontend"]
+  image_tag_mutability  = "MUTABLE" # Mutable tags required for branch-based tagging (main, develop, latest)
   scan_on_push          = true
   image_retention_count = 5 # Keep fewer images in dev
   tags                  = local.common_tags
@@ -154,6 +163,10 @@ module "alb" {
   certificate_arn   = var.certificate_arn
   tags              = local.common_tags
 
+  # Frontend routing
+  frontend_container_port    = var.frontend_container_port
+  frontend_health_check_path = var.frontend_health_check_path
+
   enable_deletion_protection = false # Allow deletion in dev
 }
 
@@ -170,10 +183,10 @@ module "ecs" {
   private_subnet_ids = module.networking.private_subnet_ids
   security_group_id  = module.networking.ecs_tasks_security_group_id
   target_group_arn   = module.alb.target_group_arn
-  alb_listener_arn   = module.alb.http_listener_arn
+  alb_listener_arn   = local.https_enabled ? module.alb.https_listener_arn : module.alb.http_listener_arn
 
   # Container configuration
-  container_name    = "app"
+  container_name    = "backend"
   container_image   = local.container_image
   container_port    = var.container_port
   health_check_path = var.health_check_path
@@ -187,12 +200,54 @@ module "ecs" {
   environment_variables = local.environment_variables
   secrets               = local.secrets
   secrets_arns          = module.secrets.all_secret_arns
+  enable_secrets_access = true
 
   # Terraform state access
   tf_state_bucket_arn = var.tf_state_bucket != "" ? "arn:aws:s3:::${var.tf_state_bucket}" : ""
 
   # Logging
   log_retention_days        = 7 # Shorter retention for dev
+  enable_container_insights = false
+
+  # Cost optimization
+  use_fargate_spot   = true
+  enable_autoscaling = false
+
+  tags = local.common_tags
+}
+
+# -----------------------------------------------------------------------------
+# Frontend ECS Module
+# -----------------------------------------------------------------------------
+
+module "ecs_frontend" {
+  source = "../../modules/ecs"
+
+  project_name       = "${var.project_name}-fe"
+  environment        = var.environment
+  aws_region         = local.region
+  private_subnet_ids = module.networking.private_subnet_ids
+  security_group_id  = module.networking.ecs_tasks_security_group_id
+  target_group_arn   = module.alb.frontend_target_group_arn
+  alb_listener_arn   = local.https_enabled ? module.alb.https_listener_arn : module.alb.http_listener_arn
+
+  # Container configuration
+  container_name    = "frontend"
+  container_image   = local.frontend_container_image
+  container_port    = var.frontend_container_port
+  health_check_path = var.frontend_health_check_path
+
+  # Task sizing (small for dev - frontend is lightweight)
+  task_cpu      = 256  # 0.25 vCPU
+  task_memory   = 512  # 0.5 GB
+  desired_count = 1
+
+  # No environment secrets needed for frontend
+  environment_variables = {}
+  secrets               = {}
+
+  # Logging
+  log_retention_days        = 7
   enable_container_insights = false
 
   # Cost optimization

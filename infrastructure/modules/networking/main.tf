@@ -289,21 +289,23 @@ resource "aws_security_group" "alb" {
 }
 
 resource "aws_vpc_security_group_ingress_rule" "alb_http" {
+  for_each          = toset(var.allowed_ingress_cidrs)
   security_group_id = aws_security_group.alb.id
-  description       = "HTTP from anywhere"
+  description       = "HTTP from ${each.value}"
   from_port         = 80
   to_port           = 80
   ip_protocol       = "tcp"
-  cidr_ipv4         = "0.0.0.0/0"
+  cidr_ipv4         = each.value
 }
 
 resource "aws_vpc_security_group_ingress_rule" "alb_https" {
+  for_each          = toset(var.allowed_ingress_cidrs)
   security_group_id = aws_security_group.alb.id
-  description       = "HTTPS from anywhere"
+  description       = "HTTPS from ${each.value}"
   from_port         = 443
   to_port           = 443
   ip_protocol       = "tcp"
-  cidr_ipv4         = "0.0.0.0/0"
+  cidr_ipv4         = each.value
 }
 
 resource "aws_vpc_security_group_egress_rule" "alb_to_ecs" {
@@ -311,6 +313,17 @@ resource "aws_vpc_security_group_egress_rule" "alb_to_ecs" {
   description                  = "Allow outbound to ECS tasks on container port"
   from_port                    = var.container_port
   to_port                      = var.container_port
+  ip_protocol                  = "tcp"
+  referenced_security_group_id = aws_security_group.ecs_tasks.id
+}
+
+resource "aws_vpc_security_group_egress_rule" "alb_to_ecs_frontend" {
+  count = var.frontend_container_port > 0 ? 1 : 0
+
+  security_group_id            = aws_security_group.alb.id
+  description                  = "Allow outbound to ECS tasks on frontend container port"
+  from_port                    = var.frontend_container_port
+  to_port                      = var.frontend_container_port
   ip_protocol                  = "tcp"
   referenced_security_group_id = aws_security_group.ecs_tasks.id
 }
@@ -331,6 +344,17 @@ resource "aws_vpc_security_group_ingress_rule" "ecs_from_alb" {
   description                  = "Allow traffic from ALB"
   from_port                    = var.container_port
   to_port                      = var.container_port
+  ip_protocol                  = "tcp"
+  referenced_security_group_id = aws_security_group.alb.id
+}
+
+resource "aws_vpc_security_group_ingress_rule" "ecs_from_alb_frontend" {
+  count = var.frontend_container_port > 0 ? 1 : 0
+
+  security_group_id            = aws_security_group.ecs_tasks.id
+  description                  = "Allow frontend traffic from ALB"
+  from_port                    = var.frontend_container_port
+  to_port                      = var.frontend_container_port
   ip_protocol                  = "tcp"
   referenced_security_group_id = aws_security_group.alb.id
 }

@@ -39,6 +39,6 @@ RUN chown -R nginx:nginx /var/cache/nginx && \
 USER nginx
 
 # Expose port (unprivileged port for non-root)
-EXPOSE 8080
+EXPOSE 3000
 
 CMD ["nginx", "-g", "daemon off;"]

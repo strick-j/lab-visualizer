@@ -46,6 +46,12 @@ variable "enable_nat_gateway" {
   default     = true
 }
 
+variable "allowed_ingress_cidrs" {
+  description = "CIDR blocks allowed to access the ALB (e.g., office IPs, VPN ranges). Defaults to open access."
+  type        = list(string)
+  default     = ["0.0.0.0/0"]
+}
+
 # -----------------------------------------------------------------------------
 # Container Configuration
 # -----------------------------------------------------------------------------
@@ -69,23 +75,45 @@ variable "health_check_path" {
 }
 
 # -----------------------------------------------------------------------------
-# Domain Configuration (Optional)
+# Frontend Container Configuration
+# -----------------------------------------------------------------------------
+
+variable "frontend_container_image" {
+  description = "Docker image for the frontend container (leave empty to use ECR)"
+  type        = string
+  default     = ""
+}
+
+variable "frontend_container_port" {
+  description = "Port the frontend container listens on"
+  type        = number
+  default     = 3000
+}
+
+variable "frontend_health_check_path" {
+  description = "Path for frontend health checks"
+  type        = string
+  default     = "/health"
+}
+
+# -----------------------------------------------------------------------------
+# Domain and TLS Configuration (Optional)
 # -----------------------------------------------------------------------------
 
 variable "domain_name" {
-  description = "Domain name for the application (leave empty for ALB DNS)"
+  description = "Domain name for the application (used for CORS origin; leave empty to use ALB DNS)"
   type        = string
   default     = ""
 }
 
 variable "route53_zone_id" {
-  description = "Route53 hosted zone ID"
+  description = "Route53 hosted zone ID (only needed if using Route53 for DNS and auto-creating ACM certificates)"
   type        = string
   default     = ""
 }
 
 variable "certificate_arn" {
-  description = "ARN of existing ACM certificate"
+  description = "ARN of an existing ACM certificate for HTTPS. When provided, enables HTTPS listener and HTTP-to-HTTPS redirect."
   type        = string
   default     = ""
 }

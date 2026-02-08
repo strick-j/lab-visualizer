@@ -66,11 +66,21 @@ resource "aws_kms_alias" "ecr" {
 }
 
 # -----------------------------------------------------------------------------
-# ECR Repository
+# Local Values
 # -----------------------------------------------------------------------------
 
-resource "aws_ecr_repository" "main" {
-  name                 = "${var.project_name}-${var.environment}"
+locals {
+  services = toset(var.services)
+}
+
+# -----------------------------------------------------------------------------
+# ECR Repositories
+# -----------------------------------------------------------------------------
+
+resource "aws_ecr_repository" "services" {
+  for_each = local.services
+
+  name                 = "${var.project_name}-${var.environment}-${each.key}"
   image_tag_mutability = var.image_tag_mutability
 
   image_scanning_configuration {

@@ -47,7 +47,12 @@ output "certificate_arn" {
   value       = var.domain_name != "" && var.certificate_arn == "" ? aws_acm_certificate.main[0].arn : var.certificate_arn
 }
 
+output "frontend_target_group_arn" {
+  description = "ARN of the frontend target group"
+  value       = var.frontend_container_port > 0 ? aws_lb_target_group.frontend[0].arn : null
+}
+
 output "app_url" {
   description = "URL to access the application"
-  value       = var.domain_name != "" ? "https://${var.domain_name}" : "http://${aws_lb.main.dns_name}"
+  value       = "${var.certificate_arn != "" ? "https" : "http"}://${var.domain_name != "" ? var.domain_name : aws_lb.main.dns_name}"
 }

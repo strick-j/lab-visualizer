@@ -59,6 +59,24 @@ def get_client_info(request: Request) -> tuple[Optional[str], Optional[str]]:
     return ip_address, user_agent
 
 
+def get_oidc_redirect_uri(request: Request) -> str:
+    """
+    Get the OIDC callback redirect URI, respecting proxy headers.
+
+    When behind a reverse proxy (like AWS ALB), the request scheme might be HTTP
+    even though the original client request was HTTPS. This function respects
+    the X-Forwarded-Proto header to construct the correct redirect URI.
+    """
+    redirect_uri = str(request.url_for("oidc_callback"))
+
+    # Check X-Forwarded-Proto header (set by load balancers/proxies)
+    forwarded_proto = request.headers.get("x-forwarded-proto")
+    if forwarded_proto == "https" and redirect_uri.startswith("http://"):
+        redirect_uri = "https://" + redirect_uri[7:]
+
+    return redirect_uri
+
+
 @router.get("/config", response_model=AuthConfigResponse)
 async def get_auth_config(db: AsyncSession = Depends(get_db)):
     """Get authentication configuration for the frontend."""
@@ -298,7 +316,7 @@ async def oidc_login(request: Request, db: AsyncSession = Depends(get_db)):
     _state_store[state] = {"type": "oidc"}
 
     # Construct authorization URL using discovered endpoint
-    redirect_uri = str(request.url_for("oidc_callback"))
+    redirect_uri = get_oidc_redirect_uri(request)
     params = {
         "response_type": "code",
         "client_id": oidc_config["client_id"],
@@ -348,7 +366,7 @@ async def oidc_callback(
         )
 
     # Exchange code for tokens
-    redirect_uri = str(request.url_for("oidc_callback"))
+    redirect_uri = get_oidc_redirect_uri(request)
 
     async with httpx.AsyncClient() as client:
         try:
