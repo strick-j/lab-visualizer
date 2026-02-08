@@ -105,6 +105,7 @@ jobs:
         with:
           role-to-assume: ${{ secrets.AWS_OIDC_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
+          role-session-name: GitHub-Actions-Build-Push-Container
 
       - name: Login to Amazon ECR
         if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.push_to_ecr == 'true')
