@@ -63,7 +63,6 @@ jobs:
     outputs:
       backend: ${{ steps.changes.outputs.backend }}
       frontend: ${{ steps.changes.outputs.frontend }}
-      app_version: ${{ steps.version.outputs.version }}
       environment: ${{ steps.env.outputs.environment }}
     steps:
       - name: Checkout code
