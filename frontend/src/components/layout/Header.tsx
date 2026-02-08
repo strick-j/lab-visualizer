@@ -97,7 +97,7 @@ export function Header() {
 
                 {/* Dropdown menu */}
                 {isUserMenuOpen && (
-                  <div className="absolute right-0 mt-2 w-56 origin-top-right rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none dark:bg-gray-800 dark:ring-gray-700">
+                  <div className="absolute right-0 z-50 mt-2 w-56 origin-top-right rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none dark:bg-gray-800 dark:ring-gray-700">
                     <div className="border-b border-gray-100 px-4 py-3 dark:border-gray-700">
                       <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
                         {user.display_name || user.username}
