@@ -7,3 +7,6 @@ interface ImportMetaEnv {
 interface ImportMeta {
   readonly env: ImportMetaEnv;
 }
+
+// Build-time injected version from VERSION file
+declare const __APP_VERSION__: string;

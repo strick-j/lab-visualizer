@@ -1,6 +1,7 @@
 import axios from "axios";
 import type {
   ListResponse,
+  AppInfo,
   EC2Instance,
   RDSInstance,
   VPC,
@@ -92,6 +93,11 @@ export async function getHealthStatus(): Promise<{
 
 export async function getStatusSummary(): Promise<StatusSummary> {
   const response = await api.get("/status/summary");
+  return response.data;
+}
+
+export async function getAppInfo(): Promise<AppInfo> {
+  const response = await api.get("/info");
   return response.data;
 }
 

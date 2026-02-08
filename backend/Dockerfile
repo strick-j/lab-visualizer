@@ -6,11 +6,23 @@ FROM python:3.11-slim
 # Set working directory
 WORKDIR /app
 
+# Version build args
+ARG APP_VERSION=0.0.0-unknown
+ARG BUILD_SHA=unknown
+ARG BUILD_DATE=unknown
+
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    APP_VERSION=${APP_VERSION} \
+    BUILD_SHA=${BUILD_SHA} \
+    BUILD_DATE=${BUILD_DATE}
+
+LABEL version="${APP_VERSION}" \
+      build.sha="${BUILD_SHA}" \
+      build.date="${BUILD_DATE}"
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
