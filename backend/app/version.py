@@ -22,9 +22,9 @@ def get_version() -> str:
         2. VERSION file (repo root or Docker mount)
         3. Fallback to "0.0.0-unknown"
     """
-    env_version = os.environ.get("APP_VERSION")
-    if env_version:
-        return env_version.strip()
+    env_version = os.environ.get("APP_VERSION", "").strip()
+    if env_version and env_version != "0.0.0-unknown":
+        return env_version
     for path in _VERSION_PATHS:
         try:
             return path.read_text().strip()
