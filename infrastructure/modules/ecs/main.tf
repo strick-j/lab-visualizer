@@ -232,10 +232,11 @@ resource "aws_iam_role_policy" "ecs_task_s3_access" {
         }
       },
       {
-        Sid    = "S3TerraformStateListBuckets"
+        Sid    = "S3TerraformStateBucketAccess"
         Effect = "Allow"
         Action = [
-          "s3:ListBucket"
+          "s3:ListBucket",
+          "s3:GetBucketLocation"
         ]
         Resource = "arn:aws:s3:::*"
         Condition = {
