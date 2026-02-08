@@ -1,4 +1,4 @@
-.PHONY: help install dev build test lint clean docker-up docker-down
+.PHONY: help install dev build test lint clean docker-up docker-down version version-patch version-minor version-major
 
 # Default target
 help:
@@ -36,6 +36,12 @@ help:
 	@echo "  db-reset     Reset database (drops all data)"
 	@echo "  db-seed      Seed database with sample data"
 	@echo "  db-setup     Initialize and seed database"
+	@echo ""
+	@echo "Versioning:"
+	@echo "  version        Show current version"
+	@echo "  version-patch  Bump patch version (1.0.0 -> 1.0.1)"
+	@echo "  version-minor  Bump minor version (1.0.0 -> 1.1.0)"
+	@echo "  version-major  Bump major version (1.0.0 -> 2.0.0)"
 
 # =============================================================================
 # Combined Commands
@@ -162,3 +168,28 @@ tf-apply:
 
 tf-destroy:
 	cd infrastructure/environments/$(ENV) && terraform destroy
+
+# =============================================================================
+# Versioning Commands
+# =============================================================================
+
+VERSION_FILE := VERSION
+CURRENT_VERSION := $(shell cat $(VERSION_FILE) 2>/dev/null || echo "0.0.0")
+MAJOR := $(word 1,$(subst ., ,$(CURRENT_VERSION)))
+MINOR := $(word 2,$(subst ., ,$(CURRENT_VERSION)))
+PATCH := $(word 3,$(subst ., ,$(CURRENT_VERSION)))
+
+version:
+	@echo "Current version: $(CURRENT_VERSION)"
+
+version-patch:
+	@echo "$(MAJOR).$(MINOR).$(shell echo $$(($(PATCH)+1)))" > $(VERSION_FILE)
+	@echo "Version bumped: $(CURRENT_VERSION) -> $$(cat $(VERSION_FILE))"
+
+version-minor:
+	@echo "$(MAJOR).$(shell echo $$(($(MINOR)+1))).0" > $(VERSION_FILE)
+	@echo "Version bumped: $(CURRENT_VERSION) -> $$(cat $(VERSION_FILE))"
+
+version-major:
+	@echo "$(shell echo $$(($(MAJOR)+1))).0.0" > $(VERSION_FILE)
+	@echo "Version bumped: $(CURRENT_VERSION) -> $$(cat $(VERSION_FILE))"

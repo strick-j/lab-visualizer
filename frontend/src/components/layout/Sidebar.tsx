@@ -57,6 +57,9 @@ export function Sidebar() {
           <Settings className="h-5 w-5" />
           Settings
         </NavLink>
+        <p className="mt-2 px-3 text-xs text-gray-400 dark:text-gray-500">
+          v{__APP_VERSION__}
+        </p>
       </div>
     </aside>
   );

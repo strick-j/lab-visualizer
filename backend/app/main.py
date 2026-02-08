@@ -11,11 +11,22 @@ from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.deps import get_current_user
-from app.api.routes import auth, ec2, eip, health, igw, nat_gateway, rds, resources
+from app.api.routes import (
+    auth,
+    ec2,
+    eip,
+    health,
+    igw,
+    info,
+    nat_gateway,
+    rds,
+    resources,
+)
 from app.api.routes import settings as settings_routes
 from app.api.routes import subnet, terraform, topology, users, vpc
 from app.config import get_settings
 from app.models.database import init_db
+from app.version import get_version
 
 # Configure logging
 settings = get_settings()
@@ -51,7 +62,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="AWS Infrastructure Visualizer",
     description="Visual representation of AWS infrastructure state",
-    version="1.0.0",
+    version=get_version(),
     docs_url="/docs",
     redoc_url="/redoc",
     lifespan=lifespan,
@@ -81,6 +92,7 @@ auth_dependency = [Depends(get_current_user)]
 # Register API routes - public routes (no auth required)
 app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(health.router, prefix="/api", tags=["Health"])
+app.include_router(info.router, prefix="/api", tags=["Info"])
 
 # Register API routes - protected routes (auth required)
 app.include_router(
@@ -145,6 +157,6 @@ async def root():
     """Root endpoint redirects to API documentation."""
     return {
         "name": "AWS Infrastructure Visualizer",
-        "version": "1.0.0",
+        "version": get_version(),
         "docs": "/docs",
     }

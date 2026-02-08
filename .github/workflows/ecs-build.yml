@@ -11,12 +11,14 @@ on:
     paths:
       - 'backend/**'
       - 'frontend/**'
+      - 'VERSION'
       - '.github/workflows/ecs-build.yml'
   pull_request:
     branches: [main, develop]
     paths:
       - 'backend/**'
       - 'frontend/**'
+      - 'VERSION'
       - '.github/workflows/ecs-build.yml'
   workflow_dispatch:
     inputs:
@@ -46,7 +48,7 @@ permissions:
 
 jobs:
   # ===========================================================================
-  # Determine what changed
+  # Determine what changed and read version
   # ===========================================================================
   changes:
     name: Detect Changes
@@ -54,9 +56,14 @@ jobs:
     outputs:
       backend: ${{ steps.changes.outputs.backend }}
       frontend: ${{ steps.changes.outputs.frontend }}
+      app_version: ${{ steps.version.outputs.version }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Read version
+        id: version
+        run: echo "version=$(cat VERSION)" >> $GITHUB_OUTPUT
 
       - name: Check for changes
         uses: dorny/paths-filter@v3
@@ -119,6 +126,10 @@ jobs:
           context: ./backend
           file: ./backend/Dockerfile
           push: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.push_to_ecr == 'true') }}
+          build-args: |
+            APP_VERSION=${{ needs.changes.outputs.app_version }}
+            BUILD_SHA=${{ github.sha }}
+            BUILD_DATE=${{ github.event.head_commit.timestamp || github.event.pull_request.updated_at || '' }}
           tags: |
             ${{ steps.login-ecr.outputs.registry && format('{0}/{1}-{2}-backend:{3}', steps.login-ecr.outputs.registry, env.PROJECT_NAME, github.event.inputs.environment || 'dev', steps.meta.outputs.version) || '' }}
             ${{ steps.login-ecr.outputs.registry && github.ref == 'refs/heads/main' && format('{0}/{1}-{2}-backend:latest', steps.login-ecr.outputs.registry, env.PROJECT_NAME, github.event.inputs.environment || 'dev') || '' }}
@@ -189,6 +200,10 @@ jobs:
           context: ./frontend
           file: ./frontend/Dockerfile
           push: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.push_to_ecr == 'true') }}
+          build-args: |
+            APP_VERSION=${{ needs.changes.outputs.app_version }}
+            BUILD_SHA=${{ github.sha }}
+            BUILD_DATE=${{ github.event.head_commit.timestamp || github.event.pull_request.updated_at || '' }}
           tags: |
             ${{ steps.login-ecr.outputs.registry && format('{0}/{1}-{2}-frontend:{3}', steps.login-ecr.outputs.registry, env.PROJECT_NAME, github.event.inputs.environment || 'dev', steps.meta.outputs.version) || '' }}
             ${{ steps.login-ecr.outputs.registry && github.ref == 'refs/heads/main' && format('{0}/{1}-{2}-frontend:latest', steps.login-ecr.outputs.registry, env.PROJECT_NAME, github.event.inputs.environment || 'dev') || '' }}

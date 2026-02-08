@@ -8,6 +8,8 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter
 
+from app.version import get_version
+
 router = APIRouter()
 
 
@@ -17,10 +19,11 @@ async def health_check():
     Basic health check endpoint.
 
     Returns:
-        Health status and timestamp
+        Health status, version, and timestamp
     """
     return {
         "status": "healthy",
+        "version": get_version(),
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "service": "aws-infra-visualizer",
     }
