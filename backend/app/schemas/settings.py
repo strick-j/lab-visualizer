@@ -175,3 +175,58 @@ class TerraformBucketsListResponse(BaseModel):
 
     buckets: List[TerraformBucketResponse]
     total: int
+
+
+# =============================================================================
+# S3 Bucket Test & Browse Schemas
+# =============================================================================
+
+
+class S3BucketTestRequest(BaseModel):
+    """Request model for testing S3 bucket connectivity."""
+
+    bucket_name: str = Field(
+        ..., description="S3 bucket name to test", min_length=3, max_length=255
+    )
+    region: Optional[str] = Field(
+        None, description="AWS region for the bucket", max_length=30
+    )
+
+
+class S3BucketTestResponse(BaseModel):
+    """Response model for S3 bucket connectivity test."""
+
+    success: bool
+    message: str
+    details: Optional[dict] = None
+
+
+class S3ObjectInfo(BaseModel):
+    """Represents an S3 object or prefix in a bucket listing."""
+
+    key: str
+    is_prefix: bool = False
+    size: Optional[int] = None
+    last_modified: Optional[str] = None
+
+
+class S3BucketListRequest(BaseModel):
+    """Request model for listing objects in an S3 bucket."""
+
+    bucket_name: str = Field(
+        ..., description="S3 bucket name", min_length=3, max_length=255
+    )
+    prefix: str = Field("", description="S3 key prefix to list under", max_length=1000)
+    region: Optional[str] = Field(
+        None, description="AWS region for the bucket", max_length=30
+    )
+
+
+class S3BucketListResponse(BaseModel):
+    """Response model for listing objects in an S3 bucket."""
+
+    success: bool
+    message: str
+    objects: List[S3ObjectInfo] = []
+    prefix: str = ""
+    bucket_name: str = ""

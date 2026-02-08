@@ -141,3 +141,25 @@ export interface TerraformBucketUpdate {
   prefix?: string;
   enabled?: boolean;
 }
+
+// S3 Bucket Test & Browse types
+export interface S3BucketTestResponse {
+  success: boolean;
+  message: string;
+  details?: Record<string, string>;
+}
+
+export interface S3ObjectInfo {
+  key: string;
+  is_prefix: boolean;
+  size?: number;
+  last_modified?: string;
+}
+
+export interface S3BucketListResponse {
+  success: boolean;
+  message: string;
+  objects: S3ObjectInfo[];
+  prefix: string;
+  bucket_name: string;
+}
