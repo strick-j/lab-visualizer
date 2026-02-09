@@ -9,6 +9,7 @@ import type {
   InternetGateway,
   NATGateway,
   ElasticIP,
+  ECSCluster,
   StatusSummary,
   RefreshResponse,
   TerraformStatesResponse,
@@ -275,6 +276,29 @@ export async function getElasticIPs(
 
 export async function getElasticIP(allocationId: string): Promise<ElasticIP> {
   const response = await api.get(`/elastic-ips/${allocationId}`);
+  return response.data;
+}
+
+// =============================================================================
+// ECS Clusters
+// =============================================================================
+
+export async function getECSClusters(
+  filters?: ResourceFilters,
+): Promise<ListResponse<ECSCluster>> {
+  const params = new URLSearchParams();
+  if (filters?.status) params.append("status", filters.status);
+  if (filters?.region) params.append("region", filters.region);
+  if (filters?.search) params.append("search", filters.search);
+  if (filters?.tf_managed !== undefined)
+    params.append("tf_managed", String(filters.tf_managed));
+
+  const response = await api.get("/ecs", { params });
+  return response.data;
+}
+
+export async function getECSCluster(clusterArn: string): Promise<ECSCluster> {
+  const response = await api.get(`/ecs/${clusterArn}`);
   return response.data;
 }
 
