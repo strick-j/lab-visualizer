@@ -65,6 +65,22 @@ export interface TopologyElasticIP {
   tf_resource_address: string | null;
 }
 
+export interface TopologyECSContainer {
+  id: string;
+  name: string | null;
+  cluster_name: string;
+  launch_type: string;
+  status: string;
+  display_status: DisplayStatus;
+  cpu: number;
+  memory: number;
+  image: string | null;
+  container_port: number | null;
+  private_ip: string | null;
+  tf_managed: boolean;
+  tf_resource_address: string | null;
+}
+
 export interface TopologySubnet {
   id: string;
   name: string | null;
@@ -77,6 +93,7 @@ export interface TopologySubnet {
   nat_gateway: TopologyNATGateway | null;
   ec2_instances: TopologyEC2Instance[];
   rds_instances: TopologyRDSInstance[];
+  ecs_containers: TopologyECSContainer[];
 }
 
 export interface TopologyVPC {
@@ -97,6 +114,7 @@ export interface TopologyMeta {
   total_subnets: number;
   total_ec2: number;
   total_rds: number;
+  total_ecs_containers: number;
   total_nat_gateways: number;
   total_internet_gateways: number;
   total_elastic_ips: number;
@@ -117,6 +135,7 @@ export type TopologyNodeType =
   | "subnet"
   | "ec2"
   | "rds"
+  | "ecs-container"
   | "nat-gateway"
   | "internet-gateway";
 
@@ -173,11 +192,25 @@ export interface InternetGatewayNodeData extends BaseNodeData {
   igwId: string;
 }
 
+export interface ECSContainerNodeData extends BaseNodeData {
+  type: "ecs-container";
+  taskId: string;
+  clusterName: string;
+  launchType: string;
+  cpu: number;
+  memory: number;
+  status: string;
+  image?: string;
+  containerPort?: number;
+  privateIp?: string;
+}
+
 export type TopologyNodeData =
   | VPCNodeData
   | SubnetNodeData
   | EC2NodeData
   | RDSNodeData
+  | ECSContainerNodeData
   | NATGatewayNodeData
   | InternetGatewayNodeData;
 
