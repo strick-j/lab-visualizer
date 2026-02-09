@@ -1,6 +1,9 @@
 import { Shield, Database, Users } from "lucide-react";
 
-export type SettingsTabType = "authentication" | "s3-buckets" | "user-management";
+export type SettingsTabType =
+  | "authentication"
+  | "s3-buckets"
+  | "user-management";
 
 interface Tab {
   key: SettingsTabType;
