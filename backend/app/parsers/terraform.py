@@ -142,7 +142,7 @@ class TerraformStateParser:
                 status="invalid",
                 resources=[],
             )
-        except Exception as e:
+        except Exception:
             logger.exception("Unexpected error parsing state file %s", key)
             return TerraformStateFile(
                 name=name or key,
@@ -343,7 +343,7 @@ class TerraformStateAggregator:
         Returns:
             List of state file configurations
         """
-        import yaml
+        import yaml  # type: ignore[import-untyped]
 
         config_path = settings.tf_state_config
 
@@ -351,7 +351,8 @@ class TerraformStateAggregator:
         try:
             with open(config_path, "r") as f:
                 config = yaml.safe_load(f)
-                return config.get("terraform_states", [])
+                result: list[dict[str, Any]] = config.get("terraform_states", [])
+                return result
         except FileNotFoundError:
             logger.warning("Config file not found: %s", config_path)
         except yaml.YAMLError as e:
@@ -498,7 +499,7 @@ class TerraformStateAggregator:
                 error_code,
             )
             return []
-        except Exception as e:
+        except Exception:
             logger.exception(
                 "Unexpected error discovering state files in s3://%s/%s",
                 bucket_name,

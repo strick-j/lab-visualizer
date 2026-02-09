@@ -300,9 +300,7 @@ async def get_topology(
                         cluster_name=ecs_container.cluster_name,
                         launch_type=ecs_container.launch_type,
                         status=ecs_container.status,
-                        display_status=_get_display_status(
-                            ecs_container.status, "ecs"
-                        ),
+                        display_status=_get_display_status(ecs_container.status, "ecs"),
                         cpu=ecs_container.cpu,
                         memory=ecs_container.memory,
                         image=ecs_container.image,

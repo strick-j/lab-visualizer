@@ -14,6 +14,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.collectors.ec2 import EC2Collector
+from app.collectors.ecs import ECSCollector
 from app.collectors.eip import ElasticIPCollector
 from app.collectors.igw import InternetGatewayCollector
 from app.collectors.nat_gateway import NATGatewayCollector
@@ -203,13 +204,12 @@ async def refresh_data(
         resources_updated += eip_count
         logger.info(f"Synced {eip_count} Elastic IPs")
 
-        # Collect ECS Containers
+        # Collect ECS containers
         ecs_collector = ECSCollector()
         ecs_containers = await ecs_collector.collect()
         ecs_count = await _sync_ecs_containers(db, ecs_containers, region.id)
         resources_updated += ecs_count
         logger.info(f"Synced {ecs_count} ECS containers")
-
 
         # Update Terraform managed flags
         tf_count = await _sync_terraform_state(db)
@@ -237,7 +237,7 @@ async def refresh_data(
 async def _get_or_create_region(db: AsyncSession, region_name: str) -> Region:
     """Get or create a region record."""
     result = await db.execute(select(Region).where(Region.name == region_name))
-    region = result.scalar_one_or_none()
+    region: Region | None = result.scalar_one_or_none()
 
     if not region:
         region = Region(name=region_name, enabled=True)
@@ -855,13 +855,10 @@ async def _sync_ecs_containers(
             if not container.is_deleted:
                 container.is_deleted = True
                 container.deleted_at = datetime.now(timezone.utc)
-                logger.info(
-                    f"Marked ECS container as deleted: {container.task_id}"
-                )
+                logger.info(f"Marked ECS container as deleted: {container.task_id}")
 
     await db.flush()
     return count
-
 
 
 async def _sync_terraform_state(db: AsyncSession) -> int:

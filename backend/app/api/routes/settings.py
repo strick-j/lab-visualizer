@@ -623,7 +623,9 @@ async def test_s3_bucket(
             message="No AWS credentials configured. Check AWS configuration.",
         )
     except Exception:
-        logger.exception("Unexpected error testing S3 bucket %s", _sanitize_for_log(bucket_name))
+        logger.exception(
+            "Unexpected error testing S3 bucket %s", _sanitize_for_log(bucket_name)
+        )
         return S3BucketTestResponse(
             success=False,
             message="An unexpected error occurred while testing the bucket",
@@ -682,7 +684,9 @@ async def list_s3_bucket_objects(
                     is_prefix=False,
                     size=obj.get("Size"),
                     last_modified=(
-                        obj["LastModified"].isoformat() if obj.get("LastModified") else None
+                        obj["LastModified"].isoformat()
+                        if obj.get("LastModified")
+                        else None
                     ),
                 )
             )
@@ -716,7 +720,9 @@ async def list_s3_bucket_objects(
             prefix=prefix,
         )
     except Exception:
-        logger.exception("Unexpected error listing S3 bucket %s", _sanitize_for_log(bucket_name))
+        logger.exception(
+            "Unexpected error listing S3 bucket %s", _sanitize_for_log(bucket_name)
+        )
         return S3BucketListResponse(
             success=False,
             message="An unexpected error occurred",

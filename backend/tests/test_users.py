@@ -110,9 +110,7 @@ async def test_change_password_success(client, admin_user_and_token):
 
 
 @pytest.mark.asyncio
-async def test_change_password_wrong_current_password(
-    client, admin_user_and_token
-):
+async def test_change_password_wrong_current_password(client, admin_user_and_token):
     """Test password change with incorrect current password returns 401."""
     user, token = admin_user_and_token
     response = await client.put(
@@ -129,9 +127,7 @@ async def test_change_password_wrong_current_password(
 
 
 @pytest.mark.asyncio
-async def test_change_password_too_short_returns_422(
-    client, admin_user_and_token
-):
+async def test_change_password_too_short_returns_422(client, admin_user_and_token):
     """Test password change with too-short new password returns 422."""
     user, token = admin_user_and_token
     response = await client.put(
@@ -146,9 +142,7 @@ async def test_change_password_too_short_returns_422(
 
 
 @pytest.mark.asyncio
-async def test_change_password_no_body_returns_422(
-    client, admin_user_and_token
-):
+async def test_change_password_no_body_returns_422(client, admin_user_and_token):
     """Test password change with no body returns 422."""
     user, token = admin_user_and_token
     response = await client.put(
@@ -159,9 +153,7 @@ async def test_change_password_no_body_returns_422(
 
 
 @pytest.mark.asyncio
-async def test_change_password_different_user_returns_403(
-    client, admin_user_and_token
-):
+async def test_change_password_different_user_returns_403(client, admin_user_and_token):
     """Test that changing another user's password returns 403."""
     user, token = admin_user_and_token
     other_user_id = user.id + 999  # Non-existent but different user ID
@@ -179,9 +171,7 @@ async def test_change_password_different_user_returns_403(
 
 
 @pytest.mark.asyncio
-async def test_change_password_regular_user_success(
-    client, regular_user_and_token
-):
+async def test_change_password_regular_user_success(client, regular_user_and_token):
     """Test that non-admin users can also change their own password."""
     user, token = regular_user_and_token
     response = await client.put(

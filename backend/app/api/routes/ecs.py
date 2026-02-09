@@ -35,9 +35,7 @@ router = APIRouter()
 async def list_ecs_clusters(
     region: Optional[str] = Query(None, description="Filter by AWS region"),
     search: Optional[str] = Query(None, description="Search by cluster name"),
-    tf_managed: Optional[bool] = Query(
-        None, description="Filter by Terraform managed"
-    ),
+    tf_managed: Optional[bool] = Query(None, description="Filter by Terraform managed"),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -78,12 +76,8 @@ async def list_ecs_clusters(
     # Build cluster summaries
     cluster_summaries = []
     for name, cluster_containers in sorted(cluster_map.items()):
-        running = sum(
-            1 for c in cluster_containers if c.status == "RUNNING"
-        )
-        stopped = sum(
-            1 for c in cluster_containers if c.status == "STOPPED"
-        )
+        running = sum(1 for c in cluster_containers if c.status == "RUNNING")
+        stopped = sum(1 for c in cluster_containers if c.status == "STOPPED")
         pending = sum(
             1
             for c in cluster_containers
@@ -91,14 +85,10 @@ async def list_ecs_clusters(
         )
         any_tf = any(c.tf_managed for c in cluster_containers)
         region_name = (
-            cluster_containers[0].region.name
-            if cluster_containers[0].region
-            else None
+            cluster_containers[0].region.name if cluster_containers[0].region else None
         )
 
-        container_responses = [
-            _container_to_response(c) for c in cluster_containers
-        ]
+        container_responses = [_container_to_response(c) for c in cluster_containers]
 
         cluster_summaries.append(
             ECSClusterSummary(
@@ -181,7 +171,9 @@ async def list_ecs_containers(
 
     # Execute query
     result = await db.execute(
-        query.order_by(ECSContainer.cluster_name, ECSContainer.name, ECSContainer.task_id)
+        query.order_by(
+            ECSContainer.cluster_name, ECSContainer.name, ECSContainer.task_id
+        )
     )
     containers = result.scalars().unique().all()
 
