@@ -185,6 +185,49 @@ export interface ElasticIP {
   created_at?: string;
 }
 
+export type ECSLaunchType = "FARGATE" | "EC2" | "EXTERNAL";
+
+export interface ECSContainer {
+  id: number;
+  task_id: string;
+  name: string | null;
+  cluster_name: string;
+  launch_type: ECSLaunchType;
+  status: string;
+  display_status: DisplayStatus;
+  cpu: number;
+  memory: number;
+  task_definition_arn: string | null;
+  desired_status: string | null;
+  image: string | null;
+  container_port: number | null;
+  private_ip: string | null;
+  subnet_id: string | null;
+  vpc_id: string | null;
+  availability_zone: string | null;
+  started_at: string | null;
+  tags: Record<string, string> | null;
+  tf_managed: boolean;
+  tf_state_source: string | null;
+  tf_resource_address: string | null;
+  region_name: string | null;
+  is_deleted: boolean;
+  deleted_at: string | null;
+  updated_at: string;
+  created_at?: string;
+}
+
+export interface ECSClusterSummary {
+  cluster_name: string;
+  total_tasks: number;
+  running_tasks: number;
+  stopped_tasks: number;
+  pending_tasks: number;
+  tf_managed: boolean;
+  region_name: string | null;
+  containers: ECSContainer[];
+}
+
 // =============================================================================
 // API Response Types
 // =============================================================================
@@ -225,9 +268,15 @@ export interface RefreshResponse {
 // Terraform Types
 // =============================================================================
 
+export interface TerraformBucketInfo {
+  name: string;
+  region: string | null;
+}
+
 export interface TerraformStateInfo {
   name: string;
   key: string;
+  bucket: TerraformBucketInfo | null;
   description: string | null;
   last_modified: string | null;
   resource_count: number;
@@ -267,6 +316,8 @@ export interface ResourceFilters {
   connectivity_type?: ConnectivityType;
   instance_id?: string;
   associated?: boolean;
+  cluster_name?: string;
+  launch_type?: ECSLaunchType;
 }
 
 // =============================================================================

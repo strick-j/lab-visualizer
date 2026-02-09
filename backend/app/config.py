@@ -61,6 +61,16 @@ class Settings(BaseSettings):
         default=True, description="Enable local username/password authentication"
     )
 
+    # Admin credentials (optional - set to auto-create admin on startup)
+    admin_username: Optional[str] = Field(
+        default=None,
+        description="Admin username for auto-provisioning on startup",
+    )
+    admin_password: Optional[str] = Field(
+        default=None,
+        description="Admin password for auto-provisioning on startup (stored in Secrets Manager)",
+    )
+
     # OIDC authentication
     oidc_issuer: Optional[str] = Field(
         default=None, description="OIDC identity provider issuer URL"

@@ -82,14 +82,19 @@ locals {
     CORS_ORIGINS     = "${local.protocol}://${local.hostname}"
     OIDC_ISSUER      = var.oidc_issuer
     OIDC_CLIENT_ID   = var.oidc_client_id
+    ADMIN_USERNAME   = var.admin_username
   }
 
-  secrets = var.oidc_client_secret != "" ? {
-    OIDC_CLIENT_SECRET = module.secrets.oidc_client_secret_arn
-    SESSION_SECRET     = module.secrets.session_secret_arn
-  } : {
+  _base_secrets = {
     SESSION_SECRET = module.secrets.session_secret_arn
   }
+  _oidc_secrets = var.oidc_client_secret != "" ? {
+    OIDC_CLIENT_SECRET = module.secrets.oidc_client_secret_arn
+  } : {}
+  _admin_secrets = var.admin_password != "" ? {
+    ADMIN_PASSWORD = module.secrets.admin_password_arn
+  } : {}
+  secrets = merge(local._base_secrets, local._oidc_secrets, local._admin_secrets)
 }
 
 # -----------------------------------------------------------------------------
@@ -135,11 +140,13 @@ module "ecr" {
 module "secrets" {
   source = "../../modules/secrets"
 
-  project_name       = var.project_name
-  environment        = var.environment
-  create_oidc_secret = var.oidc_client_secret != ""
-  oidc_client_secret = var.oidc_client_secret
-  tags               = local.common_tags
+  project_name        = var.project_name
+  environment         = var.environment
+  create_oidc_secret  = var.oidc_client_secret != ""
+  oidc_client_secret  = var.oidc_client_secret
+  create_admin_secret = var.admin_password != ""
+  admin_password      = var.admin_password
+  tags                = local.common_tags
 }
 
 # -----------------------------------------------------------------------------
@@ -169,6 +176,18 @@ module "alb" {
 }
 
 # -----------------------------------------------------------------------------
+# IAM Module - Backend Application Role
+# -----------------------------------------------------------------------------
+
+module "iam" {
+  source = "../../modules/iam"
+
+  project_name = var.project_name
+  environment  = var.environment
+  tags         = local.common_tags
+}
+
+# -----------------------------------------------------------------------------
 # ECS Module
 # -----------------------------------------------------------------------------
 
@@ -194,14 +213,14 @@ module "ecs" {
   task_memory   = 2048 # 2 GB
   desired_count = 2    # Multi-AZ
 
+  # IAM - use the standalone application task role
+  task_role_arn = module.iam.task_role_arn
+
   # Environment and secrets
   environment_variables = local.environment_variables
   secrets               = local.secrets
   secrets_arns          = module.secrets.all_secret_arns
   enable_secrets_access = true
-
-  # Terraform state access
-  tf_state_bucket_arn = var.tf_state_bucket != "" ? "arn:aws:s3:::${var.tf_state_bucket}" : ""
 
   # Logging
   log_retention_days        = 90

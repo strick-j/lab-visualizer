@@ -6,6 +6,9 @@ import {
   getEC2Instance,
   getRDSInstances,
   getRDSInstance,
+  getECSContainers,
+  getECSContainer,
+  getECSClusters,
   getVPCs,
   getVPC,
   getSubnets,
@@ -36,6 +39,14 @@ export const queryKeys = {
   rdsInstances: (filters?: ResourceFilters) =>
     ["rds-instances", filters] as const,
   rdsInstance: (id: string) => ["rds-instance", id] as const,
+  ecsContainers: (filters?: ResourceFilters) =>
+    ["ecs-containers", filters] as const,
+  ecsContainer: (id: string) => ["ecs-container", id] as const,
+  ecsClusters: (filters?: {
+    region?: string;
+    search?: string;
+    tf_managed?: boolean;
+  }) => ["ecs-clusters", filters] as const,
   vpcs: (filters?: ResourceFilters) => ["vpcs", filters] as const,
   vpc: (id: string) => ["vpc", id] as const,
   subnets: (filters?: ResourceFilters) => ["subnets", filters] as const,
@@ -112,6 +123,36 @@ export function useRDSInstance(dbIdentifier: string) {
     queryKey: queryKeys.rdsInstance(dbIdentifier),
     queryFn: () => getRDSInstance(dbIdentifier),
     enabled: !!dbIdentifier,
+  });
+}
+
+// =============================================================================
+// ECS Containers
+// =============================================================================
+
+export function useECSContainers(filters?: ResourceFilters) {
+  return useQuery({
+    queryKey: queryKeys.ecsContainers(filters),
+    queryFn: () => getECSContainers(filters),
+  });
+}
+
+export function useECSContainer(taskId: string) {
+  return useQuery({
+    queryKey: queryKeys.ecsContainer(taskId),
+    queryFn: () => getECSContainer(taskId),
+    enabled: !!taskId,
+  });
+}
+
+export function useECSClusters(filters?: {
+  region?: string;
+  search?: string;
+  tf_managed?: boolean;
+}) {
+  return useQuery({
+    queryKey: queryKeys.ecsClusters(filters),
+    queryFn: () => getECSClusters(filters),
   });
 }
 
@@ -224,6 +265,8 @@ export function useRefreshData() {
       queryClient.invalidateQueries({ queryKey: ["status-summary"] });
       queryClient.invalidateQueries({ queryKey: ["ec2-instances"] });
       queryClient.invalidateQueries({ queryKey: ["rds-instances"] });
+      queryClient.invalidateQueries({ queryKey: ["ecs-containers"] });
+      queryClient.invalidateQueries({ queryKey: ["ecs-clusters"] });
       queryClient.invalidateQueries({ queryKey: ["vpcs"] });
       queryClient.invalidateQueries({ queryKey: ["subnets"] });
       queryClient.invalidateQueries({ queryKey: ["internet-gateways"] });

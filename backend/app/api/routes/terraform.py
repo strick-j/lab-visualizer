@@ -72,7 +72,7 @@ async def list_terraform_states(db: AsyncSession = Depends(get_db)):
             total_tf_managed_resources=total_managed,
         )
 
-    except Exception as e:
+    except Exception:
         logger.exception("Error fetching Terraform states")
         raise HTTPException(status_code=500, detail="Failed to fetch Terraform states")
 
@@ -162,6 +162,6 @@ async def detect_drift(db: AsyncSession = Depends(get_db)):
             checked_at=datetime.now(timezone.utc),
         )
 
-    except Exception as e:
+    except Exception:
         logger.exception("Error detecting drift")
         raise HTTPException(status_code=500, detail="Drift detection failed")

@@ -8,6 +8,7 @@ vi.mock("reactflow", () => ({
   Handle: ({ type, position }: { type: string; position: string }) => (
     <div data-testid={`handle-${type}-${position}`} />
   ),
+  NodeResizer: () => <div data-testid="node-resizer" />,
   Position: {
     Top: "top",
     Bottom: "bottom",

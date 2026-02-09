@@ -48,6 +48,20 @@ class RDSStatus(str, Enum):
     FAILED = "failed"
 
 
+class ECSTaskStatus(str, Enum):
+    """ECS task statuses."""
+
+    PROVISIONING = "PROVISIONING"
+    PENDING = "PENDING"
+    ACTIVATING = "ACTIVATING"
+    RUNNING = "RUNNING"
+    DEACTIVATING = "DEACTIVATING"
+    STOPPING = "STOPPING"
+    DEPROVISIONING = "DEPROVISIONING"
+    STOPPED = "STOPPED"
+    DELETED = "DELETED"
+
+
 # =============================================================================
 # Base Schemas
 # =============================================================================
@@ -339,6 +353,66 @@ class ElasticIPDetail(ElasticIPResponse):
 
 
 # =============================================================================
+# ECS Container Schemas
+# =============================================================================
+
+
+class ECSContainerBase(BaseSchema):
+    """Base ECS container schema."""
+
+    task_id: str
+    name: Optional[str] = None
+    cluster_name: str
+    launch_type: str  # FARGATE, EC2, EXTERNAL
+    status: str
+    cpu: int = 0
+    memory: int = 0
+
+
+class ECSContainerResponse(ECSContainerBase):
+    """ECS container response schema."""
+
+    id: int
+    display_status: DisplayStatus
+    task_definition_arn: Optional[str] = None
+    desired_status: Optional[str] = None
+    image: Optional[str] = None
+    container_port: Optional[int] = None
+    private_ip: Optional[str] = None
+    subnet_id: Optional[str] = None
+    vpc_id: Optional[str] = None
+    availability_zone: Optional[str] = None
+    started_at: Optional[datetime] = None
+    tags: Optional[Dict[str, Any]] = None
+    tf_managed: bool = False
+    tf_state_source: Optional[str] = None
+    tf_resource_address: Optional[str] = None
+    region_name: Optional[str] = Field(None, description="AWS region name")
+    is_deleted: bool = False
+    deleted_at: Optional[datetime] = None
+    updated_at: datetime
+
+
+class ECSContainerDetail(ECSContainerResponse):
+    """Detailed ECS container response with all fields."""
+
+    created_at: datetime
+
+
+class ECSClusterSummary(BaseSchema):
+    """ECS cluster summary with grouped containers."""
+
+    cluster_name: str
+    total_tasks: int = 0
+    running_tasks: int = 0
+    stopped_tasks: int = 0
+    pending_tasks: int = 0
+    tf_managed: bool = False
+    region_name: Optional[str] = None
+    containers: List[ECSContainerResponse] = []
+
+
+# =============================================================================
 # Terraform Schemas
 # =============================================================================
 
@@ -533,6 +607,24 @@ class TopologyElasticIP(BaseSchema):
     tf_resource_address: Optional[str] = None
 
 
+class TopologyECSContainer(BaseSchema):
+    """ECS container for topology visualization."""
+
+    id: str
+    name: Optional[str] = None
+    cluster_name: str
+    launch_type: str
+    status: str
+    display_status: DisplayStatus
+    cpu: int = 0
+    memory: int = 0
+    image: Optional[str] = None
+    container_port: Optional[int] = None
+    private_ip: Optional[str] = None
+    tf_managed: bool = True
+    tf_resource_address: Optional[str] = None
+
+
 class TopologySubnet(BaseSchema):
     """Subnet with contained resources for topology visualization."""
 
@@ -547,6 +639,7 @@ class TopologySubnet(BaseSchema):
     nat_gateway: Optional[TopologyNATGateway] = None
     ec2_instances: List[TopologyEC2Instance] = []
     rds_instances: List[TopologyRDSInstance] = []
+    ecs_containers: List[TopologyECSContainer] = []
 
 
 class TopologyVPC(BaseSchema):
@@ -571,6 +664,7 @@ class TopologyMeta(BaseSchema):
     total_subnets: int = 0
     total_ec2: int = 0
     total_rds: int = 0
+    total_ecs_containers: int = 0
     total_nat_gateways: int = 0
     total_internet_gateways: int = 0
     total_elastic_ips: int = 0

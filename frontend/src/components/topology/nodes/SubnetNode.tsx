@@ -1,5 +1,5 @@
 import { memo } from "react";
-import { NodeProps, Handle, Position } from "reactflow";
+import { NodeProps, Handle, Position, NodeResizer } from "reactflow";
 import { Boxes } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { SubnetNodeData } from "@/types/topology";
@@ -17,7 +17,19 @@ const subnetTypeBadge = {
   unknown: "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300",
 };
 
-function SubnetNodeComponent({ data }: NodeProps<SubnetNodeData>) {
+const resizerLineColors = {
+  public: "!border-green-400",
+  private: "!border-blue-400",
+  unknown: "!border-gray-400",
+};
+
+const resizerHandleColors = {
+  public: "!bg-green-500 !border-green-600",
+  private: "!bg-blue-500 !border-blue-600",
+  unknown: "!bg-gray-500 !border-gray-600",
+};
+
+function SubnetNodeComponent({ data, selected }: NodeProps<SubnetNodeData>) {
   return (
     <div
       className={cn(
@@ -25,6 +37,17 @@ function SubnetNodeComponent({ data }: NodeProps<SubnetNodeData>) {
         subnetTypeStyles[data.subnetType],
       )}
     >
+      <NodeResizer
+        minWidth={data.minWidth ?? 250}
+        minHeight={data.minHeight ?? 90}
+        isVisible={selected}
+        lineClassName={resizerLineColors[data.subnetType]}
+        handleClassName={cn(
+          "!h-2.5 !w-2.5 !rounded-sm",
+          resizerHandleColors[data.subnetType],
+        )}
+      />
+
       <Handle type="target" position={Position.Top} className="opacity-0" />
 
       {/* Header */}

@@ -122,15 +122,6 @@ variable "enable_secrets_access" {
   default     = false
 }
 
-# -----------------------------------------------------------------------------
-# S3/Terraform State Access
-# -----------------------------------------------------------------------------
-
-variable "tf_state_bucket_arn" {
-  description = "ARN of the Terraform state S3 bucket"
-  type        = string
-  default     = ""
-}
 
 # -----------------------------------------------------------------------------
 # Logging
@@ -202,6 +193,16 @@ variable "memory_target_value" {
   description = "Target memory utilization for auto scaling"
   type        = number
   default     = 80
+}
+
+# -----------------------------------------------------------------------------
+# IAM Configuration
+# -----------------------------------------------------------------------------
+
+variable "task_role_arn" {
+  description = "ARN of an external task role. If provided, the module will use it instead of creating its own task role with AWS API policies."
+  type        = string
+  default     = ""
 }
 
 # -----------------------------------------------------------------------------

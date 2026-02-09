@@ -48,6 +48,47 @@ async def test_auth_config_reflects_default_settings(client):
 
 
 @pytest.mark.asyncio
+async def test_auth_config_with_multiple_admins(client):
+    """Test that GET /api/auth/config works when multiple admin users exist.
+
+    Regression test: scalar_one_or_none() in check_admin_exists() raised
+    MultipleResultsFound when more than one admin existed, causing a 500.
+    """
+    from app.models.database import async_session_maker
+
+    # Create first admin via setup endpoint
+    response = await client.post(
+        "/api/auth/setup",
+        json={
+            "username": "admin1",
+            "password": "AdminPass1!xyz",
+            "confirm_password": "AdminPass1!xyz",
+        },
+    )
+    assert response.status_code == 200
+
+    # Create a second admin user directly in the database
+    async with async_session_maker() as session:
+        from app.models.auth import User
+
+        user2 = User(
+            username="admin2",
+            password_hash="unused",
+            is_admin=True,
+            is_active=True,
+            role="admin",
+        )
+        session.add(user2)
+        await session.commit()
+
+    # This must return 200, not 500
+    response = await client.get("/api/auth/config")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["setup_required"] is False
+
+
+@pytest.mark.asyncio
 async def test_login_invalid_credentials_returns_401(client):
     """Test that POST /api/auth/login with invalid credentials returns 401."""
     response = await client.post(

@@ -1,9 +1,13 @@
+import { useState, useMemo } from "react";
 import {
   GitBranch,
   FileText,
   AlertTriangle,
   CheckCircle,
   XCircle,
+  ChevronDown,
+  ChevronRight,
+  Database,
 } from "lucide-react";
 import {
   Card,
@@ -18,7 +22,14 @@ import { useTerraformStates, useDrift } from "@/hooks";
 import { formatRelativeTime, cn } from "@/lib/utils";
 import type { TerraformStateInfo, DriftItem } from "@/types";
 
-function StateFileCard({ state }: { state: TerraformStateInfo }) {
+interface BucketGroup {
+  bucketName: string;
+  region: string | null;
+  states: TerraformStateInfo[];
+  totalResources: number;
+}
+
+function StateFileRow({ state }: { state: TerraformStateInfo }) {
   const statusColors = {
     synced:
       "text-green-600 bg-green-50 dark:text-green-400 dark:bg-green-900/30",
@@ -27,9 +38,9 @@ function StateFileCard({ state }: { state: TerraformStateInfo }) {
   };
 
   const statusIcons = {
-    synced: <CheckCircle className="h-4 w-4" />,
-    error: <XCircle className="h-4 w-4" />,
-    unknown: <FileText className="h-4 w-4" />,
+    synced: <CheckCircle className="h-3.5 w-3.5" />,
+    error: <XCircle className="h-3.5 w-3.5" />,
+    unknown: <FileText className="h-3.5 w-3.5" />,
   };
 
   const statusConfig =
@@ -40,33 +51,84 @@ function StateFileCard({ state }: { state: TerraformStateInfo }) {
     statusIcons.unknown;
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex min-w-0 flex-1 items-center gap-3">
-          <div className={cn("flex-shrink-0 rounded-lg p-2", statusConfig)}>
-            {StatusIcon}
-          </div>
-          <div className="min-w-0 flex-1">
-            <h4 className="font-medium text-gray-900 dark:text-gray-100">
-              {state.name}
-            </h4>
-            <p className="break-all text-sm text-gray-500 dark:text-gray-400">
-              {state.key}
-            </p>
-          </div>
+    <div className="flex items-center justify-between gap-3 rounded-md border border-gray-100 bg-gray-50 px-3 py-2 dark:border-gray-700 dark:bg-gray-800/50">
+      <div className="flex min-w-0 flex-1 items-center gap-2">
+        <div className={cn("flex-shrink-0 rounded p-1", statusConfig)}>
+          {StatusIcon}
         </div>
-        <span className="flex-shrink-0 whitespace-nowrap rounded-full bg-purple-100 px-2.5 py-0.5 text-sm font-medium text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-medium text-gray-900 dark:text-gray-100">
+            {state.name}
+          </p>
+          <p className="truncate text-xs text-gray-500 dark:text-gray-400">
+            {state.key}
+          </p>
+        </div>
+      </div>
+      <div className="flex flex-shrink-0 items-center gap-3">
+        <span className="whitespace-nowrap rounded-full bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
           {state.resource_count} resources
         </span>
+        <span className="whitespace-nowrap text-xs text-gray-400 dark:text-gray-500">
+          {formatRelativeTime(state.last_modified)}
+        </span>
       </div>
-      {state.description && (
-        <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-          {state.description}
-        </p>
+    </div>
+  );
+}
+
+function BucketGroupCard({
+  group,
+  expanded,
+  onToggle,
+}: {
+  group: BucketGroup;
+  expanded: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <div className="rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
+      <button
+        onClick={onToggle}
+        className="flex w-full items-center justify-between p-4 text-left"
+      >
+        <div className="flex items-center gap-3">
+          <div className="flex-shrink-0 text-gray-400 dark:text-gray-500">
+            {expanded ? (
+              <ChevronDown className="h-4 w-4" />
+            ) : (
+              <ChevronRight className="h-4 w-4" />
+            )}
+          </div>
+          <Database className="h-4 w-4 flex-shrink-0 text-purple-500" />
+          <div>
+            <span className="font-mono text-sm font-medium text-gray-900 dark:text-gray-100">
+              {group.bucketName}
+            </span>
+            {group.region && (
+              <span className="ml-2 text-xs text-gray-400 dark:text-gray-500">
+                ({group.region})
+              </span>
+            )}
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-gray-500 dark:text-gray-400">
+            {group.states.length} state file
+            {group.states.length !== 1 ? "s" : ""}
+          </span>
+          <span className="whitespace-nowrap rounded-full bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
+            {group.totalResources} resources
+          </span>
+        </div>
+      </button>
+      {expanded && (
+        <div className="space-y-2 border-t border-gray-100 px-4 pb-4 pt-3 dark:border-gray-700">
+          {group.states.map((state) => (
+            <StateFileRow key={state.key} state={state} />
+          ))}
+        </div>
       )}
-      <p className="mt-2 text-xs text-gray-400 dark:text-gray-500">
-        Last modified: {formatRelativeTime(state.last_modified)}
-      </p>
     </div>
   );
 }
@@ -127,6 +189,42 @@ export function TerraformPage() {
     isLoading: driftLoading,
     refetch: refetchDrift,
   } = useDrift();
+  const [expandedBuckets, setExpandedBuckets] = useState<Set<string>>(
+    new Set(),
+  );
+
+  const bucketGroups = useMemo((): BucketGroup[] => {
+    if (!statesData?.states.length) return [];
+    const groupMap = new Map<string, BucketGroup>();
+    for (const state of statesData.states) {
+      const bucketName = state.bucket?.name ?? "Unknown";
+      const existing = groupMap.get(bucketName);
+      if (existing) {
+        existing.states.push(state);
+        existing.totalResources += state.resource_count;
+      } else {
+        groupMap.set(bucketName, {
+          bucketName,
+          region: state.bucket?.region ?? null,
+          states: [state],
+          totalResources: state.resource_count,
+        });
+      }
+    }
+    return Array.from(groupMap.values());
+  }, [statesData]);
+
+  const toggleBucket = (bucketName: string) => {
+    setExpandedBuckets((prev) => {
+      const next = new Set(prev);
+      if (next.has(bucketName)) {
+        next.delete(bucketName);
+      } else {
+        next.add(bucketName);
+      }
+      return next;
+    });
+  };
 
   if (statesLoading) {
     return <PageLoading />;
@@ -218,20 +316,25 @@ export function TerraformPage() {
         </Card>
       </div>
 
-      {/* State Files */}
+      {/* State Files grouped by bucket */}
       <Card>
         <CardHeader>
           <CardTitle>State Files</CardTitle>
         </CardHeader>
         <CardContent>
-          {statesData?.states.length === 0 ? (
-            <p className="text-center text-gray-500 py-4 dark:text-gray-400">
+          {bucketGroups.length === 0 ? (
+            <p className="py-4 text-center text-gray-500 dark:text-gray-400">
               No state files configured
             </p>
           ) : (
-            <div className="grid gap-4 md:grid-cols-2">
-              {statesData?.states.map((state) => (
-                <StateFileCard key={state.key} state={state} />
+            <div className="space-y-3">
+              {bucketGroups.map((group) => (
+                <BucketGroupCard
+                  key={group.bucketName}
+                  group={group}
+                  expanded={expandedBuckets.has(group.bucketName)}
+                  onToggle={() => toggleBucket(group.bucketName)}
+                />
               ))}
             </div>
           )}
@@ -253,8 +356,8 @@ export function TerraformPage() {
         </CardHeader>
         <CardContent>
           {!driftData ? (
-            <p className="text-center text-gray-500 py-4 dark:text-gray-400">
-              Click "Check Drift" to detect configuration drift
+            <p className="py-4 text-center text-gray-500 dark:text-gray-400">
+              Click &quot;Check Drift&quot; to detect configuration drift
             </p>
           ) : driftData.items.length === 0 ? (
             <div className="flex items-center justify-center gap-2 py-8 text-green-600 dark:text-green-400">

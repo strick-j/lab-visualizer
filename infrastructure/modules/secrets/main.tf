@@ -54,6 +54,28 @@ resource "aws_secretsmanager_secret_version" "session_secret" {
 }
 
 # -----------------------------------------------------------------------------
+# Admin Password
+# -----------------------------------------------------------------------------
+
+resource "aws_secretsmanager_secret" "admin_password" {
+  count = var.create_admin_secret ? 1 : 0
+
+  name        = "${var.project_name}/${var.environment}/admin-password-${random_id.secret_suffix.hex}"
+  description = "Admin user password for local authentication"
+
+  tags = merge(var.tags, {
+    Name = "${var.project_name}-${var.environment}-admin-password"
+  })
+}
+
+resource "aws_secretsmanager_secret_version" "admin_password" {
+  count = var.create_admin_secret && var.admin_password != "" ? 1 : 0
+
+  secret_id     = aws_secretsmanager_secret.admin_password[0].id
+  secret_string = var.admin_password
+}
+
+# -----------------------------------------------------------------------------
 # Application Secrets (combined JSON)
 # -----------------------------------------------------------------------------
 

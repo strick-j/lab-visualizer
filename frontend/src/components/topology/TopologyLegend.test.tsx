@@ -8,6 +8,7 @@ describe("TopologyLegend", () => {
     total_subnets: 6,
     total_ec2: 10,
     total_rds: 3,
+    total_ecs_containers: 0,
   };
 
   it("renders the legend header", () => {
