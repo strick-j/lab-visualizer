@@ -186,6 +186,20 @@ async def get_topology(
         )
         subnets = subnet_result.scalars().all()
 
+        # Query RDS instances once per VPC (not per subnet) to avoid
+        # duplicate node IDs that break React Flow rendering.
+        # RDS uses DB Subnet Groups so we attach them to the first
+        # private subnet only.
+        rds_result = await db.execute(
+            select(RDSInstance).where(
+                RDSInstance.vpc_id == vpc.vpc_id,
+                RDSInstance.tf_managed == True,
+                RDSInstance.is_deleted == False,
+            )
+        )
+        vpc_rds_instances = rds_result.scalars().all()
+        rds_placed = False
+
         topology_subnets = []
         for subnet in subnets:
             total_subnets += 1
@@ -242,21 +256,14 @@ async def get_topology(
                     )
                 )
 
-            # Get RDS instances in this VPC
-            # Note: RDS uses DB Subnet Groups, so we match by VPC
-            # For simplicity, we'll attach RDS to the first private subnet
+            # Attach RDS instances to the first private subnet only.
+            # RDS uses DB Subnet Groups (VPC-level), so there's no
+            # per-subnet association. Placing them in every private
+            # subnet would create duplicate React Flow node IDs.
             topology_rds = []
-            if subnet.subnet_type == "private":
-                rds_result = await db.execute(
-                    select(RDSInstance).where(
-                        RDSInstance.vpc_id == vpc.vpc_id,
-                        RDSInstance.tf_managed == True,
-                        RDSInstance.is_deleted == False,
-                    )
-                )
-                rds_instances = rds_result.scalars().all()
-
-                for rds in rds_instances:
+            if subnet.subnet_type == "private" and not rds_placed:
+                rds_placed = True
+                for rds in vpc_rds_instances:
                     total_rds += 1
                     topology_rds.append(
                         TopologyRDSInstance(
