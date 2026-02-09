@@ -3,7 +3,6 @@ import {
   LayoutDashboard,
   Server,
   Database,
-  Container,
   Network,
   GitBranch,
   Waypoints,
@@ -16,7 +15,6 @@ const navigation = [
   { name: "Topology", href: "/topology", icon: Waypoints },
   { name: "EC2 Instances", href: "/ec2", icon: Server },
   { name: "RDS Databases", href: "/rds", icon: Database },
-  { name: "ECS Containers", href: "/ecs", icon: Container },
   { name: "VPC Networking", href: "/vpc", icon: Network },
   { name: "Terraform", href: "/terraform", icon: GitBranch },
 ];
