@@ -425,9 +425,52 @@ async def change_user_password(
 
 
 async def ensure_admin_user(db: AsyncSession) -> None:
-    """Check if an admin user exists on startup and log setup status."""
+    """
+    Check if an admin user exists on startup.
+
+    If ADMIN_USERNAME and ADMIN_PASSWORD environment variables are set
+    (e.g. via Secrets Manager), auto-create or update the admin user so
+    that credentials persist across redeployments.
+    """
     admin_exists = await check_admin_exists(db)
-    if admin_exists:
+
+    admin_username = settings.admin_username
+    admin_password = settings.admin_password
+
+    if admin_username and admin_password:
+        # Auto-provision admin from environment / Secrets Manager
+        existing_user = await get_user_by_username(db, admin_username)
+        if existing_user and existing_user.is_admin:
+            # Update password to match the configured value
+            existing_user.password_hash = hash_password(admin_password)
+            await db.commit()
+            logger.info(
+                "Admin user '%s' password synced from environment",
+                _sanitize_for_log(admin_username),
+            )
+        elif not admin_exists:
+            # Validate password strength before creating
+            errors = validate_password_strength(admin_password)
+            if errors:
+                logger.error(
+                    "ADMIN_PASSWORD does not meet strength requirements: %s",
+                    "; ".join(errors),
+                )
+            else:
+                await create_local_user(
+                    db,
+                    username=admin_username,
+                    password=admin_password,
+                    is_admin=True,
+                    display_name="Administrator",
+                )
+                logger.info(
+                    "Initial admin user '%s' created from environment",
+                    _sanitize_for_log(admin_username),
+                )
+        else:
+            logger.info("Admin user exists - setup is complete")
+    elif admin_exists:
         logger.info("Admin user exists - setup is complete")
     else:
         logger.info("No admin user found - initial setup required via /setup page")

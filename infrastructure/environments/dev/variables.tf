@@ -152,6 +152,23 @@ variable "oidc_client_secret" {
 }
 
 # -----------------------------------------------------------------------------
+# Local Admin Authentication
+# -----------------------------------------------------------------------------
+
+variable "admin_username" {
+  description = "Admin username for local authentication (leave empty to use web setup)"
+  type        = string
+  default     = ""
+}
+
+variable "admin_password" {
+  description = "Admin password for local authentication (leave empty to use web setup)"
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+# -----------------------------------------------------------------------------
 # Application Configuration
 # -----------------------------------------------------------------------------
 

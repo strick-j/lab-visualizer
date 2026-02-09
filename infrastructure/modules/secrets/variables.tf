@@ -32,6 +32,19 @@ variable "session_secret" {
   sensitive   = true
 }
 
+variable "create_admin_secret" {
+  description = "Create admin password secret"
+  type        = bool
+  default     = false
+}
+
+variable "admin_password" {
+  description = "Admin user password (leave empty to skip; set via /setup page instead)"
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
 variable "app_secrets" {
   description = "Additional application secrets as key-value pairs"
   type        = map(string)
