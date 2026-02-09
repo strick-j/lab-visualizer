@@ -26,8 +26,7 @@ from app.models.database import get_db
 from app.models.resources import (
     VPC,
     EC2Instance,
-    ECSCluster,
-    ECSService,
+    ECSContainer,
     ElasticIP,
     InternetGateway,
     NATGateway,
@@ -205,12 +204,12 @@ async def refresh_data(
         resources_updated += eip_count
         logger.info(f"Synced {eip_count} Elastic IPs")
 
-        # Collect ECS Clusters and Services
+        # Collect ECS Containers
         ecs_collector = ECSCollector()
-        ecs_clusters = await ecs_collector.collect()
-        ecs_count = await _sync_ecs_clusters(db, ecs_clusters, region.id)
+        ecs_containers = await ecs_collector.collect()
+        ecs_count = await _sync_ecs_containers(db, ecs_containers, region.id)
         resources_updated += ecs_count
-        logger.info(f"Synced {ecs_count} ECS clusters")
+        logger.info(f"Synced {ecs_count} ECS containers")
 
         # Update Terraform managed flags
         tf_count = await _sync_terraform_state(db)
@@ -773,172 +772,95 @@ async def _sync_elastic_ips(db: AsyncSession, eips: list, region_id: int) -> int
     return count
 
 
-async def _sync_ecs_clusters(
-    db: AsyncSession, clusters: list, region_id: int
+async def _sync_ecs_containers(
+    db: AsyncSession, containers: list, region_id: int
 ) -> int:
-    """Sync ECS clusters and their services to database, marking deleted ones."""
+    """Sync ECS containers (tasks) to database, marking deleted ones."""
     count = 0
 
-    # Get all existing cluster ARNs for this region
+    # Get all existing task IDs for this region
     result = await db.execute(
-        select(ECSCluster.cluster_arn).where(ECSCluster.region_id == region_id)
+        select(ECSContainer.task_id).where(ECSContainer.region_id == region_id)
     )
-    existing_arns = set(row[0] for row in result.all())
+    existing_ids = set(row[0] for row in result.all())
 
-    # Track which clusters we see from AWS
-    seen_arns = set()
+    # Track which containers we see from AWS
+    seen_ids = set()
 
-    for cluster_data in clusters:
-        cluster_arn = cluster_data["cluster_arn"]
-        seen_arns.add(cluster_arn)
+    for container_data in containers:
+        task_id = container_data["task_id"]
+        seen_ids.add(task_id)
 
-        # Check if cluster exists
+        # Check if container exists
         result = await db.execute(
-            select(ECSCluster).where(ECSCluster.cluster_arn == cluster_arn)
+            select(ECSContainer).where(ECSContainer.task_id == task_id)
         )
         existing = result.scalar_one_or_none()
 
         if existing:
-            # Update existing cluster and mark as not deleted
-            existing.cluster_name = cluster_data["cluster_name"]
-            existing.name = cluster_data.get("name")
-            existing.status = cluster_data["status"]
-            existing.registered_container_instances_count = cluster_data.get(
-                "registered_container_instances_count", 0
-            )
-            existing.running_tasks_count = cluster_data.get("running_tasks_count", 0)
-            existing.pending_tasks_count = cluster_data.get("pending_tasks_count", 0)
-            existing.active_services_count = cluster_data.get(
-                "active_services_count", 0
-            )
-            existing.tags = json.dumps(cluster_data.get("tags", {}))
+            existing.name = container_data.get("name")
+            existing.cluster_name = container_data["cluster_name"]
+            existing.task_definition_arn = container_data.get("task_definition_arn")
+            existing.launch_type = container_data.get("launch_type", "UNKNOWN")
+            existing.status = container_data.get("status", "UNKNOWN")
+            existing.desired_status = container_data.get("desired_status")
+            existing.cpu = container_data.get("cpu", 0)
+            existing.memory = container_data.get("memory", 0)
+            existing.image = container_data.get("image")
+            existing.container_port = container_data.get("container_port")
+            existing.private_ip = container_data.get("private_ip")
+            existing.subnet_id = container_data.get("subnet_id")
+            existing.vpc_id = container_data.get("vpc_id")
+            existing.availability_zone = container_data.get("availability_zone")
+            existing.started_at = container_data.get("started_at")
+            existing.tags = json.dumps(container_data.get("tags", {}))
             existing.is_deleted = False
             existing.deleted_at = None
-
-            # Sync services for this cluster
-            await _sync_ecs_services(
-                db, cluster_data.get("services", []), existing.id
-            )
         else:
-            # Create new cluster
-            new_cluster = ECSCluster(
-                cluster_arn=cluster_arn,
+            new_container = ECSContainer(
+                task_id=task_id,
                 region_id=region_id,
-                cluster_name=cluster_data["cluster_name"],
-                name=cluster_data.get("name"),
-                status=cluster_data["status"],
-                registered_container_instances_count=cluster_data.get(
-                    "registered_container_instances_count", 0
-                ),
-                running_tasks_count=cluster_data.get("running_tasks_count", 0),
-                pending_tasks_count=cluster_data.get("pending_tasks_count", 0),
-                active_services_count=cluster_data.get("active_services_count", 0),
-                tags=json.dumps(cluster_data.get("tags", {})),
+                name=container_data.get("name"),
+                cluster_name=container_data["cluster_name"],
+                task_definition_arn=container_data.get("task_definition_arn"),
+                launch_type=container_data.get("launch_type", "UNKNOWN"),
+                status=container_data.get("status", "UNKNOWN"),
+                desired_status=container_data.get("desired_status"),
+                cpu=container_data.get("cpu", 0),
+                memory=container_data.get("memory", 0),
+                image=container_data.get("image"),
+                container_port=container_data.get("container_port"),
+                private_ip=container_data.get("private_ip"),
+                subnet_id=container_data.get("subnet_id"),
+                vpc_id=container_data.get("vpc_id"),
+                availability_zone=container_data.get("availability_zone"),
+                started_at=container_data.get("started_at"),
+                tags=json.dumps(container_data.get("tags", {})),
                 is_deleted=False,
             )
-            db.add(new_cluster)
-            await db.flush()  # Need the ID for services
-
-            # Sync services for this new cluster
-            await _sync_ecs_services(
-                db, cluster_data.get("services", []), new_cluster.id
-            )
+            db.add(new_container)
 
         count += 1
 
-    # Mark clusters that weren't in AWS response as deleted
-    deleted_arns = existing_arns - seen_arns
-    if deleted_arns:
+    # Mark containers that weren't in AWS response as deleted
+    deleted_ids = existing_ids - seen_ids
+    if deleted_ids:
         result = await db.execute(
-            select(ECSCluster).where(
-                ECSCluster.cluster_arn.in_(deleted_arns),
-                ECSCluster.region_id == region_id,
+            select(ECSContainer).where(
+                ECSContainer.task_id.in_(deleted_ids),
+                ECSContainer.region_id == region_id,
             )
         )
-        for cluster in result.scalars():
-            if not cluster.is_deleted:
-                cluster.is_deleted = True
-                cluster.deleted_at = datetime.now(timezone.utc)
-                logger.info(f"Marked ECS cluster as deleted: {cluster.cluster_arn}")
+        for container in result.scalars():
+            if not container.is_deleted:
+                container.is_deleted = True
+                container.deleted_at = datetime.now(timezone.utc)
+                logger.info(
+                    f"Marked ECS container as deleted: {container.task_id}"
+                )
 
     await db.flush()
     return count
-
-
-async def _sync_ecs_services(
-    db: AsyncSession, services: list, cluster_id: int
-) -> None:
-    """Sync ECS services for a given cluster."""
-    # Get all existing service ARNs for this cluster
-    result = await db.execute(
-        select(ECSService.service_arn).where(ECSService.cluster_id == cluster_id)
-    )
-    existing_arns = set(row[0] for row in result.all())
-
-    # Track which services we see from AWS
-    seen_arns = set()
-
-    for service_data in services:
-        service_arn = service_data["service_arn"]
-        seen_arns.add(service_arn)
-
-        # Check if service exists
-        result = await db.execute(
-            select(ECSService).where(ECSService.service_arn == service_arn)
-        )
-        existing = result.scalar_one_or_none()
-
-        if existing:
-            # Update existing service
-            existing.service_name = service_data["service_name"]
-            existing.status = service_data["status"]
-            existing.desired_count = service_data.get("desired_count", 0)
-            existing.running_count = service_data.get("running_count", 0)
-            existing.pending_count = service_data.get("pending_count", 0)
-            existing.launch_type = service_data.get("launch_type")
-            existing.task_definition = service_data.get("task_definition")
-            existing.subnet_ids = json.dumps(service_data.get("subnet_ids", []))
-            existing.security_groups = json.dumps(
-                service_data.get("security_groups", [])
-            )
-            existing.tags = json.dumps(service_data.get("tags", {}))
-            existing.is_deleted = False
-            existing.deleted_at = None
-        else:
-            # Create new service
-            new_service = ECSService(
-                service_arn=service_arn,
-                cluster_id=cluster_id,
-                service_name=service_data["service_name"],
-                status=service_data["status"],
-                desired_count=service_data.get("desired_count", 0),
-                running_count=service_data.get("running_count", 0),
-                pending_count=service_data.get("pending_count", 0),
-                launch_type=service_data.get("launch_type"),
-                task_definition=service_data.get("task_definition"),
-                subnet_ids=json.dumps(service_data.get("subnet_ids", [])),
-                security_groups=json.dumps(service_data.get("security_groups", [])),
-                tags=json.dumps(service_data.get("tags", {})),
-                is_deleted=False,
-            )
-            db.add(new_service)
-
-    # Mark services that weren't in AWS response as deleted
-    deleted_arns = existing_arns - seen_arns
-    if deleted_arns:
-        result = await db.execute(
-            select(ECSService).where(
-                ECSService.service_arn.in_(deleted_arns),
-                ECSService.cluster_id == cluster_id,
-            )
-        )
-        for service in result.scalars():
-            if not service.is_deleted:
-                service.is_deleted = True
-                service.deleted_at = datetime.now(timezone.utc)
-                logger.info(f"Marked ECS service as deleted: {service.service_arn}")
-
-    await db.flush()
 
 
 async def _sync_terraform_state(db: AsyncSession) -> int:

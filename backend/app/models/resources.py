@@ -118,7 +118,7 @@ class Region(Base):
     elastic_ips: Mapped[list["ElasticIP"]] = relationship(
         back_populates="region", cascade="all, delete-orphan"
     )
-    ecs_clusters: Mapped[list["ECSCluster"]] = relationship(
+    ecs_containers: Mapped[list["ECSContainer"]] = relationship(
         back_populates="region", cascade="all, delete-orphan"
     )
 
@@ -571,110 +571,47 @@ class ElasticIP(Base):
         return "inactive"
 
 
-class ECSCluster(Base):
-    """ECS Cluster resource."""
+class ECSContainer(Base):
+    """ECS Container (Task) resource."""
 
-    __tablename__ = "ecs_clusters"
+    __tablename__ = "ecs_containers"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    cluster_arn: Mapped[str] = mapped_column(String(500), unique=True, nullable=False)
+    task_id: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
     region_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("regions.id"), nullable=False
     )
 
     # Basic info
-    cluster_name: Mapped[str] = mapped_column(String(255), nullable=False)
     name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    status: Mapped[str] = mapped_column(
-        String(20), nullable=False
-    )  # ACTIVE, PROVISIONING, DEPROVISIONING, FAILED, INACTIVE
-
-    # Counts
-    registered_container_instances_count: Mapped[int] = mapped_column(
-        Integer, default=0
-    )
-    running_tasks_count: Mapped[int] = mapped_column(Integer, default=0)
-    pending_tasks_count: Mapped[int] = mapped_column(Integer, default=0)
-    active_services_count: Mapped[int] = mapped_column(Integer, default=0)
-
-    # Metadata
-    tags: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON string
-
-    # Terraform tracking
-    tf_managed: Mapped[bool] = mapped_column(Boolean, default=False)
-    tf_state_source: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    tf_resource_address: Mapped[Optional[str]] = mapped_column(
+    cluster_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    task_definition_arn: Mapped[Optional[str]] = mapped_column(
         String(500), nullable=True
     )
-
-    # Deletion tracking
-    is_deleted: Mapped[bool] = mapped_column(Boolean, default=False)
-    deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
-
-    # Timestamps
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime, server_default=func.now(), nullable=False
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime, server_default=func.now(), onupdate=func.now(), nullable=False
-    )
-
-    # Relationships
-    region: Mapped["Region"] = relationship(back_populates="ecs_clusters")
-    services: Mapped[list["ECSService"]] = relationship(
-        back_populates="cluster", cascade="all, delete-orphan"
-    )
-
-    @property
-    def display_status(self) -> str:
-        """Get normalized display status."""
-        status_map = {
-            "ACTIVE": "active",
-            "PROVISIONING": "transitioning",
-            "DEPROVISIONING": "transitioning",
-            "FAILED": "error",
-            "INACTIVE": "inactive",
-        }
-        return status_map.get(self.status, "unknown")
-
-
-class ECSService(Base):
-    """ECS Service resource."""
-
-    __tablename__ = "ecs_services"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    service_arn: Mapped[str] = mapped_column(String(500), unique=True, nullable=False)
-    cluster_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("ecs_clusters.id"), nullable=False
-    )
-
-    # Basic info
-    service_name: Mapped[str] = mapped_column(String(255), nullable=False)
-    status: Mapped[str] = mapped_column(
+    launch_type: Mapped[str] = mapped_column(
         String(20), nullable=False
-    )  # ACTIVE, DRAINING, INACTIVE
+    )  # FARGATE, EC2, EXTERNAL
+    status: Mapped[str] = mapped_column(
+        String(30), nullable=False
+    )  # RUNNING, STOPPED, PENDING, etc.
+    desired_status: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
 
-    # Task counts
-    desired_count: Mapped[int] = mapped_column(Integer, default=0)
-    running_count: Mapped[int] = mapped_column(Integer, default=0)
-    pending_count: Mapped[int] = mapped_column(Integer, default=0)
+    # Resources
+    cpu: Mapped[int] = mapped_column(Integer, default=0)
+    memory: Mapped[int] = mapped_column(Integer, default=0)
 
-    # Configuration
-    launch_type: Mapped[Optional[str]] = mapped_column(
-        String(20), nullable=True
-    )  # FARGATE, EC2
-    task_definition: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    # Container details
+    image: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    container_port: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
 
     # Network
-    subnet_ids: Mapped[Optional[str]] = mapped_column(
-        Text, nullable=True
-    )  # JSON array
-    security_groups: Mapped[Optional[str]] = mapped_column(
-        Text, nullable=True
-    )  # JSON array
+    private_ip: Mapped[Optional[str]] = mapped_column(String(45), nullable=True)
+    subnet_id: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
+    vpc_id: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
+    availability_zone: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
 
     # Metadata
+    started_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     tags: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON string
 
     # Terraform tracking
@@ -697,14 +634,20 @@ class ECSService(Base):
     )
 
     # Relationships
-    cluster: Mapped["ECSCluster"] = relationship(back_populates="services")
+    region: Mapped["Region"] = relationship(back_populates="ecs_containers")
 
     @property
     def display_status(self) -> str:
         """Get normalized display status."""
         status_map = {
-            "ACTIVE": "active",
-            "DRAINING": "transitioning",
-            "INACTIVE": "inactive",
+            "RUNNING": "active",
+            "STOPPED": "inactive",
+            "PROVISIONING": "transitioning",
+            "PENDING": "transitioning",
+            "ACTIVATING": "transitioning",
+            "DEPROVISIONING": "transitioning",
+            "STOPPING": "transitioning",
+            "DEACTIVATING": "transitioning",
+            "DELETED": "error",
         }
         return status_map.get(self.status, "unknown")

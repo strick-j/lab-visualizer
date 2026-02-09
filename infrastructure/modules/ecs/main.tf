@@ -170,7 +170,7 @@ resource "aws_iam_role" "ecs_task" {
   tags = var.tags
 }
 
-# Policy for AWS API access (EC2, RDS read-only)
+# Policy for AWS API access (EC2, RDS, ECS read-only)
 resource "aws_iam_role_policy" "ecs_task_aws_access" {
   name = "aws-api-access"
   role = aws_iam_role.ecs_task.id
@@ -203,31 +203,57 @@ resource "aws_iam_role_policy" "ecs_task_aws_access" {
           "rds:ListTagsForResource"
         ]
         Resource = "*"
+      },
+      {
+        Sid    = "ECSReadAccess"
+        Effect = "Allow"
+        Action = [
+          "ecs:ListClusters",
+          "ecs:ListTasks",
+          "ecs:DescribeTasks"
+        ]
+        Resource = "*"
       }
     ]
   })
 }
 
-# Separate policy for S3 Terraform state access (only when bucket is configured)
+# S3 access for reading Terraform state files from any bucket in this account.
+# Buckets can be added dynamically via the Settings UI, so this uses a wildcard
+# scoped to the current AWS account rather than a single pre-configured bucket.
 resource "aws_iam_role_policy" "ecs_task_s3_access" {
-  count = var.tf_state_bucket_arn != "" ? 1 : 0
-  name  = "s3-terraform-state-access"
-  role  = aws_iam_role.ecs_task.id
+  name = "s3-terraform-state-access"
+  role = aws_iam_role.ecs_task.id
 
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
       {
-        Sid    = "S3TerraformStateAccess"
+        Sid    = "S3TerraformStateReadObjects"
         Effect = "Allow"
         Action = [
-          "s3:GetObject",
-          "s3:ListBucket"
+          "s3:GetObject"
         ]
-        Resource = [
-          var.tf_state_bucket_arn,
-          "${var.tf_state_bucket_arn}/*"
+        Resource = "arn:aws:s3:::*/*"
+        Condition = {
+          StringEquals = {
+            "s3:ResourceAccount" = data.aws_caller_identity.current.account_id
+          }
+        }
+      },
+      {
+        Sid    = "S3TerraformStateBucketAccess"
+        Effect = "Allow"
+        Action = [
+          "s3:ListBucket",
+          "s3:GetBucketLocation"
         ]
+        Resource = "arn:aws:s3:::*"
+        Condition = {
+          StringEquals = {
+            "s3:ResourceAccount" = data.aws_caller_identity.current.account_id
+          }
+        }
       }
     ]
   })

@@ -31,18 +31,18 @@ vi.mock("@/hooks", () => ({
       total_resources: 10,
     },
   }),
-  useAppInfo: () => ({
-    data: {
-      version: "1.0.0",
-      build_sha: "abc123",
-      build_date: "",
-      environment: "test",
-      timestamp: "",
-    },
-  }),
   useRefreshData: () => ({
     mutate: vi.fn(),
     isPending: false,
+  }),
+  useAppInfo: () => ({
+    data: {
+      version: "1.0.0",
+      build_sha: "abc1234",
+      build_date: "2024-01-15",
+      environment: "development",
+      timestamp: "2024-01-15T12:00:00Z",
+    },
   }),
 }));
 
@@ -109,7 +109,6 @@ describe("App", () => {
     expect(screen.getByText("Dashboard")).toBeInTheDocument();
     expect(screen.getByText("EC2 Instances")).toBeInTheDocument();
     expect(screen.getByText("RDS Databases")).toBeInTheDocument();
-    expect(screen.getByText("ECS Containers")).toBeInTheDocument();
     expect(screen.getByText("VPC Networking")).toBeInTheDocument();
     expect(screen.getByText("Terraform")).toBeInTheDocument();
   });

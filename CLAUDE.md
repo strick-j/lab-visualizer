@@ -485,6 +485,9 @@ See `.env.example` for complete list. Key variables:
         "ec2:DescribeNatGateways",
         "ec2:DescribeAddresses",
         "rds:DescribeDBInstances",
+        "ecs:ListClusters",
+        "ecs:ListTasks",
+        "ecs:DescribeTasks",
         "s3:GetObject",
         "s3:ListBucket"
       ],

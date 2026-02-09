@@ -6,6 +6,8 @@ import {
   getEC2Instance,
   getRDSInstances,
   getRDSInstance,
+  getECSContainers,
+  getECSContainer,
   getVPCs,
   getVPC,
   getSubnets,
@@ -16,8 +18,6 @@ import {
   getNATGateway,
   getElasticIPs,
   getElasticIP,
-  getECSClusters,
-  getECSCluster,
   refreshData,
   getTerraformStates,
   getDrift,
@@ -38,6 +38,9 @@ export const queryKeys = {
   rdsInstances: (filters?: ResourceFilters) =>
     ["rds-instances", filters] as const,
   rdsInstance: (id: string) => ["rds-instance", id] as const,
+  ecsContainers: (filters?: ResourceFilters) =>
+    ["ecs-containers", filters] as const,
+  ecsContainer: (id: string) => ["ecs-container", id] as const,
   vpcs: (filters?: ResourceFilters) => ["vpcs", filters] as const,
   vpc: (id: string) => ["vpc", id] as const,
   subnets: (filters?: ResourceFilters) => ["subnets", filters] as const,
@@ -50,9 +53,6 @@ export const queryKeys = {
   natGateway: (id: string) => ["nat-gateway", id] as const,
   elasticIPs: (filters?: ResourceFilters) => ["elastic-ips", filters] as const,
   elasticIP: (id: string) => ["elastic-ip", id] as const,
-  ecsClusters: (filters?: ResourceFilters) =>
-    ["ecs-clusters", filters] as const,
-  ecsCluster: (arn: string) => ["ecs-cluster", arn] as const,
   terraformStates: ["terraform-states"] as const,
   drift: ["drift"] as const,
   topology: (filters?: { vpc_id?: string }) => ["topology", filters] as const,
@@ -117,6 +117,25 @@ export function useRDSInstance(dbIdentifier: string) {
     queryKey: queryKeys.rdsInstance(dbIdentifier),
     queryFn: () => getRDSInstance(dbIdentifier),
     enabled: !!dbIdentifier,
+  });
+}
+
+// =============================================================================
+// ECS Containers
+// =============================================================================
+
+export function useECSContainers(filters?: ResourceFilters) {
+  return useQuery({
+    queryKey: queryKeys.ecsContainers(filters),
+    queryFn: () => getECSContainers(filters),
+  });
+}
+
+export function useECSContainer(taskId: string) {
+  return useQuery({
+    queryKey: queryKeys.ecsContainer(taskId),
+    queryFn: () => getECSContainer(taskId),
+    enabled: !!taskId,
   });
 }
 
@@ -216,25 +235,6 @@ export function useElasticIP(allocationId: string) {
 }
 
 // =============================================================================
-// ECS Clusters
-// =============================================================================
-
-export function useECSClusters(filters?: ResourceFilters) {
-  return useQuery({
-    queryKey: queryKeys.ecsClusters(filters),
-    queryFn: () => getECSClusters(filters),
-  });
-}
-
-export function useECSCluster(clusterArn: string) {
-  return useQuery({
-    queryKey: queryKeys.ecsCluster(clusterArn),
-    queryFn: () => getECSCluster(clusterArn),
-    enabled: !!clusterArn,
-  });
-}
-
-// =============================================================================
 // Refresh
 // =============================================================================
 
@@ -248,12 +248,12 @@ export function useRefreshData() {
       queryClient.invalidateQueries({ queryKey: ["status-summary"] });
       queryClient.invalidateQueries({ queryKey: ["ec2-instances"] });
       queryClient.invalidateQueries({ queryKey: ["rds-instances"] });
+      queryClient.invalidateQueries({ queryKey: ["ecs-containers"] });
       queryClient.invalidateQueries({ queryKey: ["vpcs"] });
       queryClient.invalidateQueries({ queryKey: ["subnets"] });
       queryClient.invalidateQueries({ queryKey: ["internet-gateways"] });
       queryClient.invalidateQueries({ queryKey: ["nat-gateways"] });
       queryClient.invalidateQueries({ queryKey: ["elastic-ips"] });
-      queryClient.invalidateQueries({ queryKey: ["ecs-clusters"] });
       queryClient.invalidateQueries({ queryKey: ["terraform-states"] });
       queryClient.invalidateQueries({ queryKey: ["drift"] });
       queryClient.invalidateQueries({ queryKey: ["topology"] });

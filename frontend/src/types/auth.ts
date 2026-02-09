@@ -1,3 +1,5 @@
+export type UserRole = "user" | "admin";
+
 export interface User {
   id: number;
   username: string;
@@ -6,6 +8,7 @@ export interface User {
   auth_provider: "local" | "oidc";
   is_active: boolean;
   is_admin: boolean;
+  role: UserRole;
   last_login_at: string | null;
   created_at: string;
 }
@@ -162,4 +165,18 @@ export interface S3BucketListResponse {
   objects: S3ObjectInfo[];
   prefix: string;
   bucket_name: string;
+}
+
+// User Management types
+export interface UserListResponse {
+  users: User[];
+  total: number;
+}
+
+export interface UserStatusUpdate {
+  is_active: boolean;
+}
+
+export interface UserRoleUpdate {
+  role: UserRole;
 }

@@ -6,6 +6,7 @@ const mockStates = [
   {
     name: "production",
     key: "prod/terraform.tfstate",
+    bucket: { name: "my-tf-bucket", region: "us-east-1" },
     resource_count: 25,
     status: "synced",
     last_modified: "2024-01-15T12:00:00Z",
@@ -14,9 +15,11 @@ const mockStates = [
   {
     name: "development",
     key: "dev/terraform.tfstate",
+    bucket: { name: "my-tf-bucket", region: "us-east-1" },
     resource_count: 10,
     status: "synced",
     last_modified: "2024-01-14T12:00:00Z",
+    description: null,
   },
 ];
 
@@ -114,27 +117,31 @@ describe("TerraformPage", () => {
     expect(screen.getByText("Drift Items")).toBeInTheDocument();
   });
 
-  it("renders state file names", () => {
+  it("renders bucket group header", () => {
     render(<TerraformPage />);
+    expect(screen.getByText("my-tf-bucket")).toBeInTheDocument();
+    expect(screen.getByText("2 state files")).toBeInTheDocument();
+  });
+
+  it("renders state file names after expanding bucket", () => {
+    render(<TerraformPage />);
+    fireEvent.click(screen.getByText("my-tf-bucket"));
     expect(screen.getByText("production")).toBeInTheDocument();
     expect(screen.getByText("development")).toBeInTheDocument();
   });
 
-  it("renders state file keys", () => {
+  it("renders state file keys after expanding bucket", () => {
     render(<TerraformPage />);
+    fireEvent.click(screen.getByText("my-tf-bucket"));
     expect(screen.getByText("prod/terraform.tfstate")).toBeInTheDocument();
     expect(screen.getByText("dev/terraform.tfstate")).toBeInTheDocument();
   });
 
-  it("renders resource counts", () => {
+  it("renders resource counts after expanding bucket", () => {
     render(<TerraformPage />);
+    fireEvent.click(screen.getByText("my-tf-bucket"));
     expect(screen.getByText("25 resources")).toBeInTheDocument();
     expect(screen.getByText("10 resources")).toBeInTheDocument();
-  });
-
-  it("renders state file description when available", () => {
-    render(<TerraformPage />);
-    expect(screen.getByText("Production infrastructure")).toBeInTheDocument();
   });
 
   it("renders drift detection section", () => {

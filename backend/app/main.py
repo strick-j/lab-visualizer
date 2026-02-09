@@ -127,7 +127,7 @@ app.include_router(
     eip.router, prefix="/api", tags=["Elastic IPs"], dependencies=auth_dependency
 )
 app.include_router(
-    ecs.router, prefix="/api", tags=["ECS"], dependencies=auth_dependency
+    ecs.router, prefix="/api", tags=["ECS Containers"], dependencies=auth_dependency
 )
 app.include_router(
     terraform.router,
