@@ -26,6 +26,7 @@ import type {
   TestConnectionResponse,
 } from "@/types";
 import { TerraformBucketsSettings } from "@/components/settings/TerraformBucketsSettings";
+import { UserManagementPanel } from "@/components/settings/UserManagementPanel";
 
 export function SettingsPage() {
   const { user, logout } = useAuth();
@@ -186,6 +187,8 @@ export function SettingsPage() {
             </div>
           </div>
         )}
+
+        {activeTab === "user-management" && <UserManagementPanel />}
 
         {activeTab === "s3-buckets" && (
           <div className="rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">

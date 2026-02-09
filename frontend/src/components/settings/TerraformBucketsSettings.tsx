@@ -76,9 +76,7 @@ export function TerraformBucketsSettings() {
     const newEnabled = !bucket.enabled;
     // Optimistically update the UI
     setBuckets((prev) =>
-      prev.map((b) =>
-        b.id === bucket.id ? { ...b, enabled: newEnabled } : b,
-      ),
+      prev.map((b) => (b.id === bucket.id ? { ...b, enabled: newEnabled } : b)),
     );
     setError(null);
     try {
