@@ -75,6 +75,17 @@ describe("formatRelativeTime", () => {
     expect(result).toContain("7 days ago");
   });
 
+  it("treats datetime strings without timezone as UTC", () => {
+    // Backend may serialize datetimes without Z suffix
+    const result = formatRelativeTime("2024-01-15T11:55:00");
+    expect(result).toContain("minutes ago");
+  });
+
+  it("handles datetime strings with +00:00 offset", () => {
+    const result = formatRelativeTime("2024-01-15T11:55:00+00:00");
+    expect(result).toContain("minutes ago");
+  });
+
   it('returns "Unknown" for invalid date string', () => {
     expect(formatRelativeTime("not-a-date")).toBe("Unknown");
   });
@@ -92,6 +103,12 @@ describe("formatDateTime", () => {
   it("formats date correctly", () => {
     const result = formatDateTime("2024-01-15T14:30:45Z");
     expect(result).toMatch(/Jan 15, 2024/);
+  });
+
+  it("treats datetime strings without timezone as UTC", () => {
+    const withZ = formatDateTime("2024-01-15T14:30:45Z");
+    const withoutZ = formatDateTime("2024-01-15T14:30:45");
+    expect(withoutZ).toBe(withZ);
   });
 
   it('returns "Invalid date" for invalid date string', () => {
