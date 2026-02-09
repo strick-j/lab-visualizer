@@ -15,6 +15,7 @@ import {
   SubnetNode,
   EC2Node,
   RDSNode,
+  ECSContainerNode,
   InternetGatewayNode,
   NATGatewayNode,
 } from "./nodes";
@@ -27,6 +28,7 @@ const nodeTypes: NodeTypes = {
   subnet: SubnetNode,
   ec2: EC2Node,
   rds: RDSNode,
+  "ecs-container": ECSContainerNode,
   "internet-gateway": InternetGatewayNode,
   "nat-gateway": NATGatewayNode,
 };
