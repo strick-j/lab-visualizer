@@ -344,7 +344,9 @@ def validate_password_strength(password: str) -> list[str]:
 async def check_admin_exists(db: AsyncSession) -> bool:
     """Check if any admin user exists in the database."""
     result = await db.execute(
-        select(User).where(User.is_admin == True, User.is_active == True)  # noqa: E712
+        select(User)
+        .where(User.is_admin == True, User.is_active == True)  # noqa: E712
+        .limit(1)
     )
     return result.scalar_one_or_none() is not None
 
