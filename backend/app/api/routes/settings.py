@@ -389,7 +389,7 @@ async def update_terraform_bucket(
         setattr(bucket, field, value)
 
     await db.commit()
-    await db.refresh(bucket, attribute_names=["paths"])
+    await db.refresh(bucket)
     logger.info("User %s updated terraform bucket %s", current_user.username, bucket_id)
     return TerraformBucketResponse.model_validate(bucket)
 
