@@ -30,6 +30,12 @@ tf_state_bucket = "your-terraform-state-bucket"
 # oidc_client_id     = "0oa..."
 # oidc_client_secret = "..."
 
+# Admin credentials (optional - leave empty to use web /setup page)
+# When set, the admin password is stored in AWS Secrets Manager and the
+# admin user is auto-created/synced on every deployment startup.
+# admin_username = "admin"
+# admin_password = "YourStr0ng!Password"
+
 # Application settings
 log_level = "DEBUG"
 debug     = true
