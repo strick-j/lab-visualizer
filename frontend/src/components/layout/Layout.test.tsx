@@ -10,6 +10,9 @@ vi.mock("@/hooks", () => ({
       total_resources: 10,
     },
   }),
+  useAppInfo: () => ({
+    data: { version: "1.0.0", build_sha: "abc123", build_date: "", environment: "test", timestamp: "" },
+  }),
   useRefreshData: () => ({
     mutate: vi.fn(),
     isPending: false,
