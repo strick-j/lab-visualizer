@@ -9,6 +9,7 @@ vi.mock("@/pages", () => ({
   ),
   EC2ListPage: () => <div data-testid="ec2-page">EC2 Content</div>,
   RDSListPage: () => <div data-testid="rds-page">RDS Content</div>,
+  ECSListPage: () => <div data-testid="ecs-page">ECS Content</div>,
   VPCPage: () => <div data-testid="vpc-page">VPC Content</div>,
   TerraformPage: () => (
     <div data-testid="terraform-page">Terraform Content</div>

@@ -1,3 +1,7 @@
 export { ResourceTable } from "./ResourceTable";
 export { ResourceFilters } from "./ResourceFilters";
-export { EC2DetailPanel, RDSDetailPanel } from "./ResourceDetailPanel";
+export {
+  EC2DetailPanel,
+  RDSDetailPanel,
+  ECSDetailPanel,
+} from "./ResourceDetailPanel";

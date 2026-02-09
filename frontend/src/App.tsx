@@ -5,6 +5,7 @@ import {
   DashboardPage,
   EC2ListPage,
   RDSListPage,
+  ECSListPage,
   VPCPage,
   TerraformPage,
   TopologyPage,
@@ -52,6 +53,7 @@ function App() {
                 <Route index element={<DashboardPage />} />
                 <Route path="ec2" element={<EC2ListPage />} />
                 <Route path="rds" element={<RDSListPage />} />
+                <Route path="ecs" element={<ECSListPage />} />
                 <Route path="vpc" element={<VPCPage />} />
                 <Route path="terraform" element={<TerraformPage />} />
                 <Route path="topology" element={<TopologyPage />} />
