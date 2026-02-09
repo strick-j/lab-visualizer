@@ -467,7 +467,8 @@ async def update_user_status(
 
     action = "activated" if is_active else "deactivated"
     safe_username = _sanitize_for_log(user.username)
-    logger.info(f"User {safe_username} {action} by {acting_user.username}")
+    safe_actor = _sanitize_for_log(acting_user.username)
+    logger.info(f"User {safe_username} {action} by {safe_actor}")
 
     # Revoke all sessions when deactivating
     if not is_active:
@@ -506,7 +507,7 @@ async def update_user_role(
     await db.refresh(user)
 
     safe_username = _sanitize_for_log(user.username)
-    logger.info(
-        f"User {safe_username} role changed to '{role}' by {acting_user.username}"
-    )
+    safe_actor = _sanitize_for_log(acting_user.username)
+    safe_role = _sanitize_for_log(role)
+    logger.info(f"User {safe_username} role changed to '{safe_role}' by {safe_actor}")
     return user
