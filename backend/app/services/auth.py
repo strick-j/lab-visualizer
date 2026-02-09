@@ -303,7 +303,7 @@ async def revoke_all_user_sessions(db: AsyncSession, user_id: int) -> int:
         count += 1
 
     await db.commit()
-    logger.info(f"Revoked {count} sessions for user_id: {user_id}")
+    logger.info(f"Revoked {count} sessions for user_id: {int(user_id)}")
     return count
 
 
