@@ -14,6 +14,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.collectors.ec2 import EC2Collector
+from app.collectors.ecs import ECSCollector
 from app.collectors.eip import ElasticIPCollector
 from app.collectors.igw import InternetGatewayCollector
 from app.collectors.nat_gateway import NATGatewayCollector
@@ -25,6 +26,8 @@ from app.models.database import get_db
 from app.models.resources import (
     VPC,
     EC2Instance,
+    ECSCluster,
+    ECSService,
     ElasticIP,
     InternetGateway,
     NATGateway,
@@ -201,6 +204,13 @@ async def refresh_data(
         eip_count = await _sync_elastic_ips(db, eips, region.id)
         resources_updated += eip_count
         logger.info(f"Synced {eip_count} Elastic IPs")
+
+        # Collect ECS Clusters and Services
+        ecs_collector = ECSCollector()
+        ecs_clusters = await ecs_collector.collect()
+        ecs_count = await _sync_ecs_clusters(db, ecs_clusters, region.id)
+        resources_updated += ecs_count
+        logger.info(f"Synced {ecs_count} ECS clusters")
 
         # Update Terraform managed flags
         tf_count = await _sync_terraform_state(db)
@@ -761,6 +771,174 @@ async def _sync_elastic_ips(db: AsyncSession, eips: list, region_id: int) -> int
 
     await db.flush()
     return count
+
+
+async def _sync_ecs_clusters(
+    db: AsyncSession, clusters: list, region_id: int
+) -> int:
+    """Sync ECS clusters and their services to database, marking deleted ones."""
+    count = 0
+
+    # Get all existing cluster ARNs for this region
+    result = await db.execute(
+        select(ECSCluster.cluster_arn).where(ECSCluster.region_id == region_id)
+    )
+    existing_arns = set(row[0] for row in result.all())
+
+    # Track which clusters we see from AWS
+    seen_arns = set()
+
+    for cluster_data in clusters:
+        cluster_arn = cluster_data["cluster_arn"]
+        seen_arns.add(cluster_arn)
+
+        # Check if cluster exists
+        result = await db.execute(
+            select(ECSCluster).where(ECSCluster.cluster_arn == cluster_arn)
+        )
+        existing = result.scalar_one_or_none()
+
+        if existing:
+            # Update existing cluster and mark as not deleted
+            existing.cluster_name = cluster_data["cluster_name"]
+            existing.name = cluster_data.get("name")
+            existing.status = cluster_data["status"]
+            existing.registered_container_instances_count = cluster_data.get(
+                "registered_container_instances_count", 0
+            )
+            existing.running_tasks_count = cluster_data.get("running_tasks_count", 0)
+            existing.pending_tasks_count = cluster_data.get("pending_tasks_count", 0)
+            existing.active_services_count = cluster_data.get(
+                "active_services_count", 0
+            )
+            existing.tags = json.dumps(cluster_data.get("tags", {}))
+            existing.is_deleted = False
+            existing.deleted_at = None
+
+            # Sync services for this cluster
+            await _sync_ecs_services(
+                db, cluster_data.get("services", []), existing.id
+            )
+        else:
+            # Create new cluster
+            new_cluster = ECSCluster(
+                cluster_arn=cluster_arn,
+                region_id=region_id,
+                cluster_name=cluster_data["cluster_name"],
+                name=cluster_data.get("name"),
+                status=cluster_data["status"],
+                registered_container_instances_count=cluster_data.get(
+                    "registered_container_instances_count", 0
+                ),
+                running_tasks_count=cluster_data.get("running_tasks_count", 0),
+                pending_tasks_count=cluster_data.get("pending_tasks_count", 0),
+                active_services_count=cluster_data.get("active_services_count", 0),
+                tags=json.dumps(cluster_data.get("tags", {})),
+                is_deleted=False,
+            )
+            db.add(new_cluster)
+            await db.flush()  # Need the ID for services
+
+            # Sync services for this new cluster
+            await _sync_ecs_services(
+                db, cluster_data.get("services", []), new_cluster.id
+            )
+
+        count += 1
+
+    # Mark clusters that weren't in AWS response as deleted
+    deleted_arns = existing_arns - seen_arns
+    if deleted_arns:
+        result = await db.execute(
+            select(ECSCluster).where(
+                ECSCluster.cluster_arn.in_(deleted_arns),
+                ECSCluster.region_id == region_id,
+            )
+        )
+        for cluster in result.scalars():
+            if not cluster.is_deleted:
+                cluster.is_deleted = True
+                cluster.deleted_at = datetime.now(timezone.utc)
+                logger.info(f"Marked ECS cluster as deleted: {cluster.cluster_arn}")
+
+    await db.flush()
+    return count
+
+
+async def _sync_ecs_services(
+    db: AsyncSession, services: list, cluster_id: int
+) -> None:
+    """Sync ECS services for a given cluster."""
+    # Get all existing service ARNs for this cluster
+    result = await db.execute(
+        select(ECSService.service_arn).where(ECSService.cluster_id == cluster_id)
+    )
+    existing_arns = set(row[0] for row in result.all())
+
+    # Track which services we see from AWS
+    seen_arns = set()
+
+    for service_data in services:
+        service_arn = service_data["service_arn"]
+        seen_arns.add(service_arn)
+
+        # Check if service exists
+        result = await db.execute(
+            select(ECSService).where(ECSService.service_arn == service_arn)
+        )
+        existing = result.scalar_one_or_none()
+
+        if existing:
+            # Update existing service
+            existing.service_name = service_data["service_name"]
+            existing.status = service_data["status"]
+            existing.desired_count = service_data.get("desired_count", 0)
+            existing.running_count = service_data.get("running_count", 0)
+            existing.pending_count = service_data.get("pending_count", 0)
+            existing.launch_type = service_data.get("launch_type")
+            existing.task_definition = service_data.get("task_definition")
+            existing.subnet_ids = json.dumps(service_data.get("subnet_ids", []))
+            existing.security_groups = json.dumps(
+                service_data.get("security_groups", [])
+            )
+            existing.tags = json.dumps(service_data.get("tags", {}))
+            existing.is_deleted = False
+            existing.deleted_at = None
+        else:
+            # Create new service
+            new_service = ECSService(
+                service_arn=service_arn,
+                cluster_id=cluster_id,
+                service_name=service_data["service_name"],
+                status=service_data["status"],
+                desired_count=service_data.get("desired_count", 0),
+                running_count=service_data.get("running_count", 0),
+                pending_count=service_data.get("pending_count", 0),
+                launch_type=service_data.get("launch_type"),
+                task_definition=service_data.get("task_definition"),
+                subnet_ids=json.dumps(service_data.get("subnet_ids", [])),
+                security_groups=json.dumps(service_data.get("security_groups", [])),
+                tags=json.dumps(service_data.get("tags", {})),
+                is_deleted=False,
+            )
+            db.add(new_service)
+
+    # Mark services that weren't in AWS response as deleted
+    deleted_arns = existing_arns - seen_arns
+    if deleted_arns:
+        result = await db.execute(
+            select(ECSService).where(
+                ECSService.service_arn.in_(deleted_arns),
+                ECSService.cluster_id == cluster_id,
+            )
+        )
+        for service in result.scalars():
+            if not service.is_deleted:
+                service.is_deleted = True
+                service.deleted_at = datetime.now(timezone.utc)
+                logger.info(f"Marked ECS service as deleted: {service.service_arn}")
+
+    await db.flush()
 
 
 async def _sync_terraform_state(db: AsyncSession) -> int:
