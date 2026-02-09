@@ -14,6 +14,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.collectors.ec2 import EC2Collector
+from app.collectors.ecs import ECSCollector
 from app.collectors.eip import ElasticIPCollector
 from app.collectors.igw import InternetGatewayCollector
 from app.collectors.nat_gateway import NATGatewayCollector
@@ -25,6 +26,7 @@ from app.models.database import get_db
 from app.models.resources import (
     VPC,
     EC2Instance,
+    ECSContainer,
     ElasticIP,
     InternetGateway,
     NATGateway,
@@ -201,6 +203,13 @@ async def refresh_data(
         eip_count = await _sync_elastic_ips(db, eips, region.id)
         resources_updated += eip_count
         logger.info(f"Synced {eip_count} Elastic IPs")
+
+        # Collect ECS Containers
+        ecs_collector = ECSCollector()
+        ecs_containers = await ecs_collector.collect()
+        ecs_count = await _sync_ecs_containers(db, ecs_containers, region.id)
+        resources_updated += ecs_count
+        logger.info(f"Synced {ecs_count} ECS containers")
 
         # Update Terraform managed flags
         tf_count = await _sync_terraform_state(db)
@@ -758,6 +767,97 @@ async def _sync_elastic_ips(db: AsyncSession, eips: list, region_id: int) -> int
                 eip.is_deleted = True
                 eip.deleted_at = datetime.now(timezone.utc)
                 logger.info(f"Marked Elastic IP as deleted: {eip.allocation_id}")
+
+    await db.flush()
+    return count
+
+
+async def _sync_ecs_containers(
+    db: AsyncSession, containers: list, region_id: int
+) -> int:
+    """Sync ECS containers (tasks) to database, marking deleted ones."""
+    count = 0
+
+    # Get all existing task IDs for this region
+    result = await db.execute(
+        select(ECSContainer.task_id).where(ECSContainer.region_id == region_id)
+    )
+    existing_ids = set(row[0] for row in result.all())
+
+    # Track which containers we see from AWS
+    seen_ids = set()
+
+    for container_data in containers:
+        task_id = container_data["task_id"]
+        seen_ids.add(task_id)
+
+        # Check if container exists
+        result = await db.execute(
+            select(ECSContainer).where(ECSContainer.task_id == task_id)
+        )
+        existing = result.scalar_one_or_none()
+
+        if existing:
+            existing.name = container_data.get("name")
+            existing.cluster_name = container_data["cluster_name"]
+            existing.task_definition_arn = container_data.get("task_definition_arn")
+            existing.launch_type = container_data.get("launch_type", "UNKNOWN")
+            existing.status = container_data.get("status", "UNKNOWN")
+            existing.desired_status = container_data.get("desired_status")
+            existing.cpu = container_data.get("cpu", 0)
+            existing.memory = container_data.get("memory", 0)
+            existing.image = container_data.get("image")
+            existing.container_port = container_data.get("container_port")
+            existing.private_ip = container_data.get("private_ip")
+            existing.subnet_id = container_data.get("subnet_id")
+            existing.vpc_id = container_data.get("vpc_id")
+            existing.availability_zone = container_data.get("availability_zone")
+            existing.started_at = container_data.get("started_at")
+            existing.tags = json.dumps(container_data.get("tags", {}))
+            existing.is_deleted = False
+            existing.deleted_at = None
+        else:
+            new_container = ECSContainer(
+                task_id=task_id,
+                region_id=region_id,
+                name=container_data.get("name"),
+                cluster_name=container_data["cluster_name"],
+                task_definition_arn=container_data.get("task_definition_arn"),
+                launch_type=container_data.get("launch_type", "UNKNOWN"),
+                status=container_data.get("status", "UNKNOWN"),
+                desired_status=container_data.get("desired_status"),
+                cpu=container_data.get("cpu", 0),
+                memory=container_data.get("memory", 0),
+                image=container_data.get("image"),
+                container_port=container_data.get("container_port"),
+                private_ip=container_data.get("private_ip"),
+                subnet_id=container_data.get("subnet_id"),
+                vpc_id=container_data.get("vpc_id"),
+                availability_zone=container_data.get("availability_zone"),
+                started_at=container_data.get("started_at"),
+                tags=json.dumps(container_data.get("tags", {})),
+                is_deleted=False,
+            )
+            db.add(new_container)
+
+        count += 1
+
+    # Mark containers that weren't in AWS response as deleted
+    deleted_ids = existing_ids - seen_ids
+    if deleted_ids:
+        result = await db.execute(
+            select(ECSContainer).where(
+                ECSContainer.task_id.in_(deleted_ids),
+                ECSContainer.region_id == region_id,
+            )
+        )
+        for container in result.scalars():
+            if not container.is_deleted:
+                container.is_deleted = True
+                container.deleted_at = datetime.now(timezone.utc)
+                logger.info(
+                    f"Marked ECS container as deleted: {container.task_id}"
+                )
 
     await db.flush()
     return count
