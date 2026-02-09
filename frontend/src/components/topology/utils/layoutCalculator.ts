@@ -227,6 +227,8 @@ function layoutVPC(
       tfResourceAddress: vpc.tf_resource_address || undefined,
       vpcId: vpc.id,
       cidrBlock: vpc.cidr_block,
+      minWidth: vpcWidth,
+      minHeight: vpcHeight,
     } as VPCNodeData,
     style: {
       width: vpcWidth,
@@ -363,6 +365,8 @@ function layoutSubnet(
       cidrBlock: subnet.cidr_block,
       subnetType: subnet.subnet_type,
       availabilityZone: subnet.availability_zone,
+      minWidth: dims.width,
+      minHeight: subnetHeight,
     } as SubnetNodeData,
     style: {
       width: dims.width,
