@@ -141,10 +141,7 @@ export function ECSDetailPanel({ cluster, onClose }: ECSDetailPanelProps) {
                 Terraform
               </h4>
               <div className="divide-y divide-gray-100 rounded-lg border border-gray-200 bg-gray-50 px-3 dark:divide-gray-700 dark:border-gray-700 dark:bg-gray-700">
-                <DetailRow
-                  label="State File"
-                  value={cluster.tf_state_source}
-                />
+                <DetailRow label="State File" value={cluster.tf_state_source} />
                 <DetailRow
                   label="Address"
                   value={cluster.tf_resource_address}

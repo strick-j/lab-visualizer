@@ -162,10 +162,7 @@ export function ECSListPage() {
       )}
 
       {selectedCluster && (
-        <ECSDetailPanel
-          cluster={selectedCluster}
-          onClose={handleCloseDetail}
-        />
+        <ECSDetailPanel cluster={selectedCluster} onClose={handleCloseDetail} />
       )}
     </div>
   );

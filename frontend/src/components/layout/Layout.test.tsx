@@ -11,7 +11,13 @@ vi.mock("@/hooks", () => ({
     },
   }),
   useAppInfo: () => ({
-    data: { version: "1.0.0", build_sha: "abc123", build_date: "", environment: "test", timestamp: "" },
+    data: {
+      version: "1.0.0",
+      build_sha: "abc123",
+      build_date: "",
+      environment: "test",
+      timestamp: "",
+    },
   }),
   useRefreshData: () => ({
     mutate: vi.fn(),
