@@ -51,7 +51,17 @@ The ALB uses **path-based routing** to direct traffic to the appropriate service
 | `ecr` | Elastic Container Registry for Docker images |
 | `alb` | Application Load Balancer with HTTPS |
 | `ecs` | ECS Fargate cluster, service, and task definition (used for both backend and frontend) |
+| `iam` | IAM roles and policies for the application task role (decoupled from ECS for independent lifecycle) |
 | `secrets` | AWS Secrets Manager for sensitive configuration |
+
+### IAM Module
+
+The `iam` module is intentionally separate from the `ecs` module so that the application task role and its policies persist independently of the deployment mechanism. It creates:
+
+- **Application task role**: Assumed by ECS tasks via `ecs-tasks.amazonaws.com`
+- **EC2 read-only policy**: `DescribeInstances`, `DescribeVpcs`, `DescribeSubnets`, `DescribeRouteTables`, `DescribeInternetGateways`, `DescribeNatGateways`, `DescribeAddresses`, etc.
+- **RDS read-only policy**: `DescribeDBInstances`, `DescribeDBClusters`, `ListTagsForResource`
+- **S3 Terraform state policy**: `GetObject`, `ListBucket`, `GetBucketLocation` scoped to the current AWS account
 
 ## Prerequisites
 
