@@ -14,7 +14,6 @@ from app.api.deps import get_current_user
 from app.api.routes import (
     auth,
     ec2,
-    ecs,
     eip,
     health,
     igw,
@@ -125,9 +124,6 @@ app.include_router(
 )
 app.include_router(
     eip.router, prefix="/api", tags=["Elastic IPs"], dependencies=auth_dependency
-)
-app.include_router(
-    ecs.router, prefix="/api", tags=["ECS"], dependencies=auth_dependency
 )
 app.include_router(
     terraform.router,
