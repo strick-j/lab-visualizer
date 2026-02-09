@@ -151,9 +151,9 @@ resource "aws_iam_role_policy" "ecs_task_execution_secrets" {
 }
 
 # Task Role (used by the application container)
-# Only created if no external task_role_arn is provided
+# Only created if create_task_role is true (no external role provided)
 resource "aws_iam_role" "ecs_task" {
-  count = var.task_role_arn == "" ? 1 : 0
+  count = var.create_task_role ? 1 : 0
   name  = "${var.project_name}-${var.environment}-ecs-task-role"
 
   assume_role_policy = jsonencode({
@@ -173,14 +173,13 @@ resource "aws_iam_role" "ecs_task" {
 }
 
 locals {
-  task_role_arn = var.task_role_arn != "" ? var.task_role_arn : aws_iam_role.ecs_task[0].arn
-  task_role_id  = var.task_role_arn != "" ? null : aws_iam_role.ecs_task[0].id
+  task_role_arn = var.create_task_role ? aws_iam_role.ecs_task[0].arn : var.task_role_arn
 }
 
 # Policy for AWS API access (EC2, RDS read-only)
 # Only created when no external task role is provided
 resource "aws_iam_role_policy" "ecs_task_aws_access" {
-  count = var.task_role_arn == "" ? 1 : 0
+  count = var.create_task_role ? 1 : 0
   name  = "aws-api-access"
   role  = aws_iam_role.ecs_task[0].id
 
@@ -222,7 +221,7 @@ resource "aws_iam_role_policy" "ecs_task_aws_access" {
 # scoped to the current AWS account rather than a single pre-configured bucket.
 # Only created when no external task role is provided.
 resource "aws_iam_role_policy" "ecs_task_s3_access" {
-  count = var.task_role_arn == "" ? 1 : 0
+  count = var.create_task_role ? 1 : 0
   name  = "s3-terraform-state-access"
   role  = aws_iam_role.ecs_task[0].id
 
