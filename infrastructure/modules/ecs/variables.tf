@@ -196,6 +196,16 @@ variable "memory_target_value" {
 }
 
 # -----------------------------------------------------------------------------
+# IAM Configuration
+# -----------------------------------------------------------------------------
+
+variable "task_role_arn" {
+  description = "ARN of an external task role. If provided, the module will use it instead of creating its own task role with AWS API policies."
+  type        = string
+  default     = ""
+}
+
+# -----------------------------------------------------------------------------
 # Tags
 # -----------------------------------------------------------------------------
 

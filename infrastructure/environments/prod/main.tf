@@ -176,6 +176,18 @@ module "alb" {
 }
 
 # -----------------------------------------------------------------------------
+# IAM Module - Backend Application Role
+# -----------------------------------------------------------------------------
+
+module "iam" {
+  source = "../../modules/iam"
+
+  project_name = var.project_name
+  environment  = var.environment
+  tags         = local.common_tags
+}
+
+# -----------------------------------------------------------------------------
 # ECS Module
 # -----------------------------------------------------------------------------
 
@@ -200,6 +212,9 @@ module "ecs" {
   task_cpu      = 1024 # 1 vCPU
   task_memory   = 2048 # 2 GB
   desired_count = 2    # Multi-AZ
+
+  # IAM - use the standalone application task role
+  task_role_arn = module.iam.task_role_arn
 
   # Environment and secrets
   environment_variables = local.environment_variables

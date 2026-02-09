@@ -470,26 +470,47 @@ See `.env.example` for complete list. Key variables:
 
 ## IAM Permissions Required
 
+The backend application task role is managed by the standalone `iam` module
+(`infrastructure/modules/iam/`), decoupled from the ECS module so that it
+persists independently of the deployment mechanism.
+
 ```json
 {
   "Version": "2012-10-17",
   "Statement": [
     {
+      "Sid": "EC2ReadAccess",
       "Effect": "Allow",
       "Action": [
         "ec2:DescribeInstances",
         "ec2:DescribeInstanceStatus",
+        "ec2:DescribeTags",
         "ec2:DescribeVpcs",
         "ec2:DescribeSubnets",
+        "ec2:DescribeRouteTables",
         "ec2:DescribeInternetGateways",
         "ec2:DescribeNatGateways",
-        "ec2:DescribeAddresses",
+        "ec2:DescribeAddresses"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "RDSReadAccess",
+      "Effect": "Allow",
+      "Action": [
         "rds:DescribeDBInstances",
-        "ecs:ListClusters",
-        "ecs:ListTasks",
-        "ecs:DescribeTasks",
+        "rds:DescribeDBClusters",
+        "rds:ListTagsForResource"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "S3TerraformStateAccess",
+      "Effect": "Allow",
+      "Action": [
         "s3:GetObject",
-        "s3:ListBucket"
+        "s3:ListBucket",
+        "s3:GetBucketLocation"
       ],
       "Resource": "*"
     }

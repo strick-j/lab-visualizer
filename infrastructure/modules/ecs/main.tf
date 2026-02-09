@@ -151,8 +151,10 @@ resource "aws_iam_role_policy" "ecs_task_execution_secrets" {
 }
 
 # Task Role (used by the application container)
+# Only created if no external task_role_arn is provided
 resource "aws_iam_role" "ecs_task" {
-  name = "${var.project_name}-${var.environment}-ecs-task-role"
+  count = var.task_role_arn == "" ? 1 : 0
+  name  = "${var.project_name}-${var.environment}-ecs-task-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -170,10 +172,17 @@ resource "aws_iam_role" "ecs_task" {
   tags = var.tags
 }
 
-# Policy for AWS API access (EC2, RDS, ECS read-only)
+locals {
+  task_role_arn = var.task_role_arn != "" ? var.task_role_arn : aws_iam_role.ecs_task[0].arn
+  task_role_id  = var.task_role_arn != "" ? null : aws_iam_role.ecs_task[0].id
+}
+
+# Policy for AWS API access (EC2, RDS read-only)
+# Only created when no external task role is provided
 resource "aws_iam_role_policy" "ecs_task_aws_access" {
-  name = "aws-api-access"
-  role = aws_iam_role.ecs_task.id
+  count = var.task_role_arn == "" ? 1 : 0
+  name  = "aws-api-access"
+  role  = aws_iam_role.ecs_task[0].id
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -203,16 +212,6 @@ resource "aws_iam_role_policy" "ecs_task_aws_access" {
           "rds:ListTagsForResource"
         ]
         Resource = "*"
-      },
-      {
-        Sid    = "ECSReadAccess"
-        Effect = "Allow"
-        Action = [
-          "ecs:ListClusters",
-          "ecs:ListTasks",
-          "ecs:DescribeTasks"
-        ]
-        Resource = "*"
       }
     ]
   })
@@ -221,9 +220,11 @@ resource "aws_iam_role_policy" "ecs_task_aws_access" {
 # S3 access for reading Terraform state files from any bucket in this account.
 # Buckets can be added dynamically via the Settings UI, so this uses a wildcard
 # scoped to the current AWS account rather than a single pre-configured bucket.
+# Only created when no external task role is provided.
 resource "aws_iam_role_policy" "ecs_task_s3_access" {
-  name = "s3-terraform-state-access"
-  role = aws_iam_role.ecs_task.id
+  count = var.task_role_arn == "" ? 1 : 0
+  name  = "s3-terraform-state-access"
+  role  = aws_iam_role.ecs_task[0].id
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -270,7 +271,7 @@ resource "aws_ecs_task_definition" "main" {
   cpu                      = var.task_cpu
   memory                   = var.task_memory
   execution_role_arn       = aws_iam_role.ecs_task_execution.arn
-  task_role_arn            = aws_iam_role.ecs_task.arn
+  task_role_arn            = local.task_role_arn
 
   container_definitions = jsonencode([
     {
