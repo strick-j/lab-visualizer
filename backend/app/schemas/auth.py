@@ -44,6 +44,7 @@ class UserResponse(BaseModel):
     auth_provider: str
     is_active: bool
     is_admin: bool
+    role: str = "user"
     last_login_at: Optional[datetime] = None
     created_at: datetime
 
@@ -101,3 +102,25 @@ class SetupStatusResponse(BaseModel):
 
     setup_required: bool
     message: str
+
+
+# --- User Management Schemas ---
+
+
+class UserListResponse(BaseModel):
+    """Response model for listing users."""
+
+    users: list[UserResponse]
+    total: int
+
+
+class UserStatusUpdate(BaseModel):
+    """Request model for updating user active status."""
+
+    is_active: bool
+
+
+class UserRoleUpdate(BaseModel):
+    """Request model for updating user role."""
+
+    role: str = Field(..., pattern="^(user|admin)$")

@@ -1,7 +1,8 @@
 """
 User management API routes.
 
-Provides endpoints for user account operations such as password changes.
+Provides endpoints for user account operations such as password changes,
+user listing, status management, and role assignment.
 """
 
 import logging
@@ -9,11 +10,23 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_active_user
+from app.api.deps import get_current_active_user, get_current_admin_user
 from app.models.auth import User
 from app.models.database import get_db
-from app.schemas.auth import PasswordChange, UserResponse
-from app.services.auth import change_user_password, revoke_all_user_sessions
+from app.schemas.auth import (
+    PasswordChange,
+    UserListResponse,
+    UserResponse,
+    UserRoleUpdate,
+    UserStatusUpdate,
+)
+from app.services.auth import (
+    change_user_password,
+    list_all_users,
+    revoke_all_user_sessions,
+    update_user_role,
+    update_user_status,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -62,3 +75,69 @@ async def update_user_password(
 
     await db.refresh(current_user)
     return UserResponse.model_validate(current_user)
+
+
+@router.get("", response_model=UserListResponse)
+async def get_users(
+    current_user: User = Depends(get_current_admin_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    List all users.
+
+    Requires admin privileges. Returns both local and OIDC users
+    with their current status and role information.
+    """
+    users = await list_all_users(db)
+    return UserListResponse(
+        users=[UserResponse.model_validate(u) for u in users],
+        total=len(users),
+    )
+
+
+@router.patch("/{user_id}/status", response_model=UserResponse)
+async def patch_user_status(
+    user_id: int,
+    status_update: UserStatusUpdate,
+    current_user: User = Depends(get_current_admin_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Enable or disable a user account.
+
+    Requires admin privileges. Admins cannot deactivate their own account.
+    Deactivating a user revokes all their active sessions.
+    """
+    try:
+        user = await update_user_status(
+            db, user_id, status_update.is_active, current_user
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+    return UserResponse.model_validate(user)
+
+
+@router.patch("/{user_id}/role", response_model=UserResponse)
+async def patch_user_role(
+    user_id: int,
+    role_update: UserRoleUpdate,
+    current_user: User = Depends(get_current_admin_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Update a user's role.
+
+    Requires admin privileges. Admins cannot remove their own admin role.
+    Valid roles: 'user', 'admin'.
+    """
+    try:
+        user = await update_user_role(db, user_id, role_update.role, current_user)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+    return UserResponse.model_validate(user)

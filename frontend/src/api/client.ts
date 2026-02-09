@@ -18,6 +18,9 @@ import type {
   LoginCredentials,
   TokenResponse,
   User,
+  UserListResponse,
+  UserStatusUpdate,
+  UserRoleUpdate,
   OIDCLoginResponse,
   AuthSettingsResponse,
   OIDCSettings,
@@ -377,6 +380,27 @@ export async function changeUserPassword(
   data: PasswordChangeRequest,
 ): Promise<User> {
   const response = await api.put(`/users/${userId}/password`, data);
+  return response.data;
+}
+
+export async function getUsers(): Promise<UserListResponse> {
+  const response = await api.get("/users");
+  return response.data;
+}
+
+export async function updateUserStatus(
+  userId: number,
+  data: UserStatusUpdate,
+): Promise<User> {
+  const response = await api.patch(`/users/${userId}/status`, data);
+  return response.data;
+}
+
+export async function updateUserRole(
+  userId: number,
+  data: UserRoleUpdate,
+): Promise<User> {
+  const response = await api.patch(`/users/${userId}/role`, data);
   return response.data;
 }
 
