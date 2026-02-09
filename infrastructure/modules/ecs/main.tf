@@ -170,7 +170,7 @@ resource "aws_iam_role" "ecs_task" {
   tags = var.tags
 }
 
-# Policy for AWS API access (EC2, RDS read-only)
+# Policy for AWS API access (EC2, RDS, ECS read-only)
 resource "aws_iam_role_policy" "ecs_task_aws_access" {
   name = "aws-api-access"
   role = aws_iam_role.ecs_task.id
@@ -201,6 +201,16 @@ resource "aws_iam_role_policy" "ecs_task_aws_access" {
           "rds:DescribeDBInstances",
           "rds:DescribeDBClusters",
           "rds:ListTagsForResource"
+        ]
+        Resource = "*"
+      },
+      {
+        Sid    = "ECSReadAccess"
+        Effect = "Allow"
+        Action = [
+          "ecs:ListClusters",
+          "ecs:ListTasks",
+          "ecs:DescribeTasks"
         ]
         Resource = "*"
       }
