@@ -128,6 +128,24 @@ function getResourceDetails(
       details.push({ label: "Type", value: data.subnetType });
       details.push({ label: "AZ", value: data.availabilityZone });
       break;
+
+    case "ecs-container":
+      details.push({ label: "Task ID", value: data.taskId });
+      details.push({ label: "Cluster", value: data.clusterName });
+      details.push({ label: "Launch Type", value: data.launchType });
+      details.push({ label: "CPU", value: String(data.cpu) });
+      details.push({ label: "Memory", value: `${data.memory} MB` });
+      details.push({ label: "Status", value: data.status });
+      if (data.image) {
+        details.push({ label: "Image", value: data.image });
+      }
+      if (data.containerPort) {
+        details.push({ label: "Port", value: String(data.containerPort) });
+      }
+      if (data.privateIp) {
+        details.push({ label: "Private IP", value: data.privateIp });
+      }
+      break;
   }
 
   return details;
@@ -137,6 +155,7 @@ function getResourceTypeLabel(type: TopologyNodeData["type"]): string {
   const labels: Record<TopologyNodeData["type"], string> = {
     ec2: "EC2 Instance",
     rds: "RDS Database",
+    "ecs-container": "ECS Container",
     "nat-gateway": "NAT Gateway",
     "internet-gateway": "Internet Gateway",
     vpc: "VPC",

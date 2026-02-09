@@ -4,6 +4,7 @@ import {
   Boxes,
   Server,
   Database,
+  Container,
   Globe,
   ArrowUpDown,
   ChevronDown,
@@ -16,6 +17,7 @@ interface TopologyStats {
   total_subnets: number;
   total_ec2: number;
   total_rds: number;
+  total_ecs_containers: number;
 }
 
 interface TopologyLegendProps {
@@ -46,6 +48,12 @@ const legendItems = [
     label: "RDS Database",
     color: "text-blue-600 dark:text-blue-400",
     bg: "bg-blue-100 dark:bg-blue-900/50",
+  },
+  {
+    icon: Container,
+    label: "ECS Container",
+    color: "text-teal-600 dark:text-teal-400",
+    bg: "bg-teal-100 dark:bg-teal-900/50",
   },
   {
     icon: Globe,
@@ -107,6 +115,12 @@ export function TopologyLegend({ stats }: TopologyLegendProps) {
               <span className="text-gray-500 dark:text-gray-400">RDS:</span>
               <span className="font-medium text-gray-900 dark:text-gray-100">
                 {stats.total_rds}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-500 dark:text-gray-400">ECS:</span>
+              <span className="font-medium text-gray-900 dark:text-gray-100">
+                {stats.total_ecs_containers}
               </span>
             </div>
           </div>

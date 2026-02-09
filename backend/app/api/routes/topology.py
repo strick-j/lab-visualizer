@@ -16,6 +16,7 @@ from app.models.database import get_db
 from app.models.resources import (
     VPC,
     EC2Instance,
+    ECSContainer,
     ElasticIP,
     InternetGateway,
     NATGateway,
@@ -26,6 +27,7 @@ from app.models.resources import (
 from app.schemas.resources import (
     DisplayStatus,
     TopologyEC2Instance,
+    TopologyECSContainer,
     TopologyElasticIP,
     TopologyInternetGateway,
     TopologyMeta,
@@ -92,6 +94,26 @@ def _get_display_status(state: str, resource_type: str) -> DisplayStatus:
             return DisplayStatus.ERROR
         return DisplayStatus.UNKNOWN
 
+    # ECS task states (uppercase)
+    if resource_type == "ecs":
+        state_upper = state.upper() if state else ""
+        if state_upper == "RUNNING":
+            return DisplayStatus.ACTIVE
+        elif state_upper == "STOPPED":
+            return DisplayStatus.INACTIVE
+        elif state_upper in (
+            "PROVISIONING",
+            "PENDING",
+            "ACTIVATING",
+            "DEPROVISIONING",
+            "STOPPING",
+            "DEACTIVATING",
+        ):
+            return DisplayStatus.TRANSITIONING
+        elif state_upper == "DELETED":
+            return DisplayStatus.ERROR
+        return DisplayStatus.UNKNOWN
+
     return DisplayStatus.UNKNOWN
 
 
@@ -124,6 +146,7 @@ async def get_topology(
     total_subnets = 0
     total_ec2 = 0
     total_rds = 0
+    total_ecs_containers = 0
     total_nat_gateways = 0
     total_igws = 0
     total_eips = 0
@@ -250,6 +273,39 @@ async def get_topology(
                         )
                     )
 
+            # Get ECS containers in this subnet
+            ecs_result = await db.execute(
+                select(ECSContainer).where(
+                    ECSContainer.subnet_id == subnet.subnet_id,
+                    ECSContainer.tf_managed == True,
+                    ECSContainer.is_deleted == False,
+                )
+            )
+            ecs_containers = ecs_result.scalars().all()
+
+            topology_ecs = []
+            for ecs_container in ecs_containers:
+                total_ecs_containers += 1
+                topology_ecs.append(
+                    TopologyECSContainer(
+                        id=ecs_container.task_id,
+                        name=ecs_container.name,
+                        cluster_name=ecs_container.cluster_name,
+                        launch_type=ecs_container.launch_type,
+                        status=ecs_container.status,
+                        display_status=_get_display_status(
+                            ecs_container.status, "ecs"
+                        ),
+                        cpu=ecs_container.cpu,
+                        memory=ecs_container.memory,
+                        image=ecs_container.image,
+                        container_port=ecs_container.container_port,
+                        private_ip=ecs_container.private_ip,
+                        tf_managed=True,
+                        tf_resource_address=ecs_container.tf_resource_address,
+                    )
+                )
+
             topology_subnets.append(
                 TopologySubnet(
                     id=subnet.subnet_id,
@@ -263,6 +319,7 @@ async def get_topology(
                     nat_gateway=topology_nat,
                     ec2_instances=topology_ec2,
                     rds_instances=topology_rds,
+                    ecs_containers=topology_ecs,
                 )
             )
 
@@ -350,6 +407,7 @@ async def get_topology(
             total_subnets=total_subnets,
             total_ec2=total_ec2,
             total_rds=total_rds,
+            total_ecs_containers=total_ecs_containers,
             total_nat_gateways=total_nat_gateways,
             total_internet_gateways=total_igws,
             total_elastic_ips=total_eips,

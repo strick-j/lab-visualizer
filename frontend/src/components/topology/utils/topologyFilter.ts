@@ -11,6 +11,7 @@ import type {
   TopologySubnet,
   TopologyEC2Instance,
   TopologyRDSInstance,
+  TopologyECSContainer,
   TopologyNATGateway,
   TopologyFilters,
   TopologyMeta,
@@ -91,6 +92,30 @@ function filterRDS(
   });
 }
 
+function filterECS(
+  containers: TopologyECSContainer[],
+  filters: TopologyFilters,
+): TopologyECSContainer[] {
+  if (!containers) return [];
+  return containers.filter((ecs) => {
+    if (filters.status && ecs.display_status !== filters.status) return false;
+    if (
+      filters.search &&
+      !matchesSearch(
+        filters.search,
+        ecs.name,
+        ecs.id,
+        ecs.cluster_name,
+        ecs.launch_type,
+        ecs.image,
+        ecs.status,
+      )
+    )
+      return false;
+    return true;
+  });
+}
+
 function filterNATGateway(
   nat: TopologyNATGateway | null,
   filters: TopologyFilters,
@@ -120,6 +145,7 @@ function filterSubnets(
       ...subnet,
       ec2_instances: filterEC2(subnet.ec2_instances, filters),
       rds_instances: filterRDS(subnet.rds_instances, filters),
+      ecs_containers: filterECS(subnet.ecs_containers, filters),
       nat_gateway: filterNATGateway(subnet.nat_gateway, filters),
     }))
     .filter((subnet) => {
@@ -142,6 +168,7 @@ function filterSubnets(
         return (
           subnet.ec2_instances.length > 0 ||
           subnet.rds_instances.length > 0 ||
+          subnet.ecs_containers.length > 0 ||
           subnet.nat_gateway !== null
         );
       }
@@ -151,6 +178,7 @@ function filterSubnets(
         return (
           subnet.ec2_instances.length > 0 ||
           subnet.rds_instances.length > 0 ||
+          subnet.ecs_containers.length > 0 ||
           subnet.nat_gateway !== null
         );
       }
@@ -163,6 +191,7 @@ function computeFilteredMeta(vpcs: TopologyVPC[]): TopologyMeta {
   let total_subnets = 0;
   let total_ec2 = 0;
   let total_rds = 0;
+  let total_ecs_containers = 0;
   let total_nat_gateways = 0;
   let total_internet_gateways = 0;
 
@@ -172,6 +201,7 @@ function computeFilteredMeta(vpcs: TopologyVPC[]): TopologyMeta {
       total_subnets++;
       total_ec2 += subnet.ec2_instances.length;
       total_rds += subnet.rds_instances.length;
+      total_ecs_containers += subnet.ecs_containers?.length || 0;
       if (subnet.nat_gateway) total_nat_gateways++;
     }
   }
@@ -181,6 +211,7 @@ function computeFilteredMeta(vpcs: TopologyVPC[]): TopologyMeta {
     total_subnets,
     total_ec2,
     total_rds,
+    total_ecs_containers,
     total_nat_gateways,
     total_internet_gateways,
     total_elastic_ips: 0,

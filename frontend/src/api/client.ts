@@ -4,6 +4,7 @@ import type {
   AppInfo,
   EC2Instance,
   RDSInstance,
+  ECSContainer,
   VPC,
   Subnet,
   InternetGateway,
@@ -151,6 +152,31 @@ export async function getRDSInstance(
   dbIdentifier: string,
 ): Promise<RDSInstance> {
   const response = await api.get(`/rds/${dbIdentifier}`);
+  return response.data;
+}
+
+// =============================================================================
+// ECS Containers
+// =============================================================================
+
+export async function getECSContainers(
+  filters?: ResourceFilters,
+): Promise<ListResponse<ECSContainer>> {
+  const params = new URLSearchParams();
+  if (filters?.status) params.append("status", filters.status);
+  if (filters?.region) params.append("region", filters.region);
+  if (filters?.search) params.append("search", filters.search);
+  if (filters?.tf_managed !== undefined)
+    params.append("tf_managed", String(filters.tf_managed));
+  if (filters?.cluster_name) params.append("cluster_name", filters.cluster_name);
+  if (filters?.launch_type) params.append("launch_type", filters.launch_type);
+
+  const response = await api.get("/ecs", { params });
+  return response.data;
+}
+
+export async function getECSContainer(taskId: string): Promise<ECSContainer> {
+  const response = await api.get(`/ecs/${taskId}`);
   return response.data;
 }
 
