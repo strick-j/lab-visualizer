@@ -14,7 +14,6 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.collectors.ec2 import EC2Collector
-from app.collectors.ecs import ECSCollector
 from app.collectors.eip import ElasticIPCollector
 from app.collectors.igw import InternetGatewayCollector
 from app.collectors.nat_gateway import NATGatewayCollector
@@ -210,6 +209,7 @@ async def refresh_data(
         ecs_count = await _sync_ecs_containers(db, ecs_containers, region.id)
         resources_updated += ecs_count
         logger.info(f"Synced {ecs_count} ECS containers")
+
 
         # Update Terraform managed flags
         tf_count = await _sync_terraform_state(db)
@@ -861,6 +861,7 @@ async def _sync_ecs_containers(
 
     await db.flush()
     return count
+
 
 
 async def _sync_terraform_state(db: AsyncSession) -> int:

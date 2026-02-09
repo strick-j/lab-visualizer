@@ -21,7 +21,7 @@ variable "environment" {
 variable "aws_region" {
   description = "AWS region"
   type        = string
-  default     = "us-east-1"
+  default     = "us-east-2"
 }
 
 # -----------------------------------------------------------------------------
@@ -37,7 +37,7 @@ variable "vpc_cidr" {
 variable "availability_zones" {
   description = "List of availability zones (use 3 for production)"
   type        = list(string)
-  default     = ["us-east-1a", "us-east-1b", "us-east-1c"]
+  default     = ["us-east-2a", "us-east-2b", "us-east-2c"]
 }
 
 variable "allowed_ingress_cidrs" {

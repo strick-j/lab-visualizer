@@ -21,7 +21,7 @@ terraform {
   # backend "s3" {
   #   bucket         = "your-terraform-state-bucket"
   #   key            = "aws-infra-visualizer/dev/terraform.tfstate"
-  #   region         = "us-east-1"
+  #   region         = "us-east-2"
   #   encrypt        = true
   #   dynamodb_table = "terraform-locks"
   # }

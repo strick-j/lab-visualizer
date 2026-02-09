@@ -6,11 +6,11 @@
 # Project settings
 project_name = "aws-infra-visualizer"
 environment  = "prod"
-aws_region   = "us-east-1"
+aws_region   = "us-east-2"
 
 # Network settings (3 AZs for production HA)
 vpc_cidr           = "10.1.0.0/16"
-availability_zones = ["us-east-1a", "us-east-1b", "us-east-1c"]
+availability_zones = ["us-east-2a", "us-east-2b", "us-east-2c"]
 
 # Container settings
 container_port    = 8000

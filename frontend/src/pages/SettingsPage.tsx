@@ -312,7 +312,7 @@ function OIDCSettingsForm({ settings, onUpdate }: OIDCSettingsFormProps) {
             OpenID Connect (OIDC)
           </h3>
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            Configure OIDC authentication with providers like Okta, Azure AD,
+            Configure OIDC authentication with providers like CyberArk, Entra,
             Google, or Auth0
           </p>
         </div>
