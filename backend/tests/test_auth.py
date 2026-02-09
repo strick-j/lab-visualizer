@@ -55,7 +55,6 @@ async def test_auth_config_with_multiple_admins(client):
     MultipleResultsFound when more than one admin existed, causing a 500.
     """
     from app.models.database import async_session_maker
-    from app.services.auth import create_initial_admin
 
     # Create first admin via setup endpoint
     response = await client.post(

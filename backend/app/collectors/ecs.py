@@ -25,7 +25,7 @@ class ECSCollector(BaseCollector):
             List of ECS task/container data dictionaries
         """
         logger.info(f"Collecting ECS containers from region: {self.region}")
-        containers = []
+        containers: List[Dict[str, Any]] = []
 
         try:
             ecs = self._get_client("ecs")
@@ -112,9 +112,7 @@ class ECSCollector(BaseCollector):
                     container_port = network_bindings[0].get("containerPort")
                 # Also check port mappings from network interfaces
                 if not container_port:
-                    network_interfaces = first_container.get(
-                        "networkInterfaces", []
-                    )
+                    network_interfaces = first_container.get("networkInterfaces", [])
                     if network_interfaces:
                         # Port info may not be directly available here
                         pass
@@ -197,9 +195,7 @@ class ECSCollector(BaseCollector):
                     e, f"ECS task lookup: {cluster_name}/{task_id}"
                 )
         except Exception as e:
-            logger.exception(
-                f"Error collecting ECS task {cluster_name}/{task_id}: {e}"
-            )
+            logger.exception(f"Error collecting ECS task {cluster_name}/{task_id}: {e}")
 
         return None
 
