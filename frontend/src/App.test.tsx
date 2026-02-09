@@ -34,6 +34,9 @@ vi.mock("@/hooks", () => ({
     mutate: vi.fn(),
     isPending: false,
   }),
+  useAppInfo: () => ({
+    data: { version: "0.0.0-test", build_sha: "abc1234", environment: "test" },
+  }),
 }));
 
 // Mock the auth context
