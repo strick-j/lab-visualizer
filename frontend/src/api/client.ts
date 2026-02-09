@@ -168,7 +168,8 @@ export async function getECSContainers(
   if (filters?.search) params.append("search", filters.search);
   if (filters?.tf_managed !== undefined)
     params.append("tf_managed", String(filters.tf_managed));
-  if (filters?.cluster_name) params.append("cluster_name", filters.cluster_name);
+  if (filters?.cluster_name)
+    params.append("cluster_name", filters.cluster_name);
   if (filters?.launch_type) params.append("launch_type", filters.launch_type);
 
   const response = await api.get("/ecs", { params });
