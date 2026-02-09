@@ -864,11 +864,13 @@ async def _sync_ecs_containers(
 
 
 async def _sync_terraform_state(db: AsyncSession) -> int:
-    """Update Terraform tracking information for resources."""
-    if not settings.tf_state_bucket:
-        logger.info("No Terraform state bucket configured, skipping TF sync")
-        return 0
+    """Update Terraform tracking information for resources.
 
+    Bucket configuration is resolved by TerraformStateAggregator which
+    checks the database (TerraformStateBucket rows) *and* the
+    TF_STATE_BUCKET env-var, so we must not bail out early based solely
+    on the env-var.
+    """
     try:
         aggregator = TerraformStateAggregator()
         tf_resources = await aggregator.aggregate_all()
