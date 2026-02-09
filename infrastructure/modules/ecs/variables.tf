@@ -200,9 +200,15 @@ variable "memory_target_value" {
 # -----------------------------------------------------------------------------
 
 variable "task_role_arn" {
-  description = "ARN of an external task role. If provided, the module will use it instead of creating its own task role with AWS API policies."
+  description = "ARN of an external task role. When create_task_role is false, this role is used for the ECS task definition."
   type        = string
-  default     = ""
+  default     = null
+}
+
+variable "create_task_role" {
+  description = "Whether to create a task role inside this module. Set to false when providing an external task_role_arn."
+  type        = bool
+  default     = true
 }
 
 # -----------------------------------------------------------------------------
