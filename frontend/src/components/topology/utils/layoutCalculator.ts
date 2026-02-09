@@ -15,12 +15,14 @@ import type {
   TopologySubnet,
   TopologyEC2Instance,
   TopologyRDSInstance,
+  TopologyECSContainer,
   TopologyNATGateway,
   TopologyNodeData,
   VPCNodeData,
   SubnetNodeData,
   EC2NodeData,
   RDSNodeData,
+  ECSContainerNodeData,
   InternetGatewayNodeData,
   NATGatewayNodeData,
 } from "@/types/topology";
@@ -28,6 +30,7 @@ import type {
 type ResourceItem =
   | { type: "ec2"; data: TopologyEC2Instance }
   | { type: "rds"; data: TopologyRDSInstance }
+  | { type: "ecs"; data: TopologyECSContainer }
   | { type: "nat"; data: TopologyNATGateway };
 
 // Z-index layers
@@ -79,6 +82,7 @@ function calculateSubnetDimensions(subnet: TopologySubnet): SubnetDimensions {
   const resourceCount =
     subnet.ec2_instances.length +
     subnet.rds_instances.length +
+    (subnet.ecs_containers?.length || 0) +
     (subnet.nat_gateway ? 1 : 0);
 
   if (resourceCount === 0) {
@@ -223,6 +227,8 @@ function layoutVPC(
       tfResourceAddress: vpc.tf_resource_address || undefined,
       vpcId: vpc.id,
       cidrBlock: vpc.cidr_block,
+      minWidth: vpcWidth,
+      minHeight: vpcHeight,
     } as VPCNodeData,
     style: {
       width: vpcWidth,
@@ -359,6 +365,8 @@ function layoutSubnet(
       cidrBlock: subnet.cidr_block,
       subnetType: subnet.subnet_type,
       availabilityZone: subnet.availability_zone,
+      minWidth: dims.width,
+      minHeight: subnetHeight,
     } as SubnetNodeData,
     style: {
       width: dims.width,
@@ -383,6 +391,13 @@ function layoutSubnet(
   subnet.rds_instances.forEach((rds) => {
     resources.push({ type: "rds", data: rds });
   });
+
+  // Add ECS containers
+  if (subnet.ecs_containers) {
+    subnet.ecs_containers.forEach((ecs) => {
+      resources.push({ type: "ecs", data: ecs });
+    });
+  }
 
   // Layout resources inside subnet (Layer 3 - children of subnet)
   // Positions are relative to the subnet node
@@ -447,6 +462,32 @@ function layoutSubnet(
           endpoint: rds.endpoint || undefined,
           port: rds.port || undefined,
         } as RDSNodeData,
+      });
+    } else if (resource.type === "ecs") {
+      const ecs = resource.data;
+      nodes.push({
+        id: `ecs-${ecs.id}`,
+        type: "ecs-container",
+        position: { x, y },
+        parentNode: subnetNodeId,
+        extent: "parent",
+        zIndex: Z_INDEX.RESOURCE,
+        data: {
+          type: "ecs-container",
+          label: ecs.name || ecs.id,
+          displayStatus: ecs.display_status,
+          tfManaged: ecs.tf_managed,
+          tfResourceAddress: ecs.tf_resource_address || undefined,
+          taskId: ecs.id,
+          clusterName: ecs.cluster_name,
+          launchType: ecs.launch_type,
+          cpu: ecs.cpu,
+          memory: ecs.memory,
+          status: ecs.status,
+          image: ecs.image || undefined,
+          containerPort: ecs.container_port || undefined,
+          privateIp: ecs.private_ip || undefined,
+        } as ECSContainerNodeData,
       });
     } else if (resource.type === "nat") {
       const nat = resource.data;

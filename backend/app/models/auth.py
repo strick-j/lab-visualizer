@@ -44,6 +44,9 @@ class User(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
 
+    # Role-based access control
+    role: Mapped[str] = mapped_column(String(20), nullable=False, default="user")
+
     # Timestamps
     last_login_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(

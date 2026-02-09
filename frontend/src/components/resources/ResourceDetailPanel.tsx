@@ -2,7 +2,7 @@ import { useState } from "react";
 import { X, Copy, Check } from "lucide-react";
 import { Button, StatusBadge, TerraformBadge } from "@/components/common";
 import { formatDateTime } from "@/lib/utils";
-import type { EC2Instance, RDSInstance } from "@/types";
+import type { EC2Instance, RDSInstance, ECSContainer } from "@/types";
 
 function CopyButton({ value }: { value: string }) {
   const [copied, setCopied] = useState(false);
@@ -315,6 +315,147 @@ export function RDSDetailPanel({ instance, onClose }: RDSDetailPanelProps) {
               />
             </div>
           </section>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+interface ECSDetailPanelProps {
+  container: ECSContainer;
+  onClose: () => void;
+}
+
+export function ECSDetailPanel({ container, onClose }: ECSDetailPanelProps) {
+  const formatMemory = (mb: number) =>
+    mb >= 1024 ? `${(mb / 1024).toFixed(1)} GB` : `${mb} MB`;
+
+  return (
+    <div className="fixed top-16 right-0 bottom-0 z-50 !mt-0 w-96 overflow-y-auto border-l border-gray-200 bg-white shadow-xl dark:border-gray-700 dark:bg-gray-800">
+      <div className="sticky top-0 flex items-center justify-between border-b border-gray-200 bg-white px-4 py-3 dark:border-gray-700 dark:bg-gray-800">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+          ECS Container Details
+        </h2>
+        <Button variant="ghost" size="sm" onClick={onClose}>
+          <X className="h-5 w-5" />
+        </Button>
+      </div>
+
+      <div className="p-4">
+        <div className="mb-4 flex items-center gap-2">
+          <StatusBadge status={container.display_status} />
+          <TerraformBadge managed={container.tf_managed} />
+        </div>
+
+        <h3 className="mb-4 text-xl font-bold text-gray-900 dark:text-gray-100">
+          {container.name || container.task_id}
+        </h3>
+
+        <div className="space-y-6">
+          <section>
+            <h4 className="mb-2 text-sm font-semibold uppercase text-gray-500 dark:text-gray-400">
+              Basic Info
+            </h4>
+            <div className="divide-y divide-gray-100 rounded-lg border border-gray-200 bg-gray-50 px-3 dark:divide-gray-700 dark:border-gray-700 dark:bg-gray-700">
+              <CopyableDetailRow label="Task ID" value={container.task_id} />
+              <DetailRow label="Cluster" value={container.cluster_name} />
+              <DetailRow label="Launch Type" value={container.launch_type} />
+              <DetailRow label="Status" value={container.status} />
+              <DetailRow
+                label="Desired Status"
+                value={container.desired_status}
+              />
+              <DetailRow label="Region" value={container.region_name} />
+              <DetailRow label="AZ" value={container.availability_zone} />
+            </div>
+          </section>
+
+          <section>
+            <h4 className="mb-2 text-sm font-semibold uppercase text-gray-500 dark:text-gray-400">
+              Resources
+            </h4>
+            <div className="divide-y divide-gray-100 rounded-lg border border-gray-200 bg-gray-50 px-3 dark:divide-gray-700 dark:border-gray-700 dark:bg-gray-700">
+              <DetailRow label="CPU" value={`${container.cpu} vCPU units`} />
+              <DetailRow
+                label="Memory"
+                value={formatMemory(container.memory)}
+              />
+            </div>
+          </section>
+
+          <section>
+            <h4 className="mb-2 text-sm font-semibold uppercase text-gray-500 dark:text-gray-400">
+              Container
+            </h4>
+            <div className="divide-y divide-gray-100 rounded-lg border border-gray-200 bg-gray-50 px-3 dark:divide-gray-700 dark:border-gray-700 dark:bg-gray-700">
+              <CopyableDetailRow label="Image" value={container.image} />
+              <DetailRow
+                label="Port"
+                value={container.container_port?.toString()}
+              />
+            </div>
+          </section>
+
+          <section>
+            <h4 className="mb-2 text-sm font-semibold uppercase text-gray-500 dark:text-gray-400">
+              Network
+            </h4>
+            <div className="divide-y divide-gray-100 rounded-lg border border-gray-200 bg-gray-50 px-3 dark:divide-gray-700 dark:border-gray-700 dark:bg-gray-700">
+              <CopyableDetailRow
+                label="Private IP"
+                value={container.private_ip}
+              />
+              <DetailRow label="VPC ID" value={container.vpc_id} />
+              <DetailRow label="Subnet ID" value={container.subnet_id} />
+            </div>
+          </section>
+
+          {container.tf_managed && (
+            <section>
+              <h4 className="mb-2 text-sm font-semibold uppercase text-gray-500 dark:text-gray-400">
+                Terraform
+              </h4>
+              <div className="divide-y divide-gray-100 rounded-lg border border-gray-200 bg-gray-50 px-3 dark:divide-gray-700 dark:border-gray-700 dark:bg-gray-700">
+                <DetailRow
+                  label="State File"
+                  value={container.tf_state_source}
+                />
+                <DetailRow
+                  label="Address"
+                  value={container.tf_resource_address}
+                />
+              </div>
+            </section>
+          )}
+
+          <section>
+            <h4 className="mb-2 text-sm font-semibold uppercase text-gray-500 dark:text-gray-400">
+              Timestamps
+            </h4>
+            <div className="divide-y divide-gray-100 rounded-lg border border-gray-200 bg-gray-50 px-3 dark:divide-gray-700 dark:border-gray-700 dark:bg-gray-700">
+              <DetailRow
+                label="Started"
+                value={formatDateTime(container.started_at)}
+              />
+              <DetailRow
+                label="Last Updated"
+                value={formatDateTime(container.updated_at)}
+              />
+            </div>
+          </section>
+
+          {container.tags && Object.keys(container.tags).length > 0 && (
+            <section>
+              <h4 className="mb-2 text-sm font-semibold uppercase text-gray-500 dark:text-gray-400">
+                Tags
+              </h4>
+              <div className="divide-y divide-gray-100 rounded-lg border border-gray-200 bg-gray-50 px-3 dark:divide-gray-700 dark:border-gray-700 dark:bg-gray-700">
+                {Object.entries(container.tags).map(([key, value]) => (
+                  <DetailRow key={key} label={key} value={value} />
+                ))}
+              </div>
+            </section>
+          )}
         </div>
       </div>
     </div>

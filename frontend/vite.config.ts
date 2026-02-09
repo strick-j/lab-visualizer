@@ -5,11 +5,20 @@ import fs from 'fs';
 
 // Read version from root VERSION file
 const version = (() => {
-  try {
-    return fs.readFileSync(path.resolve(__dirname, '../VERSION'), 'utf-8').trim();
-  } catch {
-    return process.env.APP_VERSION || '0.0.0-unknown';
+  // In the repo layout, VERSION is one directory up from frontend/;
+  // in Docker, vite.config.ts sits at /app/ and VERSION is mounted beside it.
+  const candidates = [
+    path.resolve(__dirname, '../VERSION'),
+    path.resolve(__dirname, 'VERSION'),
+  ];
+  for (const candidate of candidates) {
+    try {
+      return fs.readFileSync(candidate, 'utf-8').trim();
+    } catch {
+      // try next candidate
+    }
   }
+  return process.env.APP_VERSION || '0.0.0-unknown';
 })();
 
 // https://vitejs.dev/config/

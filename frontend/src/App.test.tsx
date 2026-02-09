@@ -9,6 +9,7 @@ vi.mock("@/pages", () => ({
   ),
   EC2ListPage: () => <div data-testid="ec2-page">EC2 Content</div>,
   RDSListPage: () => <div data-testid="rds-page">RDS Content</div>,
+  ECSListPage: () => <div data-testid="ecs-page">ECS Content</div>,
   VPCPage: () => <div data-testid="vpc-page">VPC Content</div>,
   TerraformPage: () => (
     <div data-testid="terraform-page">Terraform Content</div>
@@ -35,7 +36,13 @@ vi.mock("@/hooks", () => ({
     isPending: false,
   }),
   useAppInfo: () => ({
-    data: { version: "0.0.0-test", build_sha: "abc1234", environment: "test" },
+    data: {
+      version: "1.0.0",
+      build_sha: "abc1234",
+      build_date: "2024-01-15",
+      environment: "development",
+      timestamp: "2024-01-15T12:00:00Z",
+    },
   }),
 }));
 

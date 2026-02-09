@@ -73,9 +73,15 @@ export function TerraformBucketsSettings() {
   };
 
   const handleToggleEnabled = async (bucket: TerraformBucket) => {
+    const newEnabled = !bucket.enabled;
+    // Optimistically update the UI
+    setBuckets((prev) =>
+      prev.map((b) => (b.id === bucket.id ? { ...b, enabled: newEnabled } : b)),
+    );
+    setError(null);
     try {
       const updated = await updateTerraformBucket(bucket.id, {
-        enabled: !bucket.enabled,
+        enabled: newEnabled,
       });
       setBuckets((prev) =>
         prev.map((b) =>
@@ -83,7 +89,21 @@ export function TerraformBucketsSettings() {
         ),
       );
     } catch {
-      setError("Failed to update bucket");
+      // Reload to get actual server state rather than blindly reverting,
+      // since the backend may have committed the change before the
+      // response failed.
+      try {
+        const data = await getTerraformBuckets();
+        setBuckets(data.buckets);
+      } catch {
+        // If reload also fails, revert optimistic update
+        setBuckets((prev) =>
+          prev.map((b) =>
+            b.id === bucket.id ? { ...b, enabled: bucket.enabled } : b,
+          ),
+        );
+        setError("Failed to update bucket");
+      }
     }
   };
 

@@ -105,6 +105,7 @@ async def create_local_user(
         auth_provider="local",
         display_name=display_name or username,
         is_admin=is_admin,
+        role="admin" if is_admin else "user",
     )
     db.add(user)
     await db.commit()
@@ -302,7 +303,7 @@ async def revoke_all_user_sessions(db: AsyncSession, user_id: int) -> int:
         count += 1
 
     await db.commit()
-    logger.info(f"Revoked {count} sessions for user_id: {user_id}")
+    logger.info(f"Revoked {count} sessions for user_id: {int(user_id)}")
     return count
 
 
@@ -343,7 +344,9 @@ def validate_password_strength(password: str) -> list[str]:
 async def check_admin_exists(db: AsyncSession) -> bool:
     """Check if any admin user exists in the database."""
     result = await db.execute(
-        select(User).where(User.is_admin == True, User.is_active == True)  # noqa: E712
+        select(User)
+        .where(User.is_admin == True, User.is_active == True)  # noqa: E712
+        .limit(1)
     )
     return result.scalar_one_or_none() is not None
 
@@ -362,7 +365,9 @@ async def create_initial_admin(
     """
     # Check no admin exists
     if await check_admin_exists(db):
-        raise ValueError("An admin user already exists. Setup has already been completed.")
+        raise ValueError(
+            "An admin user already exists. Setup has already been completed."
+        )
 
     # Validate username
     username = username.strip()
@@ -425,6 +430,86 @@ async def ensure_admin_user(db: AsyncSession) -> None:
     if admin_exists:
         logger.info("Admin user exists - setup is complete")
     else:
-        logger.info(
-            "No admin user found - initial setup required via /setup page"
+        logger.info("No admin user found - initial setup required via /setup page")
+
+
+# --- User Management ---
+
+VALID_ROLES = ("user", "admin")
+
+
+async def list_all_users(db: AsyncSession) -> list[User]:
+    """Return all users ordered by creation date."""
+    result = await db.execute(select(User).order_by(User.created_at.desc()))
+    return list(result.scalars().all())
+
+
+async def update_user_status(
+    db: AsyncSession,
+    user_id: int,
+    is_active: bool,
+    acting_user: User,
+) -> User:
+    """
+    Enable or disable a user account.
+
+    Raises ValueError if the admin tries to deactivate themselves
+    or if the target user is not found.
+    """
+    if acting_user.id == user_id and not is_active:
+        raise ValueError("You cannot deactivate your own account")
+
+    user = await get_user_by_id(db, user_id)
+    if not user:
+        raise ValueError("User not found")
+
+    user.is_active = is_active
+    await db.commit()
+    await db.refresh(user)
+
+    action = "activated" if is_active else "deactivated"
+    safe_username = _sanitize_for_log(user.username)
+    safe_actor = _sanitize_for_log(acting_user.username)
+    logger.info(f"User {safe_username} {action} by {safe_actor}")
+
+    # Revoke all sessions when deactivating
+    if not is_active:
+        await revoke_all_user_sessions(db, user_id)
+
+    return user
+
+
+async def update_user_role(
+    db: AsyncSession,
+    user_id: int,
+    role: str,
+    acting_user: User,
+) -> User:
+    """
+    Update a user's role.
+
+    Raises ValueError if the role is invalid, if the admin tries to
+    demote themselves, or if the target user is not found.
+    """
+    if role not in VALID_ROLES:
+        raise ValueError(
+            f"Invalid role: {role}. Must be one of: {', '.join(VALID_ROLES)}"
         )
+
+    if acting_user.id == user_id and role != "admin":
+        raise ValueError("You cannot remove your own admin role")
+
+    user = await get_user_by_id(db, user_id)
+    if not user:
+        raise ValueError("User not found")
+
+    user.role = role
+    user.is_admin = role == "admin"
+    await db.commit()
+    await db.refresh(user)
+
+    safe_username = _sanitize_for_log(user.username)
+    safe_actor = _sanitize_for_log(acting_user.username)
+    safe_role = _sanitize_for_log(role)
+    logger.info(f"User {safe_username} role changed to '{safe_role}' by {safe_actor}")
+    return user
