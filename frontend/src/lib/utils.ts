@@ -15,12 +15,24 @@ export function cn(...inputs: ClassValue[]) {
 // Date Utilities
 // =============================================================================
 
+/**
+ * Ensures a datetime string from the API is treated as UTC.
+ * Backend datetimes are stored in UTC but may be serialized without
+ * a timezone indicator, causing browsers to interpret them as local time.
+ */
+function ensureUtcDateString(dateString: string): string {
+  if (/[Zz]$|[+-]\d{2}:\d{2}$/.test(dateString)) {
+    return dateString;
+  }
+  return dateString + "Z";
+}
+
 export function formatRelativeTime(
   dateString: string | null | undefined,
 ): string {
   if (!dateString) return "Never";
   try {
-    const date = new Date(dateString);
+    const date = new Date(ensureUtcDateString(dateString));
     return formatDistanceToNow(date, { addSuffix: true });
   } catch {
     return "Unknown";
@@ -30,7 +42,7 @@ export function formatRelativeTime(
 export function formatDateTime(dateString: string | null | undefined): string {
   if (!dateString) return "N/A";
   try {
-    const date = new Date(dateString);
+    const date = new Date(ensureUtcDateString(dateString));
     return format(date, "MMM d, yyyy HH:mm:ss");
   } catch {
     return "Invalid date";
