@@ -150,6 +150,8 @@ export interface VPCNodeData extends BaseNodeData {
   type: "vpc";
   vpcId: string;
   cidrBlock: string;
+  minWidth?: number;
+  minHeight?: number;
 }
 
 export interface SubnetNodeData extends BaseNodeData {
@@ -158,6 +160,8 @@ export interface SubnetNodeData extends BaseNodeData {
   cidrBlock: string;
   subnetType: "public" | "private" | "unknown";
   availabilityZone: string;
+  minWidth?: number;
+  minHeight?: number;
 }
 
 export interface EC2NodeData extends BaseNodeData {

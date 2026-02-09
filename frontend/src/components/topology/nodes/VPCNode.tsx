@@ -1,5 +1,5 @@
 import { memo } from "react";
-import { NodeProps, Handle, Position } from "reactflow";
+import { NodeProps, Handle, Position, NodeResizer } from "reactflow";
 import { Network } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { VPCNodeData } from "@/types/topology";
@@ -12,7 +12,7 @@ const statusColors = {
   unknown: "border-gray-300 bg-gray-50 dark:bg-gray-800",
 };
 
-function VPCNodeComponent({ data }: NodeProps<VPCNodeData>) {
+function VPCNodeComponent({ data, selected }: NodeProps<VPCNodeData>) {
   return (
     <div
       className={cn(
@@ -20,6 +20,14 @@ function VPCNodeComponent({ data }: NodeProps<VPCNodeData>) {
         statusColors[data.displayStatus],
       )}
     >
+      <NodeResizer
+        minWidth={data.minWidth ?? 400}
+        minHeight={data.minHeight ?? 200}
+        isVisible={selected}
+        lineClassName="!border-purple-400"
+        handleClassName="!h-3 !w-3 !bg-purple-500 !border-purple-600 !rounded-sm"
+      />
+
       <Handle type="target" position={Position.Top} className="opacity-0" />
 
       {/* Header */}
