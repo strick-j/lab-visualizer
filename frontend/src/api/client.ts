@@ -5,6 +5,7 @@ import type {
   EC2Instance,
   RDSInstance,
   ECSContainer,
+  ECSClusterSummary,
   VPC,
   Subnet,
   InternetGateway,
@@ -178,6 +179,21 @@ export async function getECSContainers(
 
 export async function getECSContainer(taskId: string): Promise<ECSContainer> {
   const response = await api.get(`/ecs/${taskId}`);
+  return response.data;
+}
+
+export async function getECSClusters(filters?: {
+  region?: string;
+  search?: string;
+  tf_managed?: boolean;
+}): Promise<ListResponse<ECSClusterSummary>> {
+  const params = new URLSearchParams();
+  if (filters?.region) params.append("region", filters.region);
+  if (filters?.search) params.append("search", filters.search);
+  if (filters?.tf_managed !== undefined)
+    params.append("tf_managed", String(filters.tf_managed));
+
+  const response = await api.get("/ecs/clusters", { params });
   return response.data;
 }
 

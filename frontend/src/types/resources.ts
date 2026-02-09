@@ -217,6 +217,17 @@ export interface ECSContainer {
   created_at?: string;
 }
 
+export interface ECSClusterSummary {
+  cluster_name: string;
+  total_tasks: number;
+  running_tasks: number;
+  stopped_tasks: number;
+  pending_tasks: number;
+  tf_managed: boolean;
+  region_name: string | null;
+  containers: ECSContainer[];
+}
+
 // =============================================================================
 // API Response Types
 // =============================================================================

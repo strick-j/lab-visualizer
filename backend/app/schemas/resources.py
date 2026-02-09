@@ -399,6 +399,19 @@ class ECSContainerDetail(ECSContainerResponse):
     created_at: datetime
 
 
+class ECSClusterSummary(BaseSchema):
+    """ECS cluster summary with grouped containers."""
+
+    cluster_name: str
+    total_tasks: int = 0
+    running_tasks: int = 0
+    stopped_tasks: int = 0
+    pending_tasks: int = 0
+    tf_managed: bool = False
+    region_name: Optional[str] = None
+    containers: List[ECSContainerResponse] = []
+
+
 # =============================================================================
 # Terraform Schemas
 # =============================================================================

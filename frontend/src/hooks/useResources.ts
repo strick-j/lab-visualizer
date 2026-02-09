@@ -8,6 +8,7 @@ import {
   getRDSInstance,
   getECSContainers,
   getECSContainer,
+  getECSClusters,
   getVPCs,
   getVPC,
   getSubnets,
@@ -41,6 +42,11 @@ export const queryKeys = {
   ecsContainers: (filters?: ResourceFilters) =>
     ["ecs-containers", filters] as const,
   ecsContainer: (id: string) => ["ecs-container", id] as const,
+  ecsClusters: (filters?: {
+    region?: string;
+    search?: string;
+    tf_managed?: boolean;
+  }) => ["ecs-clusters", filters] as const,
   vpcs: (filters?: ResourceFilters) => ["vpcs", filters] as const,
   vpc: (id: string) => ["vpc", id] as const,
   subnets: (filters?: ResourceFilters) => ["subnets", filters] as const,
@@ -136,6 +142,17 @@ export function useECSContainer(taskId: string) {
     queryKey: queryKeys.ecsContainer(taskId),
     queryFn: () => getECSContainer(taskId),
     enabled: !!taskId,
+  });
+}
+
+export function useECSClusters(filters?: {
+  region?: string;
+  search?: string;
+  tf_managed?: boolean;
+}) {
+  return useQuery({
+    queryKey: queryKeys.ecsClusters(filters),
+    queryFn: () => getECSClusters(filters),
   });
 }
 
@@ -249,6 +266,7 @@ export function useRefreshData() {
       queryClient.invalidateQueries({ queryKey: ["ec2-instances"] });
       queryClient.invalidateQueries({ queryKey: ["rds-instances"] });
       queryClient.invalidateQueries({ queryKey: ["ecs-containers"] });
+      queryClient.invalidateQueries({ queryKey: ["ecs-clusters"] });
       queryClient.invalidateQueries({ queryKey: ["vpcs"] });
       queryClient.invalidateQueries({ queryKey: ["subnets"] });
       queryClient.invalidateQueries({ queryKey: ["internet-gateways"] });

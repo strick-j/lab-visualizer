@@ -17,6 +17,7 @@ from app.models.database import get_db
 from app.models.resources import ECSContainer, Region
 from app.schemas.resources import (
     DisplayStatus,
+    ECSClusterSummary,
     ECSContainerDetail,
     ECSContainerResponse,
     ListResponse,
@@ -25,6 +26,97 @@ from app.schemas.resources import (
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+
+@router.get(
+    "/ecs/clusters",
+    response_model=ListResponse[ECSClusterSummary],
+)
+async def list_ecs_clusters(
+    region: Optional[str] = Query(None, description="Filter by AWS region"),
+    search: Optional[str] = Query(None, description="Search by cluster name"),
+    tf_managed: Optional[bool] = Query(
+        None, description="Filter by Terraform managed"
+    ),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    List ECS clusters with summary info and their containers.
+
+    Clusters are derived from the containers' cluster_name field.
+    Each cluster includes its containers nested inside.
+    """
+    query = (
+        select(ECSContainer)
+        .options(joinedload(ECSContainer.region))
+        .where(ECSContainer.is_deleted == False)
+    )
+
+    if region:
+        query = query.join(Region).where(Region.name == region)
+
+    if search:
+        search_term = f"%{search}%"
+        query = query.where(ECSContainer.cluster_name.ilike(search_term))
+
+    if tf_managed is not None:
+        query = query.where(ECSContainer.tf_managed == tf_managed)
+
+    query = query.order_by(
+        ECSContainer.cluster_name,
+        ECSContainer.name,
+        ECSContainer.task_id,
+    )
+    result = await db.execute(query)
+    containers = result.scalars().unique().all()
+
+    # Group containers by cluster_name
+    cluster_map: dict[str, list[ECSContainer]] = {}
+    for container in containers:
+        cluster_map.setdefault(container.cluster_name, []).append(container)
+
+    # Build cluster summaries
+    cluster_summaries = []
+    for name, cluster_containers in sorted(cluster_map.items()):
+        running = sum(
+            1 for c in cluster_containers if c.status == "RUNNING"
+        )
+        stopped = sum(
+            1 for c in cluster_containers if c.status == "STOPPED"
+        )
+        pending = sum(
+            1
+            for c in cluster_containers
+            if c.status in ("PENDING", "PROVISIONING", "ACTIVATING")
+        )
+        any_tf = any(c.tf_managed for c in cluster_containers)
+        region_name = (
+            cluster_containers[0].region.name
+            if cluster_containers[0].region
+            else None
+        )
+
+        container_responses = [
+            _container_to_response(c) for c in cluster_containers
+        ]
+
+        cluster_summaries.append(
+            ECSClusterSummary(
+                cluster_name=name,
+                total_tasks=len(cluster_containers),
+                running_tasks=running,
+                stopped_tasks=stopped,
+                pending_tasks=pending,
+                tf_managed=any_tf,
+                region_name=region_name,
+                containers=container_responses,
+            )
+        )
+
+    return ListResponse(
+        data=cluster_summaries,
+        meta=MetaInfo(total=len(cluster_summaries)),
+    )
 
 
 @router.get("/ecs", response_model=ListResponse[ECSContainerResponse])
