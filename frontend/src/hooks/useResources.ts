@@ -16,8 +16,6 @@ import {
   getNATGateway,
   getElasticIPs,
   getElasticIP,
-  getECSClusters,
-  getECSCluster,
   refreshData,
   getTerraformStates,
   getDrift,
@@ -50,9 +48,6 @@ export const queryKeys = {
   natGateway: (id: string) => ["nat-gateway", id] as const,
   elasticIPs: (filters?: ResourceFilters) => ["elastic-ips", filters] as const,
   elasticIP: (id: string) => ["elastic-ip", id] as const,
-  ecsClusters: (filters?: ResourceFilters) =>
-    ["ecs-clusters", filters] as const,
-  ecsCluster: (arn: string) => ["ecs-cluster", arn] as const,
   terraformStates: ["terraform-states"] as const,
   drift: ["drift"] as const,
   topology: (filters?: { vpc_id?: string }) => ["topology", filters] as const,
@@ -216,25 +211,6 @@ export function useElasticIP(allocationId: string) {
 }
 
 // =============================================================================
-// ECS Clusters
-// =============================================================================
-
-export function useECSClusters(filters?: ResourceFilters) {
-  return useQuery({
-    queryKey: queryKeys.ecsClusters(filters),
-    queryFn: () => getECSClusters(filters),
-  });
-}
-
-export function useECSCluster(clusterArn: string) {
-  return useQuery({
-    queryKey: queryKeys.ecsCluster(clusterArn),
-    queryFn: () => getECSCluster(clusterArn),
-    enabled: !!clusterArn,
-  });
-}
-
-// =============================================================================
 // Refresh
 // =============================================================================
 
@@ -253,7 +229,6 @@ export function useRefreshData() {
       queryClient.invalidateQueries({ queryKey: ["internet-gateways"] });
       queryClient.invalidateQueries({ queryKey: ["nat-gateways"] });
       queryClient.invalidateQueries({ queryKey: ["elastic-ips"] });
-      queryClient.invalidateQueries({ queryKey: ["ecs-clusters"] });
       queryClient.invalidateQueries({ queryKey: ["terraform-states"] });
       queryClient.invalidateQueries({ queryKey: ["drift"] });
       queryClient.invalidateQueries({ queryKey: ["topology"] });

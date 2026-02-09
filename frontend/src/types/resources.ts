@@ -270,57 +270,6 @@ export interface ResourceFilters {
 }
 
 // =============================================================================
-// ECS Types
-// =============================================================================
-
-export interface ECSService {
-  id: number;
-  service_arn: string;
-  service_name: string;
-  status: string;
-  display_status: DisplayStatus;
-  desired_count: number;
-  running_count: number;
-  pending_count: number;
-  launch_type: string | null;
-  task_definition: string | null;
-  subnet_ids: string[] | null;
-  security_groups: string[] | null;
-  tags: Record<string, string> | null;
-  tf_managed: boolean;
-  tf_state_source: string | null;
-  tf_resource_address: string | null;
-  is_deleted: boolean;
-  deleted_at: string | null;
-  updated_at: string;
-  created_at?: string;
-  cluster_arn?: string;
-}
-
-export interface ECSCluster {
-  id: number;
-  cluster_arn: string;
-  cluster_name: string;
-  name: string | null;
-  status: string;
-  display_status: DisplayStatus;
-  registered_container_instances_count: number;
-  running_tasks_count: number;
-  pending_tasks_count: number;
-  active_services_count: number;
-  tags: Record<string, string> | null;
-  tf_managed: boolean;
-  tf_state_source: string | null;
-  tf_resource_address: string | null;
-  region_name: string | null;
-  is_deleted: boolean;
-  deleted_at: string | null;
-  updated_at: string;
-  created_at?: string;
-  services: ECSService[];
-}
-
-// =============================================================================
 // VPC Page Types
 // =============================================================================
 
