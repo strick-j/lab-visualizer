@@ -216,7 +216,8 @@ module "ecs" {
   desired_count = 1
 
   # IAM - use the standalone application task role
-  task_role_arn = module.iam.task_role_arn
+  create_task_role = false
+  task_role_arn    = module.iam.task_role_arn
 
   # Environment and secrets
   environment_variables = local.environment_variables
