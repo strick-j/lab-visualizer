@@ -62,10 +62,17 @@ function ECSContainerNodeComponent({ data }: NodeProps<ECSContainerNodeData>) {
         </div>
       </div>
 
-      {data.tfManaged && (
+      {data.managedBy && data.managedBy !== "unmanaged" && (
         <div className="mt-1.5 flex justify-end">
-          <span className="px-1 py-0.5 text-[10px] font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300 rounded">
-            TF
+          <span
+            className={cn(
+              "px-1 py-0.5 text-[10px] font-medium rounded",
+              data.managedBy === "terraform"
+                ? "bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300"
+                : "bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300",
+            )}
+          >
+            {data.managedBy === "terraform" ? "TF" : "GHA"}
           </span>
         </div>
       )}

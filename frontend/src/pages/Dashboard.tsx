@@ -7,6 +7,7 @@ import {
   AlertTriangle,
   CheckCircle,
   Network,
+  Container,
 } from "lucide-react";
 import {
   Card,
@@ -22,6 +23,7 @@ import {
   useStatusSummary,
   useEC2Instances,
   useRDSInstances,
+  useECSSummary,
   useDrift,
   useVPCs,
   useSubnets,
@@ -48,6 +50,7 @@ export function DashboardPage() {
   const { data: summary, isLoading: summaryLoading } = useStatusSummary();
   const { data: ec2Data, isLoading: ec2Loading } = useEC2Instances(filters);
   const { data: rdsData, isLoading: rdsLoading } = useRDSInstances(filters);
+  const { data: ecsSummary } = useECSSummary();
   const { data: drift } = useDrift();
   const { data: vpcData, isLoading: vpcLoading } = useVPCs(filters);
   const { data: subnetData } = useSubnets(filters);
@@ -137,6 +140,61 @@ export function DashboardPage() {
                 href="/rds"
                 linkText="View RDS details"
               />
+            )}
+            {ecsSummary && (
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <CardTitle className="flex items-center gap-2">
+                    <Container className="h-5 w-5 text-teal-600" />
+                    ECS Containers
+                  </CardTitle>
+                  <span className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                    {ecsSummary.total_tasks}
+                  </span>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-700">
+                      <span className="text-sm text-gray-600 dark:text-gray-300">
+                        Clusters
+                      </span>
+                      <span className="font-semibold text-gray-900 dark:text-gray-100">
+                        {ecsSummary.clusters}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-700">
+                      <span className="text-sm text-gray-600 dark:text-gray-300">
+                        Running
+                      </span>
+                      <span className="font-semibold text-green-600 dark:text-green-400">
+                        {ecsSummary.running_tasks}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-700">
+                      <span className="text-sm text-gray-600 dark:text-gray-300">
+                        Stopped
+                      </span>
+                      <span className="font-semibold text-gray-900 dark:text-gray-100">
+                        {ecsSummary.stopped_tasks}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-700">
+                      <span className="text-sm text-gray-600 dark:text-gray-300">
+                        Pending
+                      </span>
+                      <span className="font-semibold text-gray-900 dark:text-gray-100">
+                        {ecsSummary.pending_tasks}
+                      </span>
+                    </div>
+                  </div>
+                  <Link
+                    to="/ecs"
+                    className="mt-3 block text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+                  >
+                    View ECS details →
+                  </Link>
+                </CardContent>
+              </Card>
             )}
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">

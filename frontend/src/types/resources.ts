@@ -21,6 +21,8 @@ export type DisplayStatus =
   | "error"
   | "unknown";
 
+export type ManagedBy = "terraform" | "github_actions" | "unmanaged";
+
 export interface EC2Instance {
   id: number;
   instance_id: string;
@@ -200,6 +202,7 @@ export interface ECSContainer {
   task_definition_arn: string | null;
   desired_status: string | null;
   image: string | null;
+  image_tag: string | null;
   container_port: number | null;
   private_ip: string | null;
   subnet_id: string | null;
@@ -210,6 +213,7 @@ export interface ECSContainer {
   tf_managed: boolean;
   tf_state_source: string | null;
   tf_resource_address: string | null;
+  managed_by: ManagedBy;
   region_name: string | null;
   is_deleted: boolean;
   deleted_at: string | null;
@@ -224,8 +228,18 @@ export interface ECSClusterSummary {
   stopped_tasks: number;
   pending_tasks: number;
   tf_managed: boolean;
+  managed_by: ManagedBy;
   region_name: string | null;
   containers: ECSContainer[];
+}
+
+export interface ECSSummaryResponse {
+  clusters: number;
+  services: number;
+  running_tasks: number;
+  stopped_tasks: number;
+  pending_tasks: number;
+  total_tasks: number;
 }
 
 // =============================================================================

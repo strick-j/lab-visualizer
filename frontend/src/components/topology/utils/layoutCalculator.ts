@@ -485,8 +485,10 @@ function layoutSubnet(
           memory: ecs.memory,
           status: ecs.status,
           image: ecs.image || undefined,
+          imageTag: ecs.image_tag || undefined,
           containerPort: ecs.container_port || undefined,
           privateIp: ecs.private_ip || undefined,
+          managedBy: ecs.managed_by || "unmanaged",
         } as ECSContainerNodeData,
       });
     } else if (resource.type === "nat") {

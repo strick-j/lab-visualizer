@@ -1,6 +1,11 @@
 import { useState } from "react";
 import { X, Copy, Check } from "lucide-react";
-import { Button, StatusBadge, TerraformBadge } from "@/components/common";
+import {
+  Button,
+  StatusBadge,
+  TerraformBadge,
+  ManagedByBadge,
+} from "@/components/common";
 import { formatDateTime } from "@/lib/utils";
 import type { EC2Instance, RDSInstance, ECSContainer } from "@/types";
 
@@ -344,7 +349,7 @@ export function ECSDetailPanel({ container, onClose }: ECSDetailPanelProps) {
       <div className="p-4">
         <div className="mb-4 flex items-center gap-2">
           <StatusBadge status={container.display_status} />
-          <TerraformBadge managed={container.tf_managed} />
+          <ManagedByBadge managedBy={container.managed_by} />
         </div>
 
         <h3 className="mb-4 text-xl font-bold text-gray-900 dark:text-gray-100">
@@ -389,6 +394,12 @@ export function ECSDetailPanel({ container, onClose }: ECSDetailPanelProps) {
             </h4>
             <div className="divide-y divide-gray-100 rounded-lg border border-gray-200 bg-gray-50 px-3 dark:divide-gray-700 dark:border-gray-700 dark:bg-gray-700">
               <CopyableDetailRow label="Image" value={container.image} />
+              {container.image_tag && (
+                <CopyableDetailRow
+                  label="Image Tag"
+                  value={container.image_tag}
+                />
+              )}
               <DetailRow
                 label="Port"
                 value={container.container_port?.toString()}

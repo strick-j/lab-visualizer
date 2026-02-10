@@ -197,6 +197,13 @@ export async function getECSClusters(filters?: {
   return response.data;
 }
 
+import type { ECSSummaryResponse } from "@/types";
+
+export async function getECSSummary(): Promise<ECSSummaryResponse> {
+  const response = await api.get("/ecs/summary");
+  return response.data;
+}
+
 // =============================================================================
 // VPCs
 // =============================================================================

@@ -602,6 +602,7 @@ class ECSContainer(Base):
 
     # Container details
     image: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    image_tag: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     container_port: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
 
     # Network
@@ -619,6 +620,11 @@ class ECSContainer(Base):
     tf_state_source: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     tf_resource_address: Mapped[Optional[str]] = mapped_column(
         String(500), nullable=True
+    )
+
+    # Management source tracking (terraform, github_actions, unmanaged)
+    managed_by: Mapped[str] = mapped_column(
+        String(30), nullable=False, default="unmanaged"
     )
 
     # Deletion tracking

@@ -16,7 +16,7 @@ import {
   CardContent,
   PageLoading,
   StatusBadge,
-  TerraformBadge,
+  ManagedByBadge,
   EmptyState,
   SearchInput,
 } from "@/components/common";
@@ -63,7 +63,7 @@ function ContainerRow({
         <span className="whitespace-nowrap text-xs text-gray-500 dark:text-gray-400">
           {container.cpu} CPU / {formatMemory(container.memory)}
         </span>
-        <TerraformBadge managed={container.tf_managed} />
+        <ManagedByBadge managedBy={container.managed_by} />
         <span className="whitespace-nowrap text-xs text-gray-400 dark:text-gray-500">
           {formatRelativeTime(container.updated_at)}
         </span>
@@ -131,7 +131,7 @@ function ClusterGroupCard({
           <span className="whitespace-nowrap text-xs text-gray-500 dark:text-gray-400">
             {cluster.total_tasks} task{cluster.total_tasks !== 1 ? "s" : ""}
           </span>
-          {cluster.tf_managed && <TerraformBadge managed={true} />}
+          <ManagedByBadge managedBy={cluster.managed_by} />
         </div>
       </button>
       {expanded && (

@@ -280,11 +280,11 @@ async def get_topology(
                         )
                     )
 
-            # Get ECS containers in this subnet
+            # Get ECS containers in this subnet (include both TF-managed
+            # and CI/CD-deployed containers for full visibility)
             ecs_result = await db.execute(
                 select(ECSContainer).where(
                     ECSContainer.subnet_id == subnet.subnet_id,
-                    ECSContainer.tf_managed == True,
                     ECSContainer.is_deleted == False,
                 )
             )
@@ -293,6 +293,13 @@ async def get_topology(
             topology_ecs = []
             for ecs_container in ecs_containers:
                 total_ecs_containers += 1
+                # Resolve managed_by: TF flag takes precedence,
+                # then fall back to the stored managed_by value
+                managed_by_value = "unmanaged"
+                if ecs_container.tf_managed:
+                    managed_by_value = "terraform"
+                elif getattr(ecs_container, "managed_by", "") == "github_actions":
+                    managed_by_value = "github_actions"
                 topology_ecs.append(
                     TopologyECSContainer(
                         id=ecs_container.task_id,
@@ -304,10 +311,12 @@ async def get_topology(
                         cpu=ecs_container.cpu,
                         memory=ecs_container.memory,
                         image=ecs_container.image,
+                        image_tag=getattr(ecs_container, "image_tag", None),
                         container_port=ecs_container.container_port,
                         private_ip=ecs_container.private_ip,
-                        tf_managed=True,
+                        tf_managed=ecs_container.tf_managed,
                         tf_resource_address=ecs_container.tf_resource_address,
+                        managed_by=managed_by_value,
                     )
                 )
 

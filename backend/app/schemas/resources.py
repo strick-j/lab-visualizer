@@ -25,6 +25,14 @@ class DisplayStatus(str, Enum):
     UNKNOWN = "unknown"
 
 
+class ManagedBy(str, Enum):
+    """Management source for a resource."""
+
+    TERRAFORM = "terraform"
+    GITHUB_ACTIONS = "github_actions"
+    UNMANAGED = "unmanaged"
+
+
 class EC2State(str, Enum):
     """EC2 instance states."""
 
@@ -377,6 +385,7 @@ class ECSContainerResponse(ECSContainerBase):
     task_definition_arn: Optional[str] = None
     desired_status: Optional[str] = None
     image: Optional[str] = None
+    image_tag: Optional[str] = None
     container_port: Optional[int] = None
     private_ip: Optional[str] = None
     subnet_id: Optional[str] = None
@@ -387,6 +396,7 @@ class ECSContainerResponse(ECSContainerBase):
     tf_managed: bool = False
     tf_state_source: Optional[str] = None
     tf_resource_address: Optional[str] = None
+    managed_by: ManagedBy = ManagedBy.UNMANAGED
     region_name: Optional[str] = Field(None, description="AWS region name")
     is_deleted: bool = False
     deleted_at: Optional[datetime] = None
@@ -408,8 +418,20 @@ class ECSClusterSummary(BaseSchema):
     stopped_tasks: int = 0
     pending_tasks: int = 0
     tf_managed: bool = False
+    managed_by: ManagedBy = ManagedBy.UNMANAGED
     region_name: Optional[str] = None
     containers: List[ECSContainerResponse] = []
+
+
+class ECSSummaryResponse(BaseSchema):
+    """Summary counts for ECS resources."""
+
+    clusters: int = 0
+    services: int = 0
+    running_tasks: int = 0
+    stopped_tasks: int = 0
+    pending_tasks: int = 0
+    total_tasks: int = 0
 
 
 # =============================================================================
@@ -619,10 +641,12 @@ class TopologyECSContainer(BaseSchema):
     cpu: int = 0
     memory: int = 0
     image: Optional[str] = None
+    image_tag: Optional[str] = None
     container_port: Optional[int] = None
     private_ip: Optional[str] = None
     tf_managed: bool = True
     tf_resource_address: Optional[str] = None
+    managed_by: str = "unmanaged"
 
 
 class TopologySubnet(BaseSchema):

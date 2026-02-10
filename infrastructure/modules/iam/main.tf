@@ -68,6 +68,21 @@ resource "aws_iam_role_policy" "aws_monitoring" {
           "rds:ListTagsForResource"
         ]
         Resource = "*"
+      },
+      {
+        Sid    = "ECSReadAccess"
+        Effect = "Allow"
+        Action = [
+          "ecs:DescribeClusters",
+          "ecs:ListClusters",
+          "ecs:DescribeServices",
+          "ecs:ListServices",
+          "ecs:DescribeTasks",
+          "ecs:ListTasks",
+          "ecs:DescribeTaskDefinition",
+          "ecs:DescribeContainerInstances"
+        ]
+        Resource = "*"
       }
     ]
   })
