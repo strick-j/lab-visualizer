@@ -531,11 +531,10 @@ export function createEdges(data: TopologyResponse): Edge[] {
           id: `edge-igw-${vpc.internet_gateway.id}-subnet-${subnet.id}`,
           source: `igw-${vpc.internet_gateway.id}`,
           target: `subnet-${subnet.id}`,
-          type: "smoothstep",
+          type: "default",
           animated: true,
           style: { stroke: "#94a3b8", strokeWidth: 2 },
-          zIndex: 3,
-          pathOptions: { offset: 20, borderRadius: 100 },
+          zIndex: 0,
         });
       }
     }
@@ -555,15 +554,14 @@ export function createEdges(data: TopologyResponse): Edge[] {
             id: `edge-nat-${publicSubnet.nat_gateway.id}-subnet-${privateSubnet.id}`,
             source: `nat-${publicSubnet.nat_gateway.id}`,
             target: `subnet-${privateSubnet.id}`,
-            type: "smoothstep",
+            type: "default",
             animated: true,
             style: {
               stroke: "#a78bfa",
               strokeWidth: 2,
               strokeDasharray: "5,5",
             },
-            zIndex: 3,
-            pathOptions: { offset: 25, borderRadius: 100 },
+            zIndex: 0,
           });
         }
       }

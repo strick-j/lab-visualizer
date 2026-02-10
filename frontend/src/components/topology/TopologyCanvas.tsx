@@ -89,7 +89,7 @@ export function TopologyCanvas({ data, onNodeClick }: TopologyCanvasProps) {
         minZoom={0.1}
         maxZoom={2}
         defaultEdgeOptions={{
-          type: "smoothstep",
+          type: "default",
           animated: false,
         }}
         proOptions={{ hideAttribution: true }}
