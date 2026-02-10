@@ -172,6 +172,10 @@ module "alb" {
   frontend_container_port    = var.frontend_container_port
   frontend_health_check_path = var.frontend_health_check_path
 
+  # Sticky sessions required: backend uses SQLite (local file DB) so all
+  # requests from a client must route to the same task to preserve sessions.
+  enable_stickiness = true
+
   enable_deletion_protection = true # Protect production ALB
 }
 
