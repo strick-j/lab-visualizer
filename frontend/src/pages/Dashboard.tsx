@@ -128,9 +128,10 @@ export function DashboardPage() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        {(summary || tfManagedFilter !== undefined) && (
-          <>
+      {(summary || tfManagedFilter !== undefined) && (
+        <div className="space-y-6">
+          {/* Compute Resources */}
+          <div className="grid gap-6 grid-cols-1 md:grid-cols-3">
             {ec2Counts && (
               <ResourceSummaryCard
                 title="EC2 Instances"
@@ -158,6 +159,10 @@ export function DashboardPage() {
                 linkText="View ECS details"
               />
             )}
+          </div>
+
+          {/* Infrastructure & Management */}
+          <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="flex items-center gap-2">
@@ -240,9 +245,9 @@ export function DashboardPage() {
                 </Link>
               </CardContent>
             </Card>
-          </>
-        )}
-      </div>
+          </div>
+        </div>
+      )}
 
       {/* Recent Resources */}
       <div className="grid gap-6 lg:grid-cols-2 xl:grid-cols-4">
