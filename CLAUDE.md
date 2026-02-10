@@ -274,7 +274,7 @@ lab-visualizer/
 │
 ├── docker-compose.yml         # Local development setup
 ├── Makefile                   # Task automation
-├── VERSION                    # Application version (e.g. 1.3.0)
+├── VERSION                    # Application version (e.g. 1.4.0)
 ├── README.md                  # User documentation
 ├── CLAUDE.md                  # This file (AI assistant context)
 ├── CONTRIBUTING.md            # Contributing guidelines
@@ -432,7 +432,15 @@ See `.env.example` for complete list. Key variables:
 | `LOG_LEVEL` | Logging level | `INFO` |
 | `CORS_ORIGINS` | Allowed CORS origins | `http://localhost:3000,http://localhost:5173` |
 | `SESSION_SECRET` | Session signing key | (change in production) |
+| `LOCAL_AUTH_ENABLED` | Enable local username/password auth | `true` |
+| `ADMIN_USERNAME` | Auto-provision admin on startup | - |
+| `ADMIN_PASSWORD` | Admin password (Secrets Manager in prod) | - |
 | `OIDC_ISSUER` | SSO identity provider URL | - |
+| `OIDC_CLIENT_ID` | OIDC client ID | - |
+| `OIDC_CLIENT_SECRET` | OIDC client secret | - |
+| `FRONTEND_URL` | Frontend URL for SSO callback redirects | - |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | Access token TTL in minutes | `30` |
+| `REFRESH_TOKEN_EXPIRE_DAYS` | Refresh token TTL in days | `7` |
 
 ## CI/CD Pipelines
 

@@ -133,9 +133,15 @@ npm run dev
 | `LOG_LEVEL` | Logging level | `INFO` |
 | `CORS_ORIGINS` | Allowed CORS origins | `http://localhost:3000,http://localhost:5173` |
 | `SESSION_SECRET` | Session signing key | (change in production) |
+| `LOCAL_AUTH_ENABLED` | Enable local username/password auth | `true` |
+| `ADMIN_USERNAME` | Auto-provision admin on startup | - |
+| `ADMIN_PASSWORD` | Admin password (use Secrets Manager in prod) | - |
 | `OIDC_ISSUER` | SSO identity provider URL | - |
 | `OIDC_CLIENT_ID` | OIDC client ID | - |
 | `OIDC_CLIENT_SECRET` | OIDC client secret | - |
+| `FRONTEND_URL` | Frontend URL for SSO callback redirects | - |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | Access token TTL in minutes | `30` |
+| `REFRESH_TOKEN_EXPIRE_DAYS` | Refresh token TTL in days | `7` |
 
 ### Terraform State Configuration
 
