@@ -57,9 +57,10 @@ const config = {
   },
   spacing: {
     horizontal: 15,
-    vertical: 30,
+    vertical: 20,
     subnetGap: 20,
-    rowGap: 70,
+    rowGap: 50,
+    igwToSubnetGap: 50,
     vpcGap: 50,
   },
   resourcesPerRow: 2,
@@ -187,7 +188,7 @@ function layoutVPC(
 
   // IGW height
   if (vpc.internet_gateway) {
-    contentHeight += config.nodeHeight.gateway + config.spacing.vertical;
+    contentHeight += config.nodeHeight.gateway + config.spacing.igwToSubnetGap;
   }
 
   // Public subnets row
@@ -258,7 +259,7 @@ function layoutVPC(
         igwId: vpc.internet_gateway.id,
       } as InternetGatewayNodeData,
     });
-    relativeY += config.nodeHeight.gateway + config.spacing.vertical;
+    relativeY += config.nodeHeight.gateway + config.spacing.igwToSubnetGap;
   }
 
   // Layout public subnets (children of VPC)
