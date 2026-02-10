@@ -57,9 +57,9 @@ const config = {
   },
   spacing: {
     horizontal: 15,
-    vertical: 20,
+    vertical: 30,
     subnetGap: 20,
-    rowGap: 25,
+    rowGap: 70,
     vpcGap: 50,
   },
   resourcesPerRow: 2,
@@ -533,7 +533,8 @@ export function createEdges(data: TopologyResponse): Edge[] {
           type: "smoothstep",
           animated: true,
           style: { stroke: "#94a3b8", strokeWidth: 2 },
-          zIndex: 10,
+          zIndex: 0,
+          pathOptions: { offset: 20 },
         });
       }
     }
@@ -560,7 +561,8 @@ export function createEdges(data: TopologyResponse): Edge[] {
               strokeWidth: 2,
               strokeDasharray: "5,5",
             },
-            zIndex: 10,
+            zIndex: 0,
+            pathOptions: { offset: 25 },
           });
         }
       }
