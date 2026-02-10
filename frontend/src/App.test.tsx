@@ -109,6 +109,7 @@ describe("App", () => {
     expect(screen.getByText("Dashboard")).toBeInTheDocument();
     expect(screen.getByText("EC2 Instances")).toBeInTheDocument();
     expect(screen.getByText("RDS Databases")).toBeInTheDocument();
+    expect(screen.getByText("ECS Containers")).toBeInTheDocument();
     expect(screen.getByText("VPC Networking")).toBeInTheDocument();
     expect(screen.getByText("Terraform")).toBeInTheDocument();
   });
