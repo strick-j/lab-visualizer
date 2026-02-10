@@ -53,41 +53,40 @@ AWS Lab Infrastructure Visualizer is a web application that provides visual repr
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│                    Frontend (React + TypeScript)                     │
+│                    Frontend (React + TypeScript)                    │
 │  ┌─────────────┐  ┌──────────────┐  ┌─────────────────────────────┐ │
 │  │   Pages     │  │  Components  │  │  Topology Visualization     │ │
 │  │  VPCPage    │  │  common/     │  │  (React Flow)               │ │
-│  │             │  │  dashboard/  │  │  VPC → Subnet → EC2/RDS     │ │
-│  └─────────────┘  │  vpc/        │  └─────────────────────────────┘ │
-│                   │  topology/   │                                   │
-│                   │  resources/  │                                   │
-│                   │  layout/     │                                   │
-│                   └──────────────┘                                   │
+│  │  ECSList    │  │  dashboard/  │  │  VPC → Subnet → EC2/RDS/ECS │ │
+│  │  Settings   │  │  vpc/        │  └─────────────────────────────┘ │
+│  │  Login      │  │  topology/   │                                  │
+│  └─────────────┘  │  settings/   │                                  │
+│                   │  resources/  │                                  │
+│                   │  layout/     │                                  │
+│                   └──────────────┘                                  │
 └───────────────────────────┬─────────────────────────────────────────┘
                             │ HTTP/REST
                             ▼
 ┌─────────────────────────────────────────────────────────────────────┐
-│                       FastAPI Backend                                │
+│                       FastAPI Backend                               │
 │  ┌──────────────┐  ┌──────────────┐  ┌────────────────────────────┐ │
 │  │  API Routes  │  │   Services   │  │      Collectors            │ │
 │  │  /api/*      │→ │   Business   │→ │  EC2, RDS, ECS, VPC        │ │
 │  │              │  │   Logic      │  │  Subnet, IGW, NAT GW, EIP  │ │
 │  └──────────────┘  └──────────────┘  └──────────┬─────────────────┘ │
-│                                                  │                   │
-│  ┌──────────────┐  ┌──────────────┐              │                   │
-│  │   Parsers    │  │   Models     │              │                   │
-│  │  Terraform   │  │  SQLAlchemy  │              │                   │
-│  │  State       │  │  Database    │              │                   │
-│  └──────────────┘  └──────────────┘              │                   │
-└──────────────────────────────────────────────────┼───────────────────┘
-                                                   │
-        ┌──────────────────────────────────────────┼──────────────────┐
-        │                                          │                  │
-        ▼                                          ▼                  │
-┌──────────────────┐                   ┌──────────────────────┐       │
-│  Terraform State │                   │      AWS APIs        │       │
-│  (S3 Backend)    │                   │  EC2, RDS, VPC, etc. │       │
-└──────────────────┘                   └──────────────────────┘       │
+│                                                 │                   │
+│  ┌──────────────┐  ┌──────────────┐             │                   │
+│  │   Parsers    │  │   Models     │             │                   │
+│  │  Terraform   │  │  SQLAlchemy  │             │                   │
+│  │  State       │  │  Database    │             │                   │
+│  └──────┬───────┘  └──────────────┘             │                   │
+└─────────┼───────────────────────────────────────┼───────────────────┘
+          │                                       │
+          ▼                                       ▼
+┌──────────────────┐                   ┌───────────────────────────┐
+│  Terraform State │                   │        AWS APIs           │
+│  (S3 Backend)    │                   │  EC2, RDS, ECS, VPC, etc. │
+└──────────────────┘                   └───────────────────────────┘
 ```
 
 ## Directory Structure
@@ -614,6 +613,21 @@ persists independently of the deployment mechanism.
         "rds:DescribeDBInstances",
         "rds:DescribeDBClusters",
         "rds:ListTagsForResource"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "ECSReadAccess",
+      "Effect": "Allow",
+      "Action": [
+        "ecs:DescribeClusters",
+        "ecs:ListClusters",
+        "ecs:DescribeServices",
+        "ecs:ListServices",
+        "ecs:DescribeTasks",
+        "ecs:ListTasks",
+        "ecs:DescribeTaskDefinition",
+        "ecs:DescribeContainerInstances"
       ],
       "Resource": "*"
     },
