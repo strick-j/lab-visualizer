@@ -34,6 +34,15 @@ const mockRDSInstances = [
   },
 ];
 
+const mockECSContainers = [
+  {
+    task_id: "task-abc123",
+    name: "web-task",
+    cluster_name: "prod-cluster",
+    display_status: "active",
+  },
+];
+
 const mockDrift = {
   drift_detected: false,
   items: [],
@@ -51,6 +60,7 @@ const mockVPCs = [
 let mockSummaryLoading = false;
 let mockEc2Loading = false;
 let mockRdsLoading = false;
+let mockEcsLoading = false;
 
 vi.mock("@/hooks", () => ({
   useStatusSummary: () => ({
@@ -65,8 +75,9 @@ vi.mock("@/hooks", () => ({
     data: { data: mockRDSInstances },
     isLoading: mockRdsLoading,
   }),
-  useECSSummary: () => ({
-    data: null,
+  useECSContainers: () => ({
+    data: { data: mockECSContainers, meta: { total: 1 } },
+    isLoading: mockEcsLoading,
   }),
   useDrift: () => ({
     data: mockDrift,
@@ -95,6 +106,7 @@ describe("DashboardPage", () => {
     mockSummaryLoading = false;
     mockEc2Loading = false;
     mockRdsLoading = false;
+    mockEcsLoading = false;
   });
 
   it("renders page title", () => {
@@ -151,11 +163,23 @@ describe("DashboardPage", () => {
     expect(screen.getByText("mysql 8.0")).toBeInTheDocument();
   });
 
+  it("renders ECS summary card", () => {
+    render(<DashboardPage />);
+    expect(screen.getByText("ECS Containers")).toBeInTheDocument();
+  });
+
+  it("renders Recent ECS Containers section", () => {
+    render(<DashboardPage />);
+    expect(screen.getByText("Recent ECS Containers")).toBeInTheDocument();
+    expect(screen.getByText("web-task")).toBeInTheDocument();
+    expect(screen.getByText("prod-cluster")).toBeInTheDocument();
+  });
+
   it("renders view all links", () => {
     render(<DashboardPage />);
     const viewAllLinks = screen.getAllByText("View all →");
-    // Now there are 3 "View all" links (EC2, RDS, VPC)
-    expect(viewAllLinks).toHaveLength(3);
+    // Now there are 4 "View all" links (EC2, RDS, ECS, VPC)
+    expect(viewAllLinks).toHaveLength(4);
   });
 
   it("renders View Terraform details link", () => {
