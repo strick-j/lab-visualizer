@@ -107,6 +107,18 @@ variable "access_logs_prefix" {
 # Frontend Configuration (Optional)
 # -----------------------------------------------------------------------------
 
+variable "enable_stickiness" {
+  description = "Enable sticky sessions on backend target group (required when using SQLite with multiple backend tasks)"
+  type        = bool
+  default     = false
+}
+
+variable "stickiness_duration" {
+  description = "Duration (in seconds) for sticky session cookies"
+  type        = number
+  default     = 86400
+}
+
 variable "frontend_container_port" {
   description = "Port the frontend container listens on (set > 0 to enable frontend routing)"
   type        = number
