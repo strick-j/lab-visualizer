@@ -65,6 +65,9 @@ vi.mock("@/hooks", () => ({
     data: { data: mockRDSInstances },
     isLoading: mockRdsLoading,
   }),
+  useECSSummary: () => ({
+    data: null,
+  }),
   useDrift: () => ({
     data: mockDrift,
   }),

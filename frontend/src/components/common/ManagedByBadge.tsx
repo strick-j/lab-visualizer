@@ -10,18 +10,25 @@ interface ManagedByBadgeProps {
 
 const CONFIG: Record<
   ManagedByType,
-  { label: string; colors: string; darkColors: string; icon: "terraform" | "github" | "help" }
+  {
+    label: string;
+    colors: string;
+    darkColors: string;
+    icon: "terraform" | "github" | "help";
+  }
 > = {
   terraform: {
     label: "Terraform",
     colors: "bg-purple-100 text-purple-700 border-purple-200",
-    darkColors: "dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-800",
+    darkColors:
+      "dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-800",
     icon: "terraform",
   },
   github_actions: {
     label: "GitHub Actions",
     colors: "bg-green-100 text-green-700 border-green-200",
-    darkColors: "dark:bg-green-900/30 dark:text-green-300 dark:border-green-800",
+    darkColors:
+      "dark:bg-green-900/30 dark:text-green-300 dark:border-green-800",
     icon: "github",
   },
   unmanaged: {
