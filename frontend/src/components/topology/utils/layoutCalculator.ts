@@ -534,8 +534,8 @@ export function createEdges(data: TopologyResponse): Edge[] {
           type: "smoothstep",
           animated: true,
           style: { stroke: "#94a3b8", strokeWidth: 2 },
-          zIndex: 0,
-          pathOptions: { offset: 20 },
+          zIndex: 3,
+          pathOptions: { offset: 20, borderRadius: 20 },
         });
       }
     }
@@ -562,8 +562,8 @@ export function createEdges(data: TopologyResponse): Edge[] {
               strokeWidth: 2,
               strokeDasharray: "5,5",
             },
-            zIndex: 0,
-            pathOptions: { offset: 25 },
+            zIndex: 3,
+            pathOptions: { offset: 25, borderRadius: 20 },
           });
         }
       }
