@@ -1,7 +1,7 @@
 # =============================================================================
 # IAM Module
 # Creates IAM role and policies for the backend application to monitor
-# AWS infrastructure (EC2, RDS, VPC, Subnets, IGW, NAT Gateway, EIP)
+# AWS infrastructure (EC2, RDS, ECS, VPC, Subnets, IGW, NAT Gateway, EIP)
 # =============================================================================
 
 data "aws_caller_identity" "current" {}
@@ -33,7 +33,7 @@ resource "aws_iam_role" "app_task" {
 
 # -----------------------------------------------------------------------------
 # AWS Infrastructure Monitoring Policy
-# Grants read-only access to EC2, VPC, and RDS resources
+# Grants read-only access to EC2, VPC, RDS, and ECS resources
 # -----------------------------------------------------------------------------
 
 resource "aws_iam_role_policy" "aws_monitoring" {

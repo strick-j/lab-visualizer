@@ -28,9 +28,10 @@ A web application that provides visual representation of AWS infrastructure stat
 │  ┌─────────────┐  ┌──────────────┐  ┌─────────────────────────────┐ │
 │  │   Pages     │  │  Components  │  │  Topology Visualization     │ │
 │  │  VPCPage    │  │  common/     │  │  (React Flow)               │ │
-│  │             │  │  dashboard/  │  │  VPC → Subnet → EC2/RDS     │ │
-│  └─────────────┘  │  vpc/        │  └─────────────────────────────┘ │
-│                   │  topology/   │                                   │
+│  │  ECSList    │  │  dashboard/  │  │  VPC → Subnet → EC2/RDS/ECS │ │
+│  │  Settings   │  │  vpc/        │  └─────────────────────────────┘ │
+│  │  Login      │  │  topology/   │                                   │
+│  └─────────────┘  │  settings/   │                                   │
 │                   │  resources/  │                                   │
 │                   │  layout/     │                                   │
 │                   └──────────────┘                                   │
@@ -49,16 +50,14 @@ A web application that provides visual representation of AWS infrastructure stat
 │  │   Parsers    │  │   Models     │              │                   │
 │  │  Terraform   │  │  SQLAlchemy  │              │                   │
 │  │  State       │  │  Database    │              │                   │
-│  └──────────────┘  └──────────────┘              │                   │
-└──────────────────────────────────────────────────┼───────────────────┘
-                                                   │
-        ┌──────────────────────────────────────────┼──────────────────┐
-        │                                          │                  │
-        ▼                                          ▼                  │
-┌──────────────────┐                   ┌──────────────────────┐       │
-│  Terraform State │                   │      AWS APIs        │       │
-│  (S3 Backend)    │                   │  EC2, RDS, VPC, etc. │       │
-└──────────────────┘                   └──────────────────────┘       │
+│  └──────┬───────┘  └──────────────┘              │                   │
+└─────────┼────────────────────────────────────────┼───────────────────┘
+          │                                        │
+          ▼                                        ▼
+┌──────────────────┐                   ┌───────────────────────────┐
+│  Terraform State │                   │        AWS APIs           │
+│  (S3 Backend)    │                   │  EC2, RDS, ECS, VPC, etc. │
+└──────────────────┘                   └───────────────────────────┘
 ```
 
 ## Quick Start
@@ -461,6 +460,17 @@ The application task role is managed by the standalone `iam` module (`infrastruc
         "rds:DescribeDBInstances",
         "rds:DescribeDBClusters",
         "rds:ListTagsForResource"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "ECSReadAccess",
+      "Effect": "Allow",
+      "Action": [
+        "ecs:ListClusters",
+        "ecs:ListTasks",
+        "ecs:DescribeTasks",
+        "ecs:DescribeClusters"
       ],
       "Resource": "*"
     },

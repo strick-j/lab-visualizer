@@ -57,9 +57,10 @@ AWS Lab Infrastructure Visualizer is a web application that provides visual repr
 │  ┌─────────────┐  ┌──────────────┐  ┌─────────────────────────────┐ │
 │  │   Pages     │  │  Components  │  │  Topology Visualization     │ │
 │  │  VPCPage    │  │  common/     │  │  (React Flow)               │ │
-│  │             │  │  dashboard/  │  │  VPC → Subnet → EC2/RDS     │ │
-│  └─────────────┘  │  vpc/        │  └─────────────────────────────┘ │
-│                   │  topology/   │                                   │
+│  │  ECSList    │  │  dashboard/  │  │  VPC → Subnet → EC2/RDS/ECS │ │
+│  │  Settings   │  │  vpc/        │  └─────────────────────────────┘ │
+│  │  Login      │  │  topology/   │                                   │
+│  └─────────────┘  │  settings/   │                                   │
 │                   │  resources/  │                                   │
 │                   │  layout/     │                                   │
 │                   └──────────────┘                                   │
@@ -78,16 +79,14 @@ AWS Lab Infrastructure Visualizer is a web application that provides visual repr
 │  │   Parsers    │  │   Models     │              │                   │
 │  │  Terraform   │  │  SQLAlchemy  │              │                   │
 │  │  State       │  │  Database    │              │                   │
-│  └──────────────┘  └──────────────┘              │                   │
-└──────────────────────────────────────────────────┼───────────────────┘
-                                                   │
-        ┌──────────────────────────────────────────┼──────────────────┐
-        │                                          │                  │
-        ▼                                          ▼                  │
-┌──────────────────┐                   ┌──────────────────────┐       │
-│  Terraform State │                   │      AWS APIs        │       │
-│  (S3 Backend)    │                   │  EC2, RDS, VPC, etc. │       │
-└──────────────────┘                   └──────────────────────┘       │
+│  └──────┬───────┘  └──────────────┘              │                   │
+└─────────┼────────────────────────────────────────┼───────────────────┘
+          │                                        │
+          ▼                                        ▼
+┌──────────────────┐                   ┌───────────────────────────┐
+│  Terraform State │                   │        AWS APIs           │
+│  (S3 Backend)    │                   │  EC2, RDS, ECS, VPC, etc. │
+└──────────────────┘                   └───────────────────────────┘
 ```
 
 ## Directory Structure
@@ -614,6 +613,17 @@ persists independently of the deployment mechanism.
         "rds:DescribeDBInstances",
         "rds:DescribeDBClusters",
         "rds:ListTagsForResource"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "ECSReadAccess",
+      "Effect": "Allow",
+      "Action": [
+        "ecs:ListClusters",
+        "ecs:ListTasks",
+        "ecs:DescribeTasks",
+        "ecs:DescribeClusters"
       ],
       "Resource": "*"
     },
