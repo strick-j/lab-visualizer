@@ -24,36 +24,36 @@ A web application that provides visual representation of AWS infrastructure stat
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│                    Frontend (React + TypeScript)                     │
+│                    Frontend (React + TypeScript)                    │
 │  ┌─────────────┐  ┌──────────────┐  ┌─────────────────────────────┐ │
 │  │   Pages     │  │  Components  │  │  Topology Visualization     │ │
 │  │  VPCPage    │  │  common/     │  │  (React Flow)               │ │
 │  │  ECSList    │  │  dashboard/  │  │  VPC → Subnet → EC2/RDS/ECS │ │
 │  │  Settings   │  │  vpc/        │  └─────────────────────────────┘ │
-│  │  Login      │  │  topology/   │                                   │
-│  └─────────────┘  │  settings/   │                                   │
-│                   │  resources/  │                                   │
-│                   │  layout/     │                                   │
-│                   └──────────────┘                                   │
+│  │  Login      │  │  topology/   │                                  │
+│  └─────────────┘  │  settings/   │                                  │
+│                   │  resources/  │                                  │
+│                   │  layout/     │                                  │
+│                   └──────────────┘                                  │
 └───────────────────────────┬─────────────────────────────────────────┘
                             │ HTTP/REST
                             ▼
 ┌─────────────────────────────────────────────────────────────────────┐
-│                       FastAPI Backend                                │
+│                       FastAPI Backend                               │
 │  ┌──────────────┐  ┌──────────────┐  ┌────────────────────────────┐ │
 │  │  API Routes  │  │   Services   │  │      Collectors            │ │
 │  │  /api/*      │→ │   Business   │→ │  EC2, RDS, ECS, VPC        │ │
 │  │              │  │   Logic      │  │  Subnet, IGW, NAT GW, EIP  │ │
 │  └──────────────┘  └──────────────┘  └──────────┬─────────────────┘ │
-│                                                  │                   │
-│  ┌──────────────┐  ┌──────────────┐              │                   │
-│  │   Parsers    │  │   Models     │              │                   │
-│  │  Terraform   │  │  SQLAlchemy  │              │                   │
-│  │  State       │  │  Database    │              │                   │
-│  └──────┬───────┘  └──────────────┘              │                   │
-└─────────┼────────────────────────────────────────┼───────────────────┘
-          │                                        │
-          ▼                                        ▼
+│                                                 │                   │
+│  ┌──────────────┐  ┌──────────────┐             │                   │
+│  │   Parsers    │  │   Models     │             │                   │
+│  │  Terraform   │  │  SQLAlchemy  │             │                   │
+│  │  State       │  │  Database    │             │                   │
+│  └──────┬───────┘  └──────────────┘             │                   │
+└─────────┼───────────────────────────────────────┼───────────────────┘
+          │                                       │
+          ▼                                       ▼
 ┌──────────────────┐                   ┌───────────────────────────┐
 │  Terraform State │                   │        AWS APIs           │
 │  (S3 Backend)    │                   │  EC2, RDS, ECS, VPC, etc. │
