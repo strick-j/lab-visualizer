@@ -620,10 +620,14 @@ persists independently of the deployment mechanism.
       "Sid": "ECSReadAccess",
       "Effect": "Allow",
       "Action": [
+        "ecs:DescribeClusters",
         "ecs:ListClusters",
-        "ecs:ListTasks",
+        "ecs:DescribeServices",
+        "ecs:ListServices",
         "ecs:DescribeTasks",
-        "ecs:DescribeClusters"
+        "ecs:ListTasks",
+        "ecs:DescribeTaskDefinition",
+        "ecs:DescribeContainerInstances"
       ],
       "Resource": "*"
     },

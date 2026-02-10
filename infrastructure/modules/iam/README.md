@@ -7,7 +7,7 @@ Provisions IAM roles and policies for the backend application task role. This mo
 - **Application task role**: Assumed by ECS tasks via `ecs-tasks.amazonaws.com`
 - **EC2 monitoring policy**: Read-only access to EC2, VPC, subnet, route table, internet gateway, NAT gateway, and elastic IP resources
 - **RDS monitoring policy**: Read-only access to RDS instances, clusters, and tags
-- **ECS monitoring policy**: Read-only access to ECS clusters and tasks (`ListClusters`, `ListTasks`, `DescribeTasks`, `DescribeClusters`)
+- **ECS monitoring policy**: Read-only access to ECS clusters, services, tasks, task definitions, and container instances (`DescribeClusters`, `ListClusters`, `DescribeServices`, `ListServices`, `DescribeTasks`, `ListTasks`, `DescribeTaskDefinition`, `DescribeContainerInstances`)
 - **S3 Terraform state policy**: Read access to S3 objects and bucket listing, scoped to the current AWS account
 
 ## Variables

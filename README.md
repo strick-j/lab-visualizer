@@ -467,10 +467,14 @@ The application task role is managed by the standalone `iam` module (`infrastruc
       "Sid": "ECSReadAccess",
       "Effect": "Allow",
       "Action": [
+        "ecs:DescribeClusters",
         "ecs:ListClusters",
-        "ecs:ListTasks",
+        "ecs:DescribeServices",
+        "ecs:ListServices",
         "ecs:DescribeTasks",
-        "ecs:DescribeClusters"
+        "ecs:ListTasks",
+        "ecs:DescribeTaskDefinition",
+        "ecs:DescribeContainerInstances"
       ],
       "Resource": "*"
     },

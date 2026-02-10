@@ -61,7 +61,7 @@ The `iam` module is intentionally separate from the `ecs` module so that the app
 - **Application task role**: Assumed by ECS tasks via `ecs-tasks.amazonaws.com`
 - **EC2 read-only policy**: `DescribeInstances`, `DescribeVpcs`, `DescribeSubnets`, `DescribeRouteTables`, `DescribeInternetGateways`, `DescribeNatGateways`, `DescribeAddresses`, etc.
 - **RDS read-only policy**: `DescribeDBInstances`, `DescribeDBClusters`, `ListTagsForResource`
-- **ECS read-only policy**: `ListClusters`, `ListTasks`, `DescribeTasks`, `DescribeClusters`
+- **ECS read-only policy**: `DescribeClusters`, `ListClusters`, `DescribeServices`, `ListServices`, `DescribeTasks`, `ListTasks`, `DescribeTaskDefinition`, `DescribeContainerInstances`
 - **S3 Terraform state policy**: `GetObject`, `ListBucket`, `GetBucketLocation` scoped to the current AWS account
 
 ### Secrets Module
