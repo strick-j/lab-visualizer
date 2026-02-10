@@ -20,7 +20,9 @@ from app.schemas.resources import (
     ECSClusterSummary,
     ECSContainerDetail,
     ECSContainerResponse,
+    ECSSummaryResponse,
     ListResponse,
+    ManagedBy,
     MetaInfo,
 )
 
@@ -88,6 +90,12 @@ async def list_ecs_clusters(
             cluster_containers[0].region.name if cluster_containers[0].region else None
         )
 
+        # Determine cluster-level managed_by
+        if any_tf:
+            cluster_managed_by = ManagedBy.TERRAFORM
+        else:
+            cluster_managed_by = ManagedBy.UNMANAGED
+
         container_responses = [_container_to_response(c) for c in cluster_containers]
 
         cluster_summaries.append(
@@ -98,6 +106,7 @@ async def list_ecs_clusters(
                 stopped_tasks=stopped,
                 pending_tasks=pending,
                 tf_managed=any_tf,
+                managed_by=cluster_managed_by,
                 region_name=region_name,
                 containers=container_responses,
             )
@@ -219,6 +228,46 @@ async def get_ecs_container(
     return _container_to_detail(container)
 
 
+@router.get("/ecs/summary", response_model=ECSSummaryResponse)
+async def get_ecs_summary(
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Get summary counts for ECS resources.
+
+    Returns cluster count, running/stopped/pending task counts.
+    """
+    query = (
+        select(ECSContainer)
+        .where(ECSContainer.is_deleted == False)
+    )
+    result = await db.execute(query)
+    containers = result.scalars().all()
+
+    cluster_names = set()
+    running = 0
+    stopped = 0
+    pending = 0
+
+    for c in containers:
+        cluster_names.add(c.cluster_name)
+        if c.status == "RUNNING":
+            running += 1
+        elif c.status == "STOPPED":
+            stopped += 1
+        elif c.status in ("PENDING", "PROVISIONING", "ACTIVATING"):
+            pending += 1
+
+    return ECSSummaryResponse(
+        clusters=len(cluster_names),
+        services=0,
+        running_tasks=running,
+        stopped_tasks=stopped,
+        pending_tasks=pending,
+        total_tasks=len(containers),
+    )
+
+
 def _get_statuses_for_display(status: DisplayStatus) -> list[str]:
     """Map display status to ECS task statuses."""
     mapping = {
@@ -236,6 +285,18 @@ def _get_statuses_for_display(status: DisplayStatus) -> list[str]:
         DisplayStatus.UNKNOWN: [],
     }
     return mapping.get(status, [])
+
+
+def _resolve_managed_by(container: ECSContainer) -> ManagedBy:
+    """Resolve the management source for a container."""
+    if container.tf_managed:
+        return ManagedBy.TERRAFORM
+    managed = getattr(container, "managed_by", "unmanaged")
+    if managed == "github_actions":
+        return ManagedBy.GITHUB_ACTIONS
+    if managed == "terraform":
+        return ManagedBy.TERRAFORM
+    return ManagedBy.UNMANAGED
 
 
 def _container_to_response(container: ECSContainer) -> ECSContainerResponse:
@@ -260,6 +321,7 @@ def _container_to_response(container: ECSContainer) -> ECSContainerResponse:
         task_definition_arn=container.task_definition_arn,
         desired_status=container.desired_status,
         image=container.image,
+        image_tag=getattr(container, "image_tag", None),
         container_port=container.container_port,
         private_ip=container.private_ip,
         subnet_id=container.subnet_id,
@@ -270,6 +332,7 @@ def _container_to_response(container: ECSContainer) -> ECSContainerResponse:
         tf_managed=container.tf_managed,
         tf_state_source=container.tf_state_source,
         tf_resource_address=container.tf_resource_address,
+        managed_by=_resolve_managed_by(container),
         region_name=container.region.name if container.region else None,
         is_deleted=container.is_deleted,
         deleted_at=container.deleted_at,
@@ -299,6 +362,7 @@ def _container_to_detail(container: ECSContainer) -> ECSContainerDetail:
         task_definition_arn=container.task_definition_arn,
         desired_status=container.desired_status,
         image=container.image,
+        image_tag=getattr(container, "image_tag", None),
         container_port=container.container_port,
         private_ip=container.private_ip,
         subnet_id=container.subnet_id,
@@ -309,6 +373,7 @@ def _container_to_detail(container: ECSContainer) -> ECSContainerDetail:
         tf_managed=container.tf_managed,
         tf_state_source=container.tf_state_source,
         tf_resource_address=container.tf_resource_address,
+        managed_by=_resolve_managed_by(container),
         region_name=container.region.name if container.region else None,
         is_deleted=container.is_deleted,
         deleted_at=container.deleted_at,

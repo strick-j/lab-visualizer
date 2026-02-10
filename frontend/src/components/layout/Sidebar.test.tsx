@@ -10,6 +10,7 @@ describe("Sidebar", () => {
     expect(screen.getByText("Topology")).toBeInTheDocument();
     expect(screen.getByText("EC2 Instances")).toBeInTheDocument();
     expect(screen.getByText("RDS Databases")).toBeInTheDocument();
+    expect(screen.getByText("ECS Containers")).toBeInTheDocument();
     expect(screen.getByText("VPC Networking")).toBeInTheDocument();
     expect(screen.getByText("Terraform")).toBeInTheDocument();
   });
@@ -47,6 +48,10 @@ describe("Sidebar", () => {
     expect(screen.getByText("RDS Databases").closest("a")).toHaveAttribute(
       "href",
       "/rds",
+    );
+    expect(screen.getByText("ECS Containers").closest("a")).toHaveAttribute(
+      "href",
+      "/ecs",
     );
     expect(screen.getByText("VPC Networking").closest("a")).toHaveAttribute(
       "href",

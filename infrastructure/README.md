@@ -51,7 +51,29 @@ The ALB uses **path-based routing** to direct traffic to the appropriate service
 | `ecr` | Elastic Container Registry for Docker images |
 | `alb` | Application Load Balancer with HTTPS |
 | `ecs` | ECS Fargate cluster, service, and task definition (used for both backend and frontend) |
+| `iam` | IAM roles and policies for the application task role (decoupled from ECS for independent lifecycle) |
 | `secrets` | AWS Secrets Manager for sensitive configuration |
+
+### IAM Module
+
+The `iam` module is intentionally separate from the `ecs` module so that the application task role and its policies persist independently of the deployment mechanism. It creates:
+
+- **Application task role**: Assumed by ECS tasks via `ecs-tasks.amazonaws.com`
+- **EC2 read-only policy**: `DescribeInstances`, `DescribeVpcs`, `DescribeSubnets`, `DescribeRouteTables`, `DescribeInternetGateways`, `DescribeNatGateways`, `DescribeAddresses`, etc.
+- **RDS read-only policy**: `DescribeDBInstances`, `DescribeDBClusters`, `ListTagsForResource`
+- **ECS read-only policy**: `DescribeClusters`, `ListClusters`, `DescribeServices`, `ListServices`, `DescribeTasks`, `ListTasks`, `DescribeTaskDefinition`, `DescribeContainerInstances`
+- **S3 Terraform state policy**: `GetObject`, `ListBucket`, `GetBucketLocation` scoped to the current AWS account
+
+### Secrets Module
+
+The `secrets` module manages AWS Secrets Manager secrets for sensitive configuration that persists across ECS task redeployments:
+
+- **Session secret**: Auto-generated 64-character random key for JWT session signing (or uses a provided value)
+- **OIDC client secret**: Conditionally created when OIDC SSO is configured
+- **Admin password**: Conditionally created for auto-provisioning admin accounts on startup
+- **App secrets**: Optional key-value pairs for additional application secrets
+
+Secrets are injected into ECS task definitions as secret environment variables (resolved at container launch from Secrets Manager ARNs).
 
 ## Prerequisites
 
@@ -158,6 +180,7 @@ After deployment, Terraform provides these outputs:
 | `app_url` | Full URL to access the application |
 | `ecr_backend_repository_url` | ECR URL for pushing backend Docker images |
 | `ecr_frontend_repository_url` | ECR URL for pushing frontend Docker images |
+| `app_task_role_arn` | ARN of the backend application IAM task role |
 | `ecs_cluster_name` | ECS cluster name |
 | `ecs_service_name` | Backend ECS service name |
 | `ecs_frontend_service_name` | Frontend ECS service name |

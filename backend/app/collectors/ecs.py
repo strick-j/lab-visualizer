@@ -2,9 +2,12 @@
 ECS Container collector.
 
 Collects ECS task and container data from AWS using the boto3 SDK.
+Detects management source (Terraform, GitHub Actions, unmanaged) based on
+container image tags and resource tags.
 """
 
 import logging
+import re
 from typing import Any, Dict, List, Optional
 
 from botocore.exceptions import ClientError
@@ -12,6 +15,13 @@ from botocore.exceptions import ClientError
 from app.collectors.base import BaseCollector
 
 logger = logging.getLogger(__name__)
+
+# Patterns that indicate CI/CD deployment (GitHub Actions)
+GITHUB_ACTIONS_PATTERNS = [
+    re.compile(r"^[a-f0-9]{40}$"),  # Full git SHA
+    re.compile(r"^[a-f0-9]{7,8}$"),  # Short git SHA
+    re.compile(r"^v\d+\.\d+\.\d+"),  # Semver (v1.2.3)
+]
 
 
 class ECSCollector(BaseCollector):
@@ -102,11 +112,15 @@ class ECSCollector(BaseCollector):
             container_name = None
             container_port = None
             image = None
+            image_tag = None
 
             if containers:
                 first_container = containers[0]
                 container_name = first_container.get("name")
                 image = first_container.get("image")
+                # Extract image tag
+                if image and ":" in image:
+                    image_tag = image.split(":")[-1]
                 network_bindings = first_container.get("networkBindings", [])
                 if network_bindings:
                     container_port = network_bindings[0].get("containerPort")
@@ -133,6 +147,9 @@ class ECSCollector(BaseCollector):
             cpu = task.get("cpu")
             memory = task.get("memory")
 
+            # Detect management source from image tag and tags
+            managed_by = self._detect_managed_by(image_tag, tags_dict)
+
             return {
                 "task_id": task_id,
                 "task_arn": task_arn,
@@ -146,12 +163,14 @@ class ECSCollector(BaseCollector):
                 "memory": int(memory) if memory else 0,
                 "container_port": container_port,
                 "image": image,
+                "image_tag": image_tag,
                 "subnet_id": subnet_id,
                 "private_ip": private_ip,
                 "vpc_id": None,  # Resolved from subnet if needed
                 "availability_zone": task.get("availabilityZone"),
                 "started_at": task.get("startedAt"),
                 "tags": tags_dict,
+                "managed_by": managed_by,
                 "region": self.region,
             }
 
@@ -161,6 +180,31 @@ class ECSCollector(BaseCollector):
         except Exception as e:
             logger.warning(f"Error parsing ECS task: {e}")
             return None
+
+    @staticmethod
+    def _detect_managed_by(
+        image_tag: Optional[str], tags: Dict[str, str]
+    ) -> str:
+        """
+        Detect who manages this task based on image tag patterns and resource tags.
+
+        Returns:
+            "github_actions" if deployed by CI/CD, "unmanaged" otherwise.
+            Terraform management is resolved later during aggregation.
+        """
+        # Check image tag against CI/CD patterns
+        if image_tag:
+            for pattern in GITHUB_ACTIONS_PATTERNS:
+                if pattern.match(image_tag):
+                    return "github_actions"
+
+        # Check resource tags for deployment markers
+        if tags.get("deployed-by") == "github-actions":
+            return "github_actions"
+        if tags.get("managed-by") == "github-actions":
+            return "github_actions"
+
+        return "unmanaged"
 
     async def collect_task(
         self, cluster_name: str, task_id: str

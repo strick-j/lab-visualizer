@@ -57,6 +57,9 @@ class TerraformStateParser:
         "aws_internet_gateway": "igw",
         "aws_nat_gateway": "nat_gateway",
         "aws_eip": "eip",
+        "aws_ecs_cluster": "ecs_cluster",
+        "aws_ecs_service": "ecs_service",
+        "aws_ecs_task_definition": "ecs_task_definition",
     }
 
     def __init__(self, bucket: Optional[str] = None):
@@ -271,6 +274,9 @@ class TerraformStateParser:
             "aws_internet_gateway": "id",  # IGW ID
             "aws_nat_gateway": "id",  # NAT Gateway ID
             "aws_eip": "id",  # Elastic IP allocation ID
+            "aws_ecs_cluster": "name",  # ECS cluster name
+            "aws_ecs_service": "name",  # ECS service name
+            "aws_ecs_task_definition": "family",  # Task definition family
         }
 
         id_field = id_mappings.get(resource_type, "id")
@@ -522,6 +528,9 @@ class TerraformStateAggregator:
             "igw": [],
             "nat_gateway": [],
             "eip": [],
+            "ecs_cluster": [],
+            "ecs_service": [],
+            "ecs_task_definition": [],
         }
 
         bucket_entries = await self._get_all_bucket_configs()

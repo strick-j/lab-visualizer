@@ -9,6 +9,7 @@ vi.mock("@/pages", () => ({
   ),
   EC2ListPage: () => <div data-testid="ec2-page">EC2 Content</div>,
   RDSListPage: () => <div data-testid="rds-page">RDS Content</div>,
+  ECSListPage: () => <div data-testid="ecs-page">ECS Content</div>,
   VPCPage: () => <div data-testid="vpc-page">VPC Content</div>,
   TerraformPage: () => (
     <div data-testid="terraform-page">Terraform Content</div>
@@ -108,6 +109,7 @@ describe("App", () => {
     expect(screen.getByText("Dashboard")).toBeInTheDocument();
     expect(screen.getByText("EC2 Instances")).toBeInTheDocument();
     expect(screen.getByText("RDS Databases")).toBeInTheDocument();
+    expect(screen.getByText("ECS Containers")).toBeInTheDocument();
     expect(screen.getByText("VPC Networking")).toBeInTheDocument();
     expect(screen.getByText("Terraform")).toBeInTheDocument();
   });

@@ -7,6 +7,7 @@ import {
   AlertTriangle,
   CheckCircle,
   Network,
+  Container,
 } from "lucide-react";
 import {
   Card,
@@ -22,6 +23,7 @@ import {
   useStatusSummary,
   useEC2Instances,
   useRDSInstances,
+  useECSContainers,
   useDrift,
   useVPCs,
   useSubnets,
@@ -30,7 +32,13 @@ import {
   useElasticIPs,
 } from "@/hooks";
 import { formatRelativeTime, getResourceName } from "@/lib/utils";
-import type { EC2Instance, RDSInstance, VPC, ResourceFilters } from "@/types";
+import type {
+  EC2Instance,
+  RDSInstance,
+  ECSContainer,
+  VPC,
+  ResourceFilters,
+} from "@/types";
 
 const terraformOptions = [
   { value: "true", label: "Managed" },
@@ -48,6 +56,7 @@ export function DashboardPage() {
   const { data: summary, isLoading: summaryLoading } = useStatusSummary();
   const { data: ec2Data, isLoading: ec2Loading } = useEC2Instances(filters);
   const { data: rdsData, isLoading: rdsLoading } = useRDSInstances(filters);
+  const { data: ecsData, isLoading: ecsLoading } = useECSContainers(filters);
   const { data: drift } = useDrift();
   const { data: vpcData, isLoading: vpcLoading } = useVPCs(filters);
   const { data: subnetData } = useSubnets(filters);
@@ -61,6 +70,7 @@ export function DashboardPage() {
 
   const recentEC2 = ec2Data?.data.slice(0, 5) || [];
   const recentRDS = rdsData?.data.slice(0, 5) || [];
+  const recentECS = ecsData?.data.slice(0, 5) || [];
   const recentVPCs = vpcData?.data.slice(0, 5) || [];
 
   // Calculate counts from filtered data
@@ -81,6 +91,7 @@ export function DashboardPage() {
     tfManagedFilter !== undefined ? computeCounts(ec2Data?.data) : summary?.ec2;
   const rdsCounts =
     tfManagedFilter !== undefined ? computeCounts(rdsData?.data) : summary?.rds;
+  const ecsCounts = computeCounts(ecsData?.data);
 
   // Calculate VPC networking totals
   const vpcNetworkingTotal = {
@@ -117,9 +128,10 @@ export function DashboardPage() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        {(summary || tfManagedFilter !== undefined) && (
-          <>
+      {(summary || tfManagedFilter !== undefined) && (
+        <div className="space-y-6">
+          {/* Compute Resources */}
+          <div className="grid gap-6 grid-cols-1 md:grid-cols-3">
             {ec2Counts && (
               <ResourceSummaryCard
                 title="EC2 Instances"
@@ -138,6 +150,19 @@ export function DashboardPage() {
                 linkText="View RDS details"
               />
             )}
+            {ecsCounts && (
+              <ResourceSummaryCard
+                title="ECS Containers"
+                icon={<Container className="h-5 w-5 text-teal-600" />}
+                counts={ecsCounts}
+                href="/ecs"
+                linkText="View ECS details"
+              />
+            )}
+          </div>
+
+          {/* Infrastructure & Management */}
+          <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="flex items-center gap-2">
@@ -220,12 +245,12 @@ export function DashboardPage() {
                 </Link>
               </CardContent>
             </Card>
-          </>
-        )}
-      </div>
+          </div>
+        </div>
+      )}
 
       {/* Recent Resources */}
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid gap-6 lg:grid-cols-2 xl:grid-cols-4">
         {/* Recent EC2 */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
@@ -310,6 +335,50 @@ export function DashboardPage() {
                       </p>
                     </div>
                     <StatusBadge status={instance.display_status} size="sm" />
+                  </Link>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Recent ECS */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle>Recent ECS Containers</CardTitle>
+            <Link
+              to="/ecs"
+              className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+            >
+              View all →
+            </Link>
+          </CardHeader>
+          <CardContent>
+            {ecsLoading ? (
+              <div className="py-4 text-center text-gray-500 dark:text-gray-400">
+                Loading...
+              </div>
+            ) : recentECS.length === 0 ? (
+              <div className="py-4 text-center text-gray-500 dark:text-gray-400">
+                No ECS containers found
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {recentECS.map((container: ECSContainer) => (
+                  <Link
+                    key={container.task_id}
+                    to={`/ecs?selected=${container.task_id}`}
+                    className="flex items-center justify-between rounded-lg px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-700"
+                  >
+                    <div>
+                      <p className="font-medium text-gray-900 dark:text-gray-100">
+                        {getResourceName(container.name, container.task_id)}
+                      </p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        {container.cluster_name}
+                      </p>
+                    </div>
+                    <StatusBadge status={container.display_status} size="sm" />
                   </Link>
                 ))}
               </div>

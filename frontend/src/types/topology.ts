@@ -4,7 +4,7 @@
  * Types for the infrastructure topology API and React Flow visualization.
  */
 
-import { DisplayStatus } from "./resources";
+import type { DisplayStatus, ManagedBy } from "./resources";
 
 // =============================================================================
 // API Response Types
@@ -75,10 +75,12 @@ export interface TopologyECSContainer {
   cpu: number;
   memory: number;
   image: string | null;
+  image_tag: string | null;
   container_port: number | null;
   private_ip: string | null;
   tf_managed: boolean;
   tf_resource_address: string | null;
+  managed_by: ManagedBy;
 }
 
 export interface TopologySubnet {
@@ -205,8 +207,10 @@ export interface ECSContainerNodeData extends BaseNodeData {
   memory: number;
   status: string;
   image?: string;
+  imageTag?: string;
   containerPort?: number;
   privateIp?: string;
+  managedBy: ManagedBy;
 }
 
 export type TopologyNodeData =

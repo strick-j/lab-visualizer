@@ -10,53 +10,54 @@ A web application that provides visual representation of AWS infrastructure stat
 
 ## Features
 
-- **Real-time Infrastructure View**: Monitor EC2 instances, RDS databases, VPCs, Subnets, Internet Gateways, NAT Gateways, and Elastic IPs
-- **Interactive Topology Visualization**: Visual network topology with React Flow showing VPC → Subnet → Resource relationships
-- **Terraform Integration**: Aggregate multiple Terraform state files from S3 backend to identify managed resources
+- **Real-time Infrastructure View**: Monitor EC2 instances, RDS databases, ECS containers, VPCs, Subnets, Internet Gateways, NAT Gateways, and Elastic IPs
+- **Interactive Topology Visualization**: Visual network topology with React Flow showing VPC → Subnet → Resource relationships (including ECS containers), with filtering controls
+- **Terraform Integration**: Aggregate multiple Terraform state files from S3 backend to identify managed resources, with admin UI for managing buckets and paths
 - **Status Visualization**: Color-coded status indicators (running, stopped, pending, error)
 - **Configuration Drift Detection**: Compare live AWS state against Terraform state to identify drift
-- **SSO Authentication**: Secure access via OIDC identity providers
+- **Authentication**: Local username/password login and SSO via OIDC identity providers with token-based sessions
+- **User Management**: Admin panel for managing users, roles, and account status
+- **Settings Management**: Admin UI for configuring OIDC providers and Terraform state buckets
 - **Dark/Light Theme**: Toggle between themes for comfortable viewing
 
 ## Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│                    Frontend (React + TypeScript)                     │
+│                    Frontend (React + TypeScript)                    │
 │  ┌─────────────┐  ┌──────────────┐  ┌─────────────────────────────┐ │
 │  │   Pages     │  │  Components  │  │  Topology Visualization     │ │
 │  │  VPCPage    │  │  common/     │  │  (React Flow)               │ │
-│  │             │  │  dashboard/  │  │  VPC → Subnet → EC2/RDS     │ │
-│  └─────────────┘  │  vpc/        │  └─────────────────────────────┘ │
-│                   │  topology/   │                                   │
-│                   │  resources/  │                                   │
-│                   │  layout/     │                                   │
-│                   └──────────────┘                                   │
+│  │  ECSList    │  │  dashboard/  │  │  VPC → Subnet → EC2/RDS/ECS │ │
+│  │  Settings   │  │  vpc/        │  └─────────────────────────────┘ │
+│  │  Login      │  │  topology/   │                                  │
+│  └─────────────┘  │  settings/   │                                  │
+│                   │  resources/  │                                  │
+│                   │  layout/     │                                  │
+│                   └──────────────┘                                  │
 └───────────────────────────┬─────────────────────────────────────────┘
                             │ HTTP/REST
                             ▼
 ┌─────────────────────────────────────────────────────────────────────┐
-│                       FastAPI Backend                                │
+│                       FastAPI Backend                               │
 │  ┌──────────────┐  ┌──────────────┐  ┌────────────────────────────┐ │
 │  │  API Routes  │  │   Services   │  │      Collectors            │ │
-│  │  /api/*      │→ │   Business   │→ │  EC2, RDS, VPC, Subnet     │ │
-│  │              │  │   Logic      │  │  IGW, NAT Gateway, EIP     │ │
+│  │  /api/*      │→ │   Business   │→ │  EC2, RDS, ECS, VPC        │ │
+│  │              │  │   Logic      │  │  Subnet, IGW, NAT GW, EIP  │ │
 │  └──────────────┘  └──────────────┘  └──────────┬─────────────────┘ │
-│                                                  │                   │
-│  ┌──────────────┐  ┌──────────────┐              │                   │
-│  │   Parsers    │  │   Models     │              │                   │
-│  │  Terraform   │  │  SQLAlchemy  │              │                   │
-│  │  State       │  │  Database    │              │                   │
-│  └──────────────┘  └──────────────┘              │                   │
-└──────────────────────────────────────────────────┼───────────────────┘
-                                                   │
-        ┌──────────────────────────────────────────┼──────────────────┐
-        │                                          │                  │
-        ▼                                          ▼                  │
-┌──────────────────┐                   ┌──────────────────────┐       │
-│  Terraform State │                   │      AWS APIs        │       │
-│  (S3 Backend)    │                   │  EC2, RDS, VPC, etc. │       │
-└──────────────────┘                   └──────────────────────┘       │
+│                                                 │                   │
+│  ┌──────────────┐  ┌──────────────┐             │                   │
+│  │   Parsers    │  │   Models     │             │                   │
+│  │  Terraform   │  │  SQLAlchemy  │             │                   │
+│  │  State       │  │  Database    │             │                   │
+│  └──────┬───────┘  └──────────────┘             │                   │
+└─────────┼───────────────────────────────────────┼───────────────────┘
+          │                                       │
+          ▼                                       ▼
+┌──────────────────┐                   ┌───────────────────────────┐
+│  Terraform State │                   │        AWS APIs           │
+│  (S3 Backend)    │                   │  EC2, RDS, ECS, VPC, etc. │
+└──────────────────┘                   └───────────────────────────┘
 ```
 
 ## Quick Start
@@ -131,9 +132,15 @@ npm run dev
 | `LOG_LEVEL` | Logging level | `INFO` |
 | `CORS_ORIGINS` | Allowed CORS origins | `http://localhost:3000,http://localhost:5173` |
 | `SESSION_SECRET` | Session signing key | (change in production) |
+| `LOCAL_AUTH_ENABLED` | Enable local username/password auth | `true` |
+| `ADMIN_USERNAME` | Auto-provision admin on startup | - |
+| `ADMIN_PASSWORD` | Admin password (use Secrets Manager in prod) | - |
 | `OIDC_ISSUER` | SSO identity provider URL | - |
 | `OIDC_CLIENT_ID` | OIDC client ID | - |
 | `OIDC_CLIENT_SECRET` | OIDC client secret | - |
+| `FRONTEND_URL` | Frontend URL for SSO callback redirects | - |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | Access token TTL in minutes | `30` |
+| `REFRESH_TOKEN_EXPIRE_DAYS` | Refresh token TTL in days | `7` |
 
 ### Terraform State Configuration
 
@@ -162,21 +169,31 @@ lab-visualizer/
 │   ├── app/
 │   │   ├── main.py              # FastAPI entry point
 │   │   ├── config.py            # Pydantic Settings
-│   │   ├── api/routes/          # API endpoints
-│   │   │   ├── health.py        # Health check
-│   │   │   ├── ec2.py           # EC2 instances
-│   │   │   ├── rds.py           # RDS instances
-│   │   │   ├── vpc.py           # VPCs
-│   │   │   ├── subnet.py        # Subnets
-│   │   │   ├── igw.py           # Internet Gateways
-│   │   │   ├── nat_gateway.py   # NAT Gateways
-│   │   │   ├── eip.py           # Elastic IPs
-│   │   │   ├── topology.py      # Topology data
-│   │   │   └── terraform.py     # Terraform state
-│   │   ├── collectors/          # AWS data collectors
+│   │   ├── version.py           # Version management
+│   │   ├── api/
+│   │   │   ├── deps.py          # Auth dependency injection
+│   │   │   └── routes/          # API endpoints
+│   │   │       ├── health.py    # Health check
+│   │   │       ├── info.py      # App version/build info
+│   │   │       ├── auth.py      # Authentication (local + OIDC)
+│   │   │       ├── users.py     # User management
+│   │   │       ├── settings.py  # Admin settings (OIDC, TF buckets)
+│   │   │       ├── ec2.py       # EC2 instances
+│   │   │       ├── rds.py       # RDS instances
+│   │   │       ├── ecs.py       # ECS containers
+│   │   │       ├── vpc.py       # VPCs
+│   │   │       ├── subnet.py    # Subnets
+│   │   │       ├── igw.py       # Internet Gateways
+│   │   │       ├── nat_gateway.py # NAT Gateways
+│   │   │       ├── eip.py       # Elastic IPs
+│   │   │       ├── topology.py  # Topology data
+│   │   │       ├── terraform.py # Terraform state
+│   │   │       └── resources.py # Generic resources
+│   │   ├── collectors/          # AWS data collectors (EC2, RDS, ECS, VPC, etc.)
 │   │   ├── parsers/             # Terraform state parser
-│   │   ├── models/              # SQLAlchemy models
-│   │   └── schemas/             # Pydantic schemas
+│   │   ├── models/              # SQLAlchemy models (resources + auth)
+│   │   ├── schemas/             # Pydantic schemas (resources, auth, settings)
+│   │   └── services/            # Business logic (auth, settings)
 │   ├── scripts/                 # DB management scripts
 │   ├── tests/                   # Backend tests
 │   └── requirements.txt
@@ -188,13 +205,15 @@ lab-visualizer/
 │   │   │   ├── layout/          # Layout (Header, Sidebar)
 │   │   │   ├── dashboard/       # Dashboard widgets
 │   │   │   ├── resources/       # Resource tables
-│   │   │   ├── topology/        # React Flow visualization
-│   │   │   └── vpc/             # VPC-specific components
-│   │   ├── pages/               # Page components
+│   │   │   ├── topology/        # React Flow visualization + filtering
+│   │   │   ├── vpc/             # VPC-specific components
+│   │   │   ├── settings/        # Settings management UI
+│   │   │   └── ProtectedRoute.tsx
+│   │   ├── pages/               # Page components (VPC, ECS, Login, Setup, Settings)
 │   │   ├── hooks/               # Custom React hooks
 │   │   ├── api/                 # API client
-│   │   ├── types/               # TypeScript types
-│   │   └── contexts/            # React contexts
+│   │   ├── types/               # TypeScript types (resources, topology, auth)
+│   │   └── contexts/            # React contexts (Theme, Auth)
 │   ├── eslint.config.js         # ESLint 9 flat config
 │   └── package.json
 │
@@ -203,6 +222,7 @@ lab-visualizer/
 │   │   ├── alb/                 # Application Load Balancer
 │   │   ├── ecr/                 # Container Registry
 │   │   ├── ecs/                 # ECS Fargate
+│   │   ├── iam/                 # IAM roles and policies
 │   │   ├── networking/          # VPC, Subnets
 │   │   └── secrets/             # Secrets Manager
 │   └── environments/
@@ -212,12 +232,17 @@ lab-visualizer/
 ├── config/                      # Configuration files
 │   └── terraform-states.yml
 ├── .github/workflows/           # CI/CD pipelines
-│   ├── backend-tests.yml
-│   ├── security-scan.yml
-│   └── infrastructure.yml
+│   ├── backend-tests.yml        # Backend lint, type-check, test
+│   ├── frontend-tests.yml       # Frontend lint, type-check, test
+│   ├── security-scan.yml        # Security scanning
+│   ├── infrastructure.yml       # Terraform validation
+│   └── ecs-build.yml            # ECS build & deploy
 ├── docker-compose.yml
 ├── Makefile                     # Task automation
+├── VERSION                      # Application version
 ├── CLAUDE.md                    # AI assistant context
+├── CONTRIBUTING.md              # Contributing guidelines
+├── SECURITY.md                  # Security guidelines
 └── README.md
 ```
 
@@ -230,14 +255,34 @@ Access interactive API documentation at:
 
 ### Endpoints
 
+**Public (no auth required):**
+
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | `GET` | `/api/health` | Health check |
+| `GET` | `/api/info` | App version and build info |
+| `GET` | `/api/auth/config` | Auth configuration for frontend |
+| `GET` | `/api/auth/setup-status` | Check if initial setup is needed |
+| `POST` | `/api/auth/setup` | Create initial admin user |
+| `POST` | `/api/auth/login` | Local username/password login |
+| `POST` | `/api/auth/refresh` | Refresh access token |
+| `POST` | `/api/auth/logout` | Logout and revoke session |
+| `GET` | `/api/auth/me` | Get current authenticated user |
+| `GET` | `/api/auth/oidc/login` | Initiate OIDC login flow |
+| `GET` | `/api/auth/oidc/callback` | OIDC callback handler |
+
+**Protected (auth required):**
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
 | `GET` | `/api/status/summary` | Resource counts by status |
 | `GET` | `/api/ec2` | List EC2 instances |
 | `GET` | `/api/ec2/{instance_id}` | EC2 instance details |
 | `GET` | `/api/rds` | List RDS instances |
 | `GET` | `/api/rds/{instance_id}` | RDS instance details |
+| `GET` | `/api/ecs` | List ECS containers |
+| `GET` | `/api/ecs/clusters` | List ECS clusters with containers |
+| `GET` | `/api/ecs/{task_id}` | ECS container details |
 | `GET` | `/api/vpcs` | List VPCs |
 | `GET` | `/api/vpcs/{vpc_id}` | VPC details |
 | `GET` | `/api/subnets` | List subnets |
@@ -248,6 +293,33 @@ Access interactive API documentation at:
 | `POST` | `/api/refresh` | Trigger data refresh from AWS |
 | `GET` | `/api/terraform/states` | List Terraform state files |
 | `GET` | `/api/terraform/drift` | Detect configuration drift |
+
+**User Management (auth required):**
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/users` | List all users (admin only) |
+| `PUT` | `/api/users/{id}/password` | Change user password |
+| `PATCH` | `/api/users/{id}/status` | Enable/disable user (admin only) |
+| `PATCH` | `/api/users/{id}/role` | Update user role (admin only) |
+
+**Settings (admin only):**
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/settings` | Get auth settings |
+| `GET` | `/api/settings/oidc` | Get OIDC settings |
+| `PUT` | `/api/settings/oidc` | Update OIDC settings |
+| `POST` | `/api/settings/oidc/test` | Test OIDC provider connection |
+| `GET` | `/api/settings/terraform/buckets` | List Terraform state buckets |
+| `POST` | `/api/settings/terraform/buckets` | Add Terraform state bucket |
+| `PUT` | `/api/settings/terraform/buckets/{id}` | Update bucket config |
+| `DELETE` | `/api/settings/terraform/buckets/{id}` | Remove bucket config |
+| `POST` | `/api/settings/terraform/buckets/{id}/paths` | Add state path to bucket |
+| `PUT` | `/api/settings/terraform/paths/{id}` | Update state path |
+| `DELETE` | `/api/settings/terraform/paths/{id}` | Remove state path |
+| `POST` | `/api/settings/terraform/buckets/test` | Test S3 bucket access |
+| `POST` | `/api/settings/terraform/buckets/list-objects` | Browse S3 bucket objects |
 
 ## Development
 
@@ -265,10 +337,15 @@ make db-seed          # Seed sample data
 make db-reset         # Reset database
 make db-setup         # Init + seed
 
+# Code formatting
+make backend-format   # Format backend (black + isort)
+make frontend-format  # Format frontend (Prettier)
+
 # Terraform operations
 make tf-init          # terraform init
 make tf-plan          # terraform plan
 make tf-apply         # terraform apply
+make tf-destroy       # terraform destroy
 ```
 
 ### Running Tests
@@ -314,12 +391,22 @@ npm run type-check
 - Unit tests with coverage (pytest)
 - Docker build validation
 
+### Frontend Tests (`.github/workflows/frontend-tests.yml`)
+- Lint & format checking (ESLint, Prettier)
+- Type checking (TypeScript)
+- Unit tests with coverage (Vitest)
+
 ### Security Scanning (`.github/workflows/security-scan.yml`)
 - Dependency audit (pip-audit, npm audit)
 - SAST (Bandit, Semgrep)
 - Container scanning (Trivy)
 - Secret detection (Gitleaks)
 - CodeQL analysis
+
+### ECS Build & Deploy (`.github/workflows/ecs-build.yml`)
+- Docker image build for backend and frontend
+- Push to ECR on main/develop branch
+- ECS Fargate deployment
 
 ### Infrastructure (`.github/workflows/infrastructure.yml`)
 - Terraform format & validation
@@ -344,25 +431,60 @@ See [infrastructure/README.md](infrastructure/README.md) for detailed deployment
 
 ## IAM Permissions
 
-The application requires the following AWS permissions:
+The application task role is managed by the standalone `iam` module (`infrastructure/modules/iam/`), decoupled from the ECS module so that it persists independently of the deployment mechanism. The required permissions:
 
 ```json
 {
   "Version": "2012-10-17",
   "Statement": [
     {
+      "Sid": "EC2ReadAccess",
       "Effect": "Allow",
       "Action": [
         "ec2:DescribeInstances",
         "ec2:DescribeInstanceStatus",
+        "ec2:DescribeTags",
         "ec2:DescribeVpcs",
         "ec2:DescribeSubnets",
+        "ec2:DescribeRouteTables",
         "ec2:DescribeInternetGateways",
         "ec2:DescribeNatGateways",
-        "ec2:DescribeAddresses",
+        "ec2:DescribeAddresses"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "RDSReadAccess",
+      "Effect": "Allow",
+      "Action": [
         "rds:DescribeDBInstances",
+        "rds:DescribeDBClusters",
+        "rds:ListTagsForResource"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "ECSReadAccess",
+      "Effect": "Allow",
+      "Action": [
+        "ecs:DescribeClusters",
+        "ecs:ListClusters",
+        "ecs:DescribeServices",
+        "ecs:ListServices",
+        "ecs:DescribeTasks",
+        "ecs:ListTasks",
+        "ecs:DescribeTaskDefinition",
+        "ecs:DescribeContainerInstances"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "S3TerraformStateAccess",
+      "Effect": "Allow",
+      "Action": [
         "s3:GetObject",
-        "s3:ListBucket"
+        "s3:ListBucket",
+        "s3:GetBucketLocation"
       ],
       "Resource": "*"
     }
@@ -395,12 +517,16 @@ The application requires the following AWS permissions:
 
 ## Contributing
 
+See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines. In brief:
+
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
 3. Run tests and linting before committing
 4. Commit your changes (`git commit -m 'Add amazing feature'`)
 5. Push to the branch (`git push origin feature/amazing-feature`)
 6. Open a Pull Request
+
+For security-related issues, see [SECURITY.md](SECURITY.md).
 
 ## License
 

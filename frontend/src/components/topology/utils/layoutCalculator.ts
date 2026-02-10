@@ -59,7 +59,8 @@ const config = {
     horizontal: 15,
     vertical: 20,
     subnetGap: 20,
-    rowGap: 25,
+    rowGap: 50,
+    igwToSubnetGap: 50,
     vpcGap: 50,
   },
   resourcesPerRow: 2,
@@ -187,7 +188,7 @@ function layoutVPC(
 
   // IGW height
   if (vpc.internet_gateway) {
-    contentHeight += config.nodeHeight.gateway + config.spacing.vertical;
+    contentHeight += config.nodeHeight.gateway + config.spacing.igwToSubnetGap;
   }
 
   // Public subnets row
@@ -258,7 +259,7 @@ function layoutVPC(
         igwId: vpc.internet_gateway.id,
       } as InternetGatewayNodeData,
     });
-    relativeY += config.nodeHeight.gateway + config.spacing.vertical;
+    relativeY += config.nodeHeight.gateway + config.spacing.igwToSubnetGap;
   }
 
   // Layout public subnets (children of VPC)
@@ -485,8 +486,10 @@ function layoutSubnet(
           memory: ecs.memory,
           status: ecs.status,
           image: ecs.image || undefined,
+          imageTag: ecs.image_tag || undefined,
           containerPort: ecs.container_port || undefined,
           privateIp: ecs.private_ip || undefined,
+          managedBy: ecs.managed_by || "unmanaged",
         } as ECSContainerNodeData,
       });
     } else if (resource.type === "nat") {
@@ -528,10 +531,10 @@ export function createEdges(data: TopologyResponse): Edge[] {
           id: `edge-igw-${vpc.internet_gateway.id}-subnet-${subnet.id}`,
           source: `igw-${vpc.internet_gateway.id}`,
           target: `subnet-${subnet.id}`,
-          type: "smoothstep",
+          type: "default",
           animated: true,
           style: { stroke: "#94a3b8", strokeWidth: 2 },
-          zIndex: 10,
+          zIndex: 0,
         });
       }
     }
@@ -551,14 +554,14 @@ export function createEdges(data: TopologyResponse): Edge[] {
             id: `edge-nat-${publicSubnet.nat_gateway.id}-subnet-${privateSubnet.id}`,
             source: `nat-${publicSubnet.nat_gateway.id}`,
             target: `subnet-${privateSubnet.id}`,
-            type: "smoothstep",
+            type: "default",
             animated: true,
             style: {
               stroke: "#a78bfa",
               strokeWidth: 2,
               strokeDasharray: "5,5",
             },
-            zIndex: 10,
+            zIndex: 0,
           });
         }
       }
