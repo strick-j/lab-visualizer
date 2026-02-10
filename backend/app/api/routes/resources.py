@@ -807,6 +807,7 @@ async def _sync_ecs_containers(
             existing.cpu = container_data.get("cpu", 0)
             existing.memory = container_data.get("memory", 0)
             existing.image = container_data.get("image")
+            existing.image_tag = container_data.get("image_tag")
             existing.container_port = container_data.get("container_port")
             existing.private_ip = container_data.get("private_ip")
             existing.subnet_id = container_data.get("subnet_id")
@@ -814,6 +815,7 @@ async def _sync_ecs_containers(
             existing.availability_zone = container_data.get("availability_zone")
             existing.started_at = container_data.get("started_at")
             existing.tags = json.dumps(container_data.get("tags", {}))
+            existing.managed_by = container_data.get("managed_by", "unmanaged")
             existing.is_deleted = False
             existing.deleted_at = None
         else:
@@ -829,6 +831,7 @@ async def _sync_ecs_containers(
                 cpu=container_data.get("cpu", 0),
                 memory=container_data.get("memory", 0),
                 image=container_data.get("image"),
+                image_tag=container_data.get("image_tag"),
                 container_port=container_data.get("container_port"),
                 private_ip=container_data.get("private_ip"),
                 subnet_id=container_data.get("subnet_id"),
@@ -836,6 +839,7 @@ async def _sync_ecs_containers(
                 availability_zone=container_data.get("availability_zone"),
                 started_at=container_data.get("started_at"),
                 tags=json.dumps(container_data.get("tags", {})),
+                managed_by=container_data.get("managed_by", "unmanaged"),
                 is_deleted=False,
             )
             db.add(new_container)

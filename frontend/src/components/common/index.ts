@@ -6,3 +6,5 @@ export { Select } from "./Select";
 export { Loading, PageLoading } from "./Loading";
 export { EmptyState } from "./EmptyState";
 export { TerraformBadge } from "./TerraformBadge";
+export { ManagedByBadge } from "./ManagedByBadge";
+export type { ManagedByType } from "./ManagedByBadge";
