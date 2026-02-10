@@ -28,6 +28,11 @@ RUN npm run build
 # Production stage - serve with nginx
 FROM nginx:alpine
 
+# Re-declare build args (ARGs don't persist across stages)
+ARG APP_VERSION=0.0.0-unknown
+ARG BUILD_SHA=unknown
+ARG BUILD_DATE=unknown
+
 LABEL version="${APP_VERSION}" \
       build.sha="${BUILD_SHA}" \
       build.date="${BUILD_DATE}"
