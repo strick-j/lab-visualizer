@@ -972,6 +972,33 @@ async def _sync_terraform_state(db: AsyncSession) -> int:
                 eip.tf_resource_address = tf_resource.resource_address
                 count += 1
 
+        # Update ECS containers - mark all containers in a Terraform-managed
+        # cluster as terraform-managed
+        tf_cluster_names = set()
+        tf_cluster_lookup = {}
+        for tf_resource in tf_resources.get("ecs_cluster", []):
+            tf_cluster_names.add(tf_resource.resource_id)
+            tf_cluster_lookup[tf_resource.resource_id] = tf_resource
+
+        if tf_cluster_names:
+            result = await db.execute(
+                select(ECSContainer).where(
+                    ECSContainer.cluster_name.in_(tf_cluster_names),
+                    ECSContainer.is_deleted == False,
+                )
+            )
+            for container in result.scalars():
+                container.tf_managed = True
+                tf_res = tf_cluster_lookup.get(container.cluster_name)
+                if tf_res:
+                    container.tf_state_source = tf_res.state_source
+                    container.tf_resource_address = tf_res.resource_address
+                # Containers deployed by CI/CD keep github_actions;
+                # others in a TF cluster get terraform
+                if container.managed_by != "github_actions":
+                    container.managed_by = "terraform"
+                count += 1
+
         await db.flush()
         return count
 
