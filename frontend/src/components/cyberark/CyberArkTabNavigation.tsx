@@ -1,33 +1,27 @@
-import { Shield, Database, Users, Lock } from "lucide-react";
-
-export type SettingsTabType =
-  | "authentication"
-  | "s3-buckets"
-  | "user-management"
-  | "cyberark";
+import { Lock, ShieldCheck, Zap } from "lucide-react";
+import type { CyberArkResourceType } from "@/types";
 
 interface Tab {
-  key: SettingsTabType;
+  key: CyberArkResourceType;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
 }
 
 const tabs: Tab[] = [
-  { key: "authentication", label: "Authentication", icon: Shield },
-  { key: "user-management", label: "User Management", icon: Users },
-  { key: "s3-buckets", label: "S3 Buckets", icon: Database },
-  { key: "cyberark", label: "CyberArk", icon: Lock },
+  { key: "safes", label: "Safes", icon: Lock },
+  { key: "roles", label: "Roles", icon: ShieldCheck },
+  { key: "sia-policies", label: "SIA Policies", icon: Zap },
 ];
 
-interface SettingsTabNavigationProps {
-  activeTab: SettingsTabType;
-  onTabChange: (tab: SettingsTabType) => void;
+interface CyberArkTabNavigationProps {
+  activeTab: CyberArkResourceType;
+  onTabChange: (tab: CyberArkResourceType) => void;
 }
 
-export function SettingsTabNavigation({
+export function CyberArkTabNavigation({
   activeTab,
   onTabChange,
-}: SettingsTabNavigationProps) {
+}: CyberArkTabNavigationProps) {
   return (
     <div className="border-b border-gray-200 dark:border-gray-700">
       <nav className="-mb-px flex space-x-8" aria-label="Tabs">

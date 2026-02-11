@@ -48,7 +48,7 @@ class TerraformStateFile:
 class TerraformStateParser:
     """Parser for Terraform state files stored in S3."""
 
-    # Resource types we care about
+    # AWS resource types we care about (static)
     SUPPORTED_RESOURCE_TYPES = {
         "aws_instance": "ec2",
         "aws_db_instance": "rds",
@@ -61,6 +61,22 @@ class TerraformStateParser:
         "aws_ecs_service": "ecs_service",
         "aws_ecs_task_definition": "ecs_task_definition",
     }
+
+    @classmethod
+    def get_all_supported_types(cls) -> Dict[str, str]:
+        """Get all supported resource types including CyberArk types.
+
+        CyberArk resource type names are configurable via settings
+        since the idsec provider may use different naming conventions.
+        """
+        types = dict(cls.SUPPORTED_RESOURCE_TYPES)
+        if settings.cyberark_enabled:
+            types[settings.cyberark_tf_safe_type] = "cyberark_safe"
+            types[settings.cyberark_tf_account_type] = "cyberark_account"
+            types[settings.cyberark_tf_role_type] = "cyberark_role"
+            types[settings.cyberark_tf_sia_vm_policy_type] = "cyberark_sia_vm_policy"
+            types[settings.cyberark_tf_sia_db_policy_type] = "cyberark_sia_db_policy"
+        return types
 
     def __init__(self, bucket: Optional[str] = None):
         """
@@ -207,7 +223,8 @@ class TerraformStateParser:
             resource_type = resource_block.get("type", "")
 
             # Skip resources we don't care about
-            if resource_type not in self.SUPPORTED_RESOURCE_TYPES:
+            all_types = self.get_all_supported_types()
+            if resource_type not in all_types:
                 continue
 
             mode = resource_block.get("mode", "managed")
@@ -278,6 +295,14 @@ class TerraformStateParser:
             "aws_ecs_service": "name",  # ECS service name
             "aws_ecs_task_definition": "family",  # Task definition family
         }
+
+        # Add CyberArk resource ID mappings (configurable type names)
+        if settings.cyberark_enabled:
+            id_mappings[settings.cyberark_tf_safe_type] = "safe_name"
+            id_mappings[settings.cyberark_tf_account_type] = "id"
+            id_mappings[settings.cyberark_tf_role_type] = "name"
+            id_mappings[settings.cyberark_tf_sia_vm_policy_type] = "name"
+            id_mappings[settings.cyberark_tf_sia_db_policy_type] = "name"
 
         id_field = id_mappings.get(resource_type, "id")
         return attributes.get(id_field)
@@ -533,6 +558,18 @@ class TerraformStateAggregator:
             "ecs_task_definition": [],
         }
 
+        # Add CyberArk categories when enabled
+        if settings.cyberark_enabled:
+            all_resources.update(
+                {
+                    "cyberark_safe": [],
+                    "cyberark_account": [],
+                    "cyberark_role": [],
+                    "cyberark_sia_vm_policy": [],
+                    "cyberark_sia_db_policy": [],
+                }
+            )
+
         bucket_entries = await self._get_all_bucket_configs()
 
         for entry in bucket_entries:
@@ -557,12 +594,9 @@ class TerraformStateAggregator:
                     description=config.get("description", ""),
                 )
 
+                all_types = TerraformStateParser.get_all_supported_types()
                 for resource in state_file.resources:
-                    resource_category = (
-                        TerraformStateParser.SUPPORTED_RESOURCE_TYPES.get(
-                            resource.resource_type
-                        )
-                    )
+                    resource_category = all_types.get(resource.resource_type)
                     if resource_category and resource_category in all_resources:
                         all_resources[resource_category].append(resource)
 

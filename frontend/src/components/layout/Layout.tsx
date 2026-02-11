@@ -4,7 +4,9 @@ import { Sidebar } from "./Sidebar";
 
 export function Layout() {
   const location = useLocation();
-  const isFullWidth = location.pathname === "/topology";
+  const isFullWidth = ["/topology", "/access-mapping"].includes(
+    location.pathname,
+  );
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
