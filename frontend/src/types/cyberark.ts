@@ -167,6 +167,7 @@ export interface TargetAccessInfo {
 export interface UserAccessMapping {
   user_name: string;
   targets: TargetAccessInfo[];
+  access_paths?: AccessPath[];
 }
 
 export interface AccessMappingResponse {

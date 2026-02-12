@@ -199,6 +199,7 @@ class UserAccessMapping(BaseSchema):
 
     user_name: str
     targets: List[TargetAccessInfo] = []
+    access_paths: List[AccessPath] = []  # Relationship-only paths (no target)
 
 
 class AccessMappingResponse(BaseSchema):
