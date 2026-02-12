@@ -13,7 +13,7 @@ module-level ``__getattr__`` hook (PEP 562).
 import logging
 from typing import AsyncGenerator
 
-from sqlalchemy import event
+from sqlalchemy import event, text
 from sqlalchemy.engine import Engine
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
@@ -144,6 +144,7 @@ async def init_db() -> None:
         CyberArkSettings,
         CyberArkSIAPolicy,
         CyberArkSIAPolicyPrincipal,
+        CyberArkUser,
     )
     from app.models.resources import (
         EC2Instance,
@@ -156,4 +157,25 @@ async def init_db() -> None:
 
     async with get_engine().begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+
+    # Add SCIM columns to existing cyberark_settings table (if missing)
+    scim_columns = [
+        ("scim_enabled", "BOOLEAN DEFAULT 0"),
+        ("scim_oauth2_url", "VARCHAR(500)"),
+        ("scim_scope", "VARCHAR(500)"),
+        ("scim_client_id", "VARCHAR(255)"),
+        ("scim_client_secret", "VARCHAR(500)"),
+    ]
+    async with get_engine().begin() as conn:
+        for col_name, col_type in scim_columns:
+            try:
+                await conn.execute(
+                    text(
+                        f"ALTER TABLE cyberark_settings ADD COLUMN {col_name} {col_type}"
+                    )
+                )
+                logger.info("Added column %s to cyberark_settings", col_name)
+            except Exception:
+                pass  # Column already exists
+
     logger.info("Database tables created successfully")

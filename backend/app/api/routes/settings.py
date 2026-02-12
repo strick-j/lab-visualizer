@@ -25,6 +25,7 @@ from app.models.cyberark import (
     CyberArkSafe,
     CyberArkSettings,
     CyberArkSIAPolicy,
+    CyberArkUser,
 )
 from app.models.database import get_db
 from app.models.resources import SyncStatus, TerraformStateBucket, TerraformStatePath
@@ -33,6 +34,10 @@ from app.schemas.cyberark import (
     CyberArkConnectionTestResponse,
     CyberArkSettingsResponse,
     CyberArkSettingsUpdate,
+    ScimConnectionTestRequest,
+    ScimConnectionTestResponse,
+    ScimSettingsResponse,
+    ScimSettingsUpdate,
 )
 from app.schemas.settings import (
     AuthSettingsResponse,
@@ -973,6 +978,9 @@ async def get_cyberark_sync_status(
             "safes": safes_total,
             "accounts": accounts_total,
             "sia_policies": policies_total,
+            "users": (
+                await db.execute(select(func.count(CyberArkUser.id)))
+            ).scalar_one(),
         },
         "last_sync": {
             "synced_at": sync_row.last_synced_at.isoformat() if sync_row else None,
@@ -980,3 +988,132 @@ async def get_cyberark_sync_status(
             "resource_count": sync_row.resource_count if sync_row else None,
         },
     }
+
+
+# =============================================================================
+# SCIM Settings Management
+# =============================================================================
+
+
+@router.get("/cyberark/scim", response_model=ScimSettingsResponse)
+async def get_scim_settings(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_admin_user),
+):
+    """Get SCIM integration settings. Admin only."""
+    settings = await _get_or_create_cyberark_settings(db)
+
+    return ScimSettingsResponse(
+        scim_enabled=settings.scim_enabled,
+        scim_oauth2_url=settings.scim_oauth2_url,
+        scim_scope=settings.scim_scope,
+        scim_client_id=settings.scim_client_id,
+        has_scim_client_secret=bool(settings.scim_client_secret),
+        updated_at=settings.updated_at,
+        updated_by=settings.updated_by,
+    )
+
+
+@router.put("/cyberark/scim", response_model=ScimSettingsResponse)
+async def update_scim_settings(
+    update_data: ScimSettingsUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_admin_user),
+):
+    """Update SCIM integration settings. Admin only."""
+    settings = await _get_or_create_cyberark_settings(db)
+
+    update_fields = update_data.model_dump(exclude_unset=True)
+    for field, value in update_fields.items():
+        setattr(settings, field, value)
+
+    settings.updated_by = current_user.username
+
+    await db.commit()
+    await db.refresh(settings)
+    logger.info(
+        "User %s updated SCIM settings (scim_enabled=%s)",
+        current_user.username,
+        settings.scim_enabled,
+    )
+
+    return ScimSettingsResponse(
+        scim_enabled=settings.scim_enabled,
+        scim_oauth2_url=settings.scim_oauth2_url,
+        scim_scope=settings.scim_scope,
+        scim_client_id=settings.scim_client_id,
+        has_scim_client_secret=bool(settings.scim_client_secret),
+        updated_at=settings.updated_at,
+        updated_by=settings.updated_by,
+    )
+
+
+@router.post("/cyberark/scim/test", response_model=ScimConnectionTestResponse)
+async def test_scim_connection(
+    test_data: ScimConnectionTestRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_admin_user),
+):
+    """Test SCIM OAuth2 connection by acquiring a token. Admin only."""
+    oauth2_url = test_data.scim_oauth2_url.strip().rstrip("/")
+
+    logger.info(
+        "User %s testing SCIM connection to %s",
+        current_user.username,
+        _sanitize_for_log(oauth2_url),
+    )
+
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(
+                oauth2_url,
+                data={
+                    "grant_type": "client_credentials",
+                    "client_id": test_data.scim_client_id,
+                    "client_secret": test_data.scim_client_secret,
+                    "scope": test_data.scim_scope,
+                },
+                headers={"Content-Type": "application/x-www-form-urlencoded"},
+            )
+            response.raise_for_status()
+            data = response.json()
+
+        return ScimConnectionTestResponse(
+            success=True,
+            message="Successfully authenticated for SCIM",
+            details={
+                "token_type": data.get("token_type", ""),
+                "scope": data.get("scope", ""),
+                "expires_in": data.get("expires_in", 0),
+            },
+        )
+
+    except httpx.HTTPStatusError as e:
+        logger.warning(
+            "SCIM test connection HTTP error: %s", e.response.status_code
+        )
+        detail_msg = "Authentication failed"
+        try:
+            err_body = e.response.json()
+            if "error_description" in err_body:
+                detail_msg = err_body["error_description"]
+            elif "error" in err_body:
+                detail_msg = err_body["error"]
+        except Exception:
+            pass
+        return ScimConnectionTestResponse(
+            success=False,
+            message=f"Authentication failed: {detail_msg}",
+        )
+    except httpx.RequestError:
+        logger.warning("SCIM test connection request error", exc_info=True)
+        return ScimConnectionTestResponse(
+            success=False,
+            message="Could not connect to SCIM OAuth2 endpoint",
+        )
+    except Exception:
+        logger.exception("Unexpected error testing SCIM connection")
+        return ScimConnectionTestResponse(
+            success=False,
+            message="An unexpected error occurred while testing the connection",
+        )

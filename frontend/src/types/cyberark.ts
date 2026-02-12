@@ -193,6 +193,26 @@ export interface AccessMappingTargetList {
 }
 
 // =============================================================================
+// CyberArk User Types (SCIM)
+// =============================================================================
+
+export interface CyberArkIdentityUser {
+  id: number;
+  user_id: string;
+  user_name: string;
+  display_name: string | null;
+  email: string | null;
+  active: boolean;
+  is_deleted: boolean;
+  updated_at: string;
+}
+
+export interface CyberArkUserListResponse {
+  data: CyberArkIdentityUser[];
+  meta: { total: number; last_refreshed: string | null };
+}
+
+// =============================================================================
 // CyberArk Settings Types
 // =============================================================================
 
@@ -245,12 +265,48 @@ export interface CyberArkSyncStatus {
     safes: number;
     accounts: number;
     sia_policies: number;
+    users: number;
   };
   last_sync: {
     synced_at: string | null;
     status: string | null;
     resource_count: number | null;
   };
+}
+
+// =============================================================================
+// SCIM Settings Types
+// =============================================================================
+
+export interface ScimSettingsResponse {
+  scim_enabled: boolean;
+  scim_oauth2_url: string | null;
+  scim_scope: string | null;
+  scim_client_id: string | null;
+  has_scim_client_secret: boolean;
+  updated_at: string | null;
+  updated_by: string | null;
+}
+
+export interface ScimSettingsUpdate {
+  scim_enabled?: boolean;
+  scim_oauth2_url?: string;
+  scim_scope?: string;
+  scim_client_id?: string;
+  scim_client_secret?: string;
+}
+
+export interface ScimConnectionTestRequest {
+  scim_oauth2_url: string;
+  scim_scope: string;
+  scim_client_id: string;
+  scim_client_secret: string;
+}
+
+export interface ScimConnectionTestResponse {
+  success: boolean;
+  message: string;
+  details?: Record<string, unknown>;
 }
 
 // =============================================================================
