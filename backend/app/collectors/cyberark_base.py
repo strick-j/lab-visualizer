@@ -38,12 +38,14 @@ class CyberArkBaseCollector(ABC):
 
     async def _authenticate(self) -> str:
         """Obtain OAuth2 token from CyberArk Identity."""
-        if self._token and self._token_expiry and datetime.now(
-            timezone.utc
-        ) < self._token_expiry:
+        if (
+            self._token
+            and self._token_expiry
+            and datetime.now(timezone.utc) < self._token_expiry
+        ):
             return self._token
 
-        token_url = f"{self.identity_url}/oauth2/token/{self.client_id}"
+        token_url = f"{self.identity_url}/oauth2/platformtoken"
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(
                 token_url,
