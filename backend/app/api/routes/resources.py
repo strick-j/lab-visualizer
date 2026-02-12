@@ -1036,19 +1036,35 @@ async def _get_cyberark_config(db: AsyncSession) -> dict | None:
     db_settings = result.scalar_one_or_none()
 
     if db_settings and db_settings.enabled:
+        logger.info("CyberArk: using DB settings (enabled=%s)", db_settings.enabled)
         base_url = db_settings.base_url
         identity_url = db_settings.identity_url
         client_id = db_settings.client_id
         client_secret = db_settings.client_secret
     elif settings.cyberark_enabled:
+        logger.info("CyberArk: using environment variable settings")
         base_url = settings.cyberark_base_url
         identity_url = settings.cyberark_identity_url
         client_id = settings.cyberark_client_id
         client_secret = settings.cyberark_client_secret
     else:
+        logger.info(
+            "CyberArk: skipping collection — not enabled "
+            "(db_settings=%s, env_enabled=%s)",
+            db_settings is not None,
+            settings.cyberark_enabled,
+        )
         return None
 
     if not all([base_url, identity_url, client_id, client_secret]):
+        logger.warning(
+            "CyberArk: enabled but missing required config — "
+            "base_url=%s, identity_url=%s, client_id=%s, client_secret=%s",
+            bool(base_url),
+            bool(identity_url),
+            bool(client_id),
+            bool(client_secret),
+        )
         return None
 
     return {
@@ -1071,23 +1087,38 @@ async def _refresh_cyberark(db: AsyncSession) -> int:
         # Collect roles
         role_collector = CyberArkRoleCollector(**config)
         roles = await role_collector.collect()
-        total += await _sync_cyberark_roles(db, roles)
+        logger.info("CyberArk: collected %d roles from API", len(roles))
+        role_count = await _sync_cyberark_roles(db, roles)
+        total += role_count
 
         # Collect safes
         safe_collector = CyberArkSafeCollector(**config)
         safes = await safe_collector.collect()
-        total += await _sync_cyberark_safes(db, safes)
+        logger.info("CyberArk: collected %d safes from API", len(safes))
+        safe_count = await _sync_cyberark_safes(db, safes)
+        total += safe_count
 
         # Collect accounts
         account_collector = CyberArkAccountCollector(**config)
         accounts = await account_collector.collect()
-        total += await _sync_cyberark_accounts(db, accounts)
+        logger.info("CyberArk: collected %d accounts from API", len(accounts))
+        acct_count = await _sync_cyberark_accounts(db, accounts)
+        total += acct_count
 
         # Collect SIA policies
         sia_collector = CyberArkSIAPolicyCollector(**config)
         policies = await sia_collector.collect()
-        total += await _sync_cyberark_sia_policies(db, policies)
+        logger.info("CyberArk: collected %d SIA policies from API", len(policies))
+        policy_count = await _sync_cyberark_sia_policies(db, policies)
+        total += policy_count
 
+        logger.info(
+            "CyberArk: sync complete — %d roles, %d safes, %d accounts, %d policies",
+            role_count,
+            safe_count,
+            acct_count,
+            policy_count,
+        )
         await _update_sync_status(db, "cyberark", total)
     except Exception:
         logger.exception("Error during CyberArk data refresh")
