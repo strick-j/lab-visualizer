@@ -12,16 +12,22 @@ from urllib.parse import urlparse
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.api.deps import get_current_admin_user
 from app.config import get_settings
 from app.models.auth import User
-from app.models.cyberark import CyberArkSettings
+from app.models.cyberark import (
+    CyberArkAccount,
+    CyberArkRole,
+    CyberArkSafe,
+    CyberArkSettings,
+    CyberArkSIAPolicy,
+)
 from app.models.database import get_db
-from app.models.resources import TerraformStateBucket, TerraformStatePath
+from app.models.resources import SyncStatus, TerraformStateBucket, TerraformStatePath
 from app.schemas.cyberark import (
     CyberArkConnectionTestRequest,
     CyberArkConnectionTestResponse,
@@ -886,3 +892,90 @@ async def test_cyberark_connection(
             success=False,
             message="An unexpected error occurred while testing the connection",
         )
+
+
+@router.get("/cyberark/status")
+async def get_cyberark_sync_status(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_admin_user),
+):
+    """Diagnostic endpoint: report CyberArk config state and DB row counts. Admin only."""
+    # Check settings
+    result = await db.execute(select(CyberArkSettings).limit(1))
+    db_settings = result.scalar_one_or_none()
+
+    config_source = "none"
+    config_ok = False
+    if db_settings and db_settings.enabled:
+        config_source = "database"
+        config_ok = all(
+            [
+                db_settings.base_url,
+                db_settings.identity_url,
+                db_settings.client_id,
+                db_settings.client_secret,
+            ]
+        )
+    elif env_settings.cyberark_enabled:
+        config_source = "environment"
+        config_ok = all(
+            [
+                env_settings.cyberark_base_url,
+                env_settings.cyberark_identity_url,
+                env_settings.cyberark_client_id,
+                env_settings.cyberark_client_secret,
+            ]
+        )
+
+    # Row counts
+    roles_total = (await db.execute(select(func.count(CyberArkRole.id)))).scalar_one()
+    roles_active = (
+        await db.execute(
+            select(func.count(CyberArkRole.id)).where(
+                CyberArkRole.is_deleted == False  # noqa: E712
+            )
+        )
+    ).scalar_one()
+    safes_total = (await db.execute(select(func.count(CyberArkSafe.id)))).scalar_one()
+    accounts_total = (
+        await db.execute(select(func.count(CyberArkAccount.id)))
+    ).scalar_one()
+    policies_total = (
+        await db.execute(select(func.count(CyberArkSIAPolicy.id)))
+    ).scalar_one()
+
+    # Last sync time
+    sync_result = await db.execute(
+        select(SyncStatus).where(SyncStatus.source == "cyberark")
+    )
+    sync_row = sync_result.scalar_one_or_none()
+
+    return {
+        "config": {
+            "source": config_source,
+            "enabled": config_source != "none",
+            "all_fields_set": config_ok,
+            "db_settings_exists": db_settings is not None,
+            "db_enabled": db_settings.enabled if db_settings else None,
+            "db_base_url_set": bool(db_settings.base_url) if db_settings else False,
+            "db_identity_url_set": (
+                bool(db_settings.identity_url) if db_settings else False
+            ),
+            "db_client_id_set": bool(db_settings.client_id) if db_settings else False,
+            "db_client_secret_set": (
+                bool(db_settings.client_secret) if db_settings else False
+            ),
+        },
+        "database_counts": {
+            "roles_total": roles_total,
+            "roles_active": roles_active,
+            "safes": safes_total,
+            "accounts": accounts_total,
+            "sia_policies": policies_total,
+        },
+        "last_sync": {
+            "synced_at": sync_row.last_synced_at.isoformat() if sync_row else None,
+            "status": sync_row.status if sync_row else None,
+            "resource_count": sync_row.resource_count if sync_row else None,
+        },
+    }

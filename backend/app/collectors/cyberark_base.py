@@ -46,6 +46,7 @@ class CyberArkBaseCollector(ABC):
             return self._token
 
         token_url = f"{self.identity_url}/oauth2/platformtoken"
+        logger.info("CyberArk auth: requesting token from %s", token_url)
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(
                 token_url,
@@ -56,6 +57,12 @@ class CyberArkBaseCollector(ABC):
                 },
                 headers={"Content-Type": "application/x-www-form-urlencoded"},
             )
+            if response.status_code != 200:
+                logger.error(
+                    "CyberArk auth failed: HTTP %s — %s",
+                    response.status_code,
+                    response.text[:500],
+                )
             response.raise_for_status()
             data = response.json()
 
@@ -64,6 +71,7 @@ class CyberArkBaseCollector(ABC):
         self._token_expiry = datetime.now(timezone.utc) + timedelta(
             seconds=expires_in - 60
         )
+        logger.info("CyberArk auth: token acquired (expires_in=%ds)", expires_in)
         return self._token
 
     async def _get_headers(self) -> Dict[str, str]:
@@ -81,6 +89,13 @@ class CyberArkBaseCollector(ABC):
         headers = await self._get_headers()
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.get(url, headers=headers, params=params)
+            if response.status_code != 200:
+                logger.error(
+                    "CyberArk API GET %s returned HTTP %s — %s",
+                    url,
+                    response.status_code,
+                    response.text[:500],
+                )
             response.raise_for_status()
             result: Dict[str, Any] = response.json()
             return result
