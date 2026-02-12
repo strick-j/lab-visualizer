@@ -265,6 +265,7 @@ class CyberArkUserListResponse(BaseSchema):
 class CyberArkSettingsResponse(BaseSchema):
     """CyberArk settings response."""
 
+    tenant_name: Optional[str] = None
     enabled: bool = False
     base_url: Optional[str] = None
     identity_url: Optional[str] = None
@@ -277,6 +278,7 @@ class CyberArkSettingsResponse(BaseSchema):
 class CyberArkSettingsUpdate(BaseSchema):
     """CyberArk settings update request."""
 
+    tenant_name: Optional[str] = None
     enabled: Optional[bool] = None
     base_url: Optional[str] = None
     identity_url: Optional[str] = None
@@ -290,7 +292,23 @@ class CyberArkConnectionTestRequest(BaseSchema):
     base_url: str
     identity_url: str
     client_id: str
-    client_secret: str
+    client_secret: Optional[str] = None
+
+
+class TenantDiscoveryRequest(BaseSchema):
+    """Request to discover CyberArk tenant URLs."""
+
+    subdomain: str
+
+
+class TenantDiscoveryResponse(BaseSchema):
+    """Response from CyberArk tenant discovery."""
+
+    success: bool
+    base_url: Optional[str] = None
+    identity_url: Optional[str] = None
+    region: Optional[str] = None
+    message: Optional[str] = None
 
 
 class CyberArkConnectionTestResponse(BaseSchema):
@@ -310,6 +328,7 @@ class ScimSettingsResponse(BaseSchema):
     """SCIM integration settings response."""
 
     scim_enabled: bool = False
+    scim_app_id: Optional[str] = None
     scim_oauth2_url: Optional[str] = None
     scim_scope: Optional[str] = None
     scim_client_id: Optional[str] = None
@@ -322,7 +341,7 @@ class ScimSettingsUpdate(BaseSchema):
     """SCIM settings update request."""
 
     scim_enabled: Optional[bool] = None
-    scim_oauth2_url: Optional[str] = None
+    scim_app_id: Optional[str] = None
     scim_scope: Optional[str] = None
     scim_client_id: Optional[str] = None
     scim_client_secret: Optional[str] = None
@@ -331,7 +350,8 @@ class ScimSettingsUpdate(BaseSchema):
 class ScimConnectionTestRequest(BaseSchema):
     """Request to test SCIM OAuth2 connection."""
 
-    scim_oauth2_url: str
+    scim_app_id: Optional[str] = None
+    scim_oauth2_url: Optional[str] = None
     scim_scope: str
     scim_client_id: str
     scim_client_secret: Optional[str] = None

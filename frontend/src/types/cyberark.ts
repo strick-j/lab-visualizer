@@ -217,6 +217,7 @@ export interface CyberArkUserListResponse {
 // =============================================================================
 
 export interface CyberArkSettingsResponse {
+  tenant_name: string | null;
   enabled: boolean;
   base_url: string | null;
   identity_url: string | null;
@@ -227,6 +228,7 @@ export interface CyberArkSettingsResponse {
 }
 
 export interface CyberArkSettingsUpdate {
+  tenant_name?: string;
   enabled?: boolean;
   base_url?: string;
   identity_url?: string;
@@ -238,7 +240,19 @@ export interface CyberArkConnectionTestRequest {
   base_url: string;
   identity_url: string;
   client_id: string;
-  client_secret: string;
+  client_secret?: string;
+}
+
+export interface TenantDiscoveryRequest {
+  subdomain: string;
+}
+
+export interface TenantDiscoveryResponse {
+  success: boolean;
+  base_url: string | null;
+  identity_url: string | null;
+  region: string | null;
+  message: string | null;
 }
 
 export interface CyberArkConnectionTestResponse {
@@ -280,6 +294,7 @@ export interface CyberArkSyncStatus {
 
 export interface ScimSettingsResponse {
   scim_enabled: boolean;
+  scim_app_id: string | null;
   scim_oauth2_url: string | null;
   scim_scope: string | null;
   scim_client_id: string | null;
@@ -290,14 +305,15 @@ export interface ScimSettingsResponse {
 
 export interface ScimSettingsUpdate {
   scim_enabled?: boolean;
-  scim_oauth2_url?: string;
+  scim_app_id?: string;
   scim_scope?: string;
   scim_client_id?: string;
   scim_client_secret?: string;
 }
 
 export interface ScimConnectionTestRequest {
-  scim_oauth2_url: string;
+  scim_app_id?: string;
+  scim_oauth2_url?: string;
   scim_scope: string;
   scim_client_id: string;
   scim_client_secret?: string;

@@ -158,9 +158,11 @@ async def init_db() -> None:
     async with get_engine().begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
-    # Add SCIM columns to existing cyberark_settings table (if missing)
+    # Add new columns to existing cyberark_settings table (if missing)
     scim_columns = [
+        ("tenant_name", "VARCHAR(255)"),
         ("scim_enabled", "BOOLEAN DEFAULT 0"),
+        ("scim_app_id", "VARCHAR(255)"),
         ("scim_oauth2_url", "VARCHAR(500)"),
         ("scim_scope", "VARCHAR(500)"),
         ("scim_client_id", "VARCHAR(255)"),

@@ -38,6 +38,8 @@ from app.schemas.cyberark import (
     ScimConnectionTestResponse,
     ScimSettingsResponse,
     ScimSettingsUpdate,
+    TenantDiscoveryRequest,
+    TenantDiscoveryResponse,
 )
 from app.schemas.settings import (
     AuthSettingsResponse,
@@ -785,6 +787,7 @@ async def get_cyberark_settings(
     settings = await _get_or_create_cyberark_settings(db)
 
     return CyberArkSettingsResponse(
+        tenant_name=settings.tenant_name,
         enabled=settings.enabled,
         base_url=settings.base_url,
         identity_url=settings.identity_url,
@@ -819,6 +822,7 @@ async def update_cyberark_settings(
     )
 
     return CyberArkSettingsResponse(
+        tenant_name=settings.tenant_name,
         enabled=settings.enabled,
         base_url=settings.base_url,
         identity_url=settings.identity_url,
@@ -839,6 +843,17 @@ async def test_cyberark_connection(
     identity_url = test_data.identity_url.strip().rstrip("/")
     token_url = f"{identity_url}/oauth2/platformtoken"
 
+    # Resolve the client secret: prefer the one in the request, fall back to DB
+    secret = test_data.client_secret
+    if not secret:
+        db_settings = await _get_or_create_cyberark_settings(db)
+        secret = db_settings.client_secret
+    if not secret:
+        return CyberArkConnectionTestResponse(
+            success=False,
+            message="No client secret provided or saved",
+        )
+
     logger.info(
         "User %s testing CyberArk connection to %s",
         current_user.username,
@@ -852,7 +867,7 @@ async def test_cyberark_connection(
                 data={
                     "grant_type": "client_credentials",
                     "client_id": test_data.client_id,
-                    "client_secret": test_data.client_secret,
+                    "client_secret": secret,
                 },
                 headers={"Content-Type": "application/x-www-form-urlencoded"},
             )
@@ -897,6 +912,79 @@ async def test_cyberark_connection(
         return CyberArkConnectionTestResponse(
             success=False,
             message="An unexpected error occurred while testing the connection",
+        )
+
+
+@router.post("/cyberark/discover", response_model=TenantDiscoveryResponse)
+async def discover_cyberark_tenant(
+    request: TenantDiscoveryRequest,
+    current_user: User = Depends(get_current_admin_user),
+):
+    """Discover CyberArk tenant URLs from subdomain name. Admin only."""
+    subdomain = request.subdomain.strip().lower()
+    if not re.match(r"^[a-z0-9][a-z0-9-]*$", subdomain):
+        return TenantDiscoveryResponse(
+            success=False,
+            message="Invalid subdomain format",
+        )
+
+    discovery_url = (
+        f"https://platform-discovery.cyberark.cloud"
+        f"/api/v2/services/subdomain/{subdomain}"
+    )
+    logger.info(
+        "User %s discovering CyberArk tenant: %s",
+        current_user.username,
+        subdomain,
+    )
+
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            response = await client.get(discovery_url)
+            response.raise_for_status()
+            data = response.json()
+
+        pcloud = data.get("pcloud", {})
+        identity = data.get("identity_administration", {})
+
+        base_url = pcloud.get("api", "").rstrip("/")
+        identity_url = identity.get("api", "").rstrip("/")
+        region = pcloud.get("region", "")
+
+        if not base_url or not identity_url:
+            return TenantDiscoveryResponse(
+                success=False,
+                message="Discovery succeeded but missing expected URLs in response",
+            )
+
+        return TenantDiscoveryResponse(
+            success=True,
+            base_url=base_url,
+            identity_url=identity_url,
+            region=region,
+        )
+
+    except httpx.HTTPStatusError as e:
+        logger.warning(
+            "CyberArk tenant discovery HTTP %s for subdomain %s",
+            e.response.status_code,
+            subdomain,
+        )
+        return TenantDiscoveryResponse(
+            success=False,
+            message=f"Tenant not found (HTTP {e.response.status_code})",
+        )
+    except httpx.RequestError:
+        logger.warning("CyberArk tenant discovery request error", exc_info=True)
+        return TenantDiscoveryResponse(
+            success=False,
+            message="Could not connect to CyberArk platform discovery service",
+        )
+    except Exception:
+        logger.exception("Unexpected error during tenant discovery")
+        return TenantDiscoveryResponse(
+            success=False,
+            message="An unexpected error occurred during tenant discovery",
         )
 
 
@@ -1005,6 +1093,7 @@ async def get_scim_settings(
 
     return ScimSettingsResponse(
         scim_enabled=settings.scim_enabled,
+        scim_app_id=settings.scim_app_id,
         scim_oauth2_url=settings.scim_oauth2_url,
         scim_scope=settings.scim_scope,
         scim_client_id=settings.scim_client_id,
@@ -1027,6 +1116,13 @@ async def update_scim_settings(
     for field, value in update_fields.items():
         setattr(settings, field, value)
 
+    # Auto-derive scim_oauth2_url from identity_url + scim_app_id
+    if settings.scim_app_id and settings.identity_url:
+        identity_base = settings.identity_url.rstrip("/")
+        settings.scim_oauth2_url = (
+            f"{identity_base}/oauth2/token/{settings.scim_app_id}"
+        )
+
     settings.updated_by = current_user.username
 
     await db.commit()
@@ -1039,6 +1135,7 @@ async def update_scim_settings(
 
     return ScimSettingsResponse(
         scim_enabled=settings.scim_enabled,
+        scim_app_id=settings.scim_app_id,
         scim_oauth2_url=settings.scim_oauth2_url,
         scim_scope=settings.scim_scope,
         scim_client_id=settings.scim_client_id,
@@ -1055,7 +1152,30 @@ async def test_scim_connection(
     current_user: User = Depends(get_current_admin_user),
 ):
     """Test SCIM OAuth2 connection by acquiring a token. Admin only."""
-    oauth2_url = test_data.scim_oauth2_url.strip().rstrip("/")
+    # Derive OAuth2 URL from app_id + identity_url if no explicit URL given
+    if test_data.scim_oauth2_url:
+        oauth2_url = test_data.scim_oauth2_url.strip().rstrip("/")
+    elif test_data.scim_app_id:
+        db_settings = await _get_or_create_cyberark_settings(db)
+        identity_base = (db_settings.identity_url or "").rstrip("/")
+        if not identity_base:
+            return ScimConnectionTestResponse(
+                success=False,
+                message=(
+                    "Cannot derive SCIM OAuth2 URL: "
+                    "Identity URL not configured. Save platform settings first."
+                ),
+            )
+        oauth2_url = f"{identity_base}/oauth2/token/{test_data.scim_app_id.strip()}"
+    else:
+        db_settings = await _get_or_create_cyberark_settings(db)
+        if db_settings.scim_oauth2_url:
+            oauth2_url = db_settings.scim_oauth2_url.strip().rstrip("/")
+        else:
+            return ScimConnectionTestResponse(
+                success=False,
+                message="No SCIM App ID or OAuth2 URL provided",
+            )
 
     # Resolve the client secret: prefer the one in the request, fall back to DB
     scim_secret = test_data.scim_client_secret
