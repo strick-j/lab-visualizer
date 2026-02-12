@@ -5,6 +5,9 @@ SIA policies live on the UAP (Unified Access Portal) service, not Privilege
 Cloud.  The UAP base URL is discovered from the platform-discovery API
 (``uap.api``) and looks like ``https://<subdomain>.uap.cyberark.cloud/api``.
 
+The endpoint is ``/access-policies`` with a ``filter`` query parameter to
+select by target category, e.g. ``filter=(targetCategory eq 'VM')``.
+
 The response format is ``{ "results": [...], "nextToken": "...", "total": N }``.
 """
 
@@ -14,6 +17,12 @@ from typing import Any, Dict, List, Optional
 from app.collectors.cyberark_base import CyberArkBaseCollector
 
 logger = logging.getLogger(__name__)
+
+# Map internal policy type names to UAP targetCategory filter values
+_CATEGORY_FILTERS: Dict[str, str] = {
+    "vm": "(targetCategory eq 'VM')",
+    "database": "(targetCategory eq 'Database')",
+}
 
 
 class CyberArkSIAPolicyCollector(CyberArkBaseCollector):
@@ -30,9 +39,7 @@ class CyberArkSIAPolicyCollector(CyberArkBaseCollector):
     async def collect(self) -> List[Dict[str, Any]]:
         """Collect all SIA policies (VM and database)."""
         if not self.uap_base_url:
-            logger.warning(
-                "SIA: skipping collection — uap_base_url not configured"
-            )
+            logger.warning("SIA: skipping collection — uap_base_url not configured")
             return []
 
         results = []
@@ -49,14 +56,18 @@ class CyberArkSIAPolicyCollector(CyberArkBaseCollector):
         return results
 
     async def _collect_policies(self, policy_type: str) -> List[Dict[str, Any]]:
-        """Collect SIA policies of a given type with nextToken pagination."""
-        if policy_type == "vm":
-            url = f"{self.uap_base_url}/access-policies/vm"
-        else:
-            url = f"{self.uap_base_url}/access-policies/database"
+        """Collect SIA policies of a given type with nextToken pagination.
+
+        Uses the single ``/access-policies`` endpoint with a ``filter``
+        query parameter to select by target category.
+        """
+        url = f"{self.uap_base_url}/access-policies"
+        category_filter = _CATEGORY_FILTERS.get(policy_type, "")
 
         all_policies: List[Dict[str, Any]] = []
-        params: Dict[str, Any] = {}
+        params: Dict[str, str] = {}
+        if category_filter:
+            params["filter"] = category_filter
 
         try:
             while True:
@@ -107,9 +118,7 @@ class CyberArkSIAPolicyCollector(CyberArkBaseCollector):
                     }
                 )
             elif isinstance(p, str):
-                principals.append(
-                    {"principal_name": p, "principal_type": "user"}
-                )
+                principals.append({"principal_name": p, "principal_type": "user"})
         return principals
 
     @staticmethod
