@@ -13,6 +13,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.collectors.cyberark_accounts import CyberArkAccountCollector
+from app.collectors.cyberark_roles import CyberArkRoleCollector
+from app.collectors.cyberark_safes import CyberArkSafeCollector
+from app.collectors.cyberark_sia import CyberArkSIAPolicyCollector
 from app.collectors.ec2 import EC2Collector
 from app.collectors.ecs import ECSCollector
 from app.collectors.eip import ElasticIPCollector
@@ -22,6 +26,16 @@ from app.collectors.rds import RDSCollector
 from app.collectors.subnet import SubnetCollector
 from app.collectors.vpc import VPCCollector
 from app.config import get_settings
+from app.models.cyberark import (
+    CyberArkAccount,
+    CyberArkRole,
+    CyberArkRoleMember,
+    CyberArkSafe,
+    CyberArkSafeMember,
+    CyberArkSettings,
+    CyberArkSIAPolicy,
+    CyberArkSIAPolicyPrincipal,
+)
 from app.models.database import get_db
 from app.models.resources import (
     VPC,
@@ -210,6 +224,12 @@ async def refresh_data(
         ecs_count = await _sync_ecs_containers(db, ecs_containers, region.id)
         resources_updated += ecs_count
         logger.info(f"Synced {ecs_count} ECS containers")
+
+        # Collect CyberArk resources (if enabled)
+        cyberark_count = await _refresh_cyberark(db)
+        if cyberark_count > 0:
+            resources_updated += cyberark_count
+            logger.info(f"Synced {cyberark_count} CyberArk resources")
 
         # Update Terraform managed flags
         tf_count = await _sync_terraform_state(db)
@@ -1005,6 +1025,364 @@ async def _sync_terraform_state(db: AsyncSession) -> int:
     except Exception as e:
         logger.warning(f"Failed to sync Terraform state: {e}")
         return 0
+
+
+async def _get_cyberark_config(db: AsyncSession) -> dict | None:
+    """Get CyberArk connection config from DB, falling back to env vars.
+
+    Returns None if CyberArk is not enabled or not configured.
+    """
+    result = await db.execute(select(CyberArkSettings).limit(1))
+    db_settings = result.scalar_one_or_none()
+
+    if db_settings and db_settings.enabled:
+        base_url = db_settings.base_url
+        identity_url = db_settings.identity_url
+        client_id = db_settings.client_id
+        client_secret = db_settings.client_secret
+    elif settings.cyberark_enabled:
+        base_url = settings.cyberark_base_url
+        identity_url = settings.cyberark_identity_url
+        client_id = settings.cyberark_client_id
+        client_secret = settings.cyberark_client_secret
+    else:
+        return None
+
+    if not all([base_url, identity_url, client_id, client_secret]):
+        return None
+
+    return {
+        "base_url": base_url,
+        "identity_url": identity_url,
+        "client_id": client_id,
+        "client_secret": client_secret,
+    }
+
+
+async def _refresh_cyberark(db: AsyncSession) -> int:
+    """Collect and sync all CyberArk resources. Returns total count."""
+    config = await _get_cyberark_config(db)
+    if not config:
+        return 0
+
+    total = 0
+
+    try:
+        # Collect roles
+        role_collector = CyberArkRoleCollector(**config)
+        roles = await role_collector.collect()
+        total += await _sync_cyberark_roles(db, roles)
+
+        # Collect safes
+        safe_collector = CyberArkSafeCollector(**config)
+        safes = await safe_collector.collect()
+        total += await _sync_cyberark_safes(db, safes)
+
+        # Collect accounts
+        account_collector = CyberArkAccountCollector(**config)
+        accounts = await account_collector.collect()
+        total += await _sync_cyberark_accounts(db, accounts)
+
+        # Collect SIA policies
+        sia_collector = CyberArkSIAPolicyCollector(**config)
+        policies = await sia_collector.collect()
+        total += await _sync_cyberark_sia_policies(db, policies)
+
+        await _update_sync_status(db, "cyberark", total)
+    except Exception:
+        logger.exception("Error during CyberArk data refresh")
+
+    return total
+
+
+async def _sync_cyberark_roles(db: AsyncSession, roles: list) -> int:
+    """Sync CyberArk roles to database."""
+    count = 0
+
+    # Get existing role IDs
+    result = await db.execute(select(CyberArkRole.role_id))
+    existing_ids = set(row[0] for row in result.all())
+    seen_ids = set()
+
+    for role_data in roles:
+        role_id = role_data["role_id"]
+        seen_ids.add(role_id)
+
+        result = await db.execute(
+            select(CyberArkRole).where(CyberArkRole.role_id == role_id)
+        )
+        existing = result.scalar_one_or_none()
+
+        if existing:
+            existing.role_name = role_data["role_name"]
+            existing.description = role_data.get("description")
+            existing.is_deleted = False
+            existing.deleted_at = None
+        else:
+            existing = CyberArkRole(
+                role_id=role_id,
+                role_name=role_data["role_name"],
+                description=role_data.get("description"),
+                is_deleted=False,
+            )
+            db.add(existing)
+
+        # Sync role members: delete old, insert new
+        old_members = (
+            (
+                await db.execute(
+                    select(CyberArkRoleMember).where(
+                        CyberArkRoleMember.role_id == role_id
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+        for m in old_members:
+            await db.delete(m)
+
+        for member in role_data.get("members", []):
+            db.add(
+                CyberArkRoleMember(
+                    role_id=role_id,
+                    member_name=member["member_name"],
+                    member_type=member.get("member_type", "user"),
+                )
+            )
+
+        count += 1
+
+    # Mark roles not seen as deleted
+    deleted_ids = existing_ids - seen_ids
+    if deleted_ids:
+        result = await db.execute(
+            select(CyberArkRole).where(CyberArkRole.role_id.in_(deleted_ids))
+        )
+        for role in result.scalars():
+            if not role.is_deleted:
+                role.is_deleted = True
+                role.deleted_at = datetime.now(timezone.utc)
+
+    await db.flush()
+    return count
+
+
+async def _sync_cyberark_safes(db: AsyncSession, safes: list) -> int:
+    """Sync CyberArk safes to database."""
+    count = 0
+
+    result = await db.execute(select(CyberArkSafe.safe_name))
+    existing_names = set(row[0] for row in result.all())
+    seen_names = set()
+
+    for safe_data in safes:
+        safe_name = safe_data["safe_name"]
+        seen_names.add(safe_name)
+
+        result = await db.execute(
+            select(CyberArkSafe).where(CyberArkSafe.safe_name == safe_name)
+        )
+        existing = result.scalar_one_or_none()
+
+        if existing:
+            existing.description = safe_data.get("description")
+            existing.managing_cpm = safe_data.get("managing_cpm")
+            existing.number_of_members = safe_data.get("number_of_members", 0)
+            existing.number_of_accounts = safe_data.get("number_of_accounts", 0)
+            existing.is_deleted = False
+            existing.deleted_at = None
+        else:
+            existing = CyberArkSafe(
+                safe_name=safe_name,
+                description=safe_data.get("description"),
+                managing_cpm=safe_data.get("managing_cpm"),
+                number_of_members=safe_data.get("number_of_members", 0),
+                number_of_accounts=safe_data.get("number_of_accounts", 0),
+                is_deleted=False,
+            )
+            db.add(existing)
+
+        # Sync safe members
+        old_members = (
+            (
+                await db.execute(
+                    select(CyberArkSafeMember).where(
+                        CyberArkSafeMember.safe_name == safe_name
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+        for m in old_members:
+            await db.delete(m)
+
+        for member in safe_data.get("members", []):
+            db.add(
+                CyberArkSafeMember(
+                    safe_name=safe_name,
+                    member_name=member["member_name"],
+                    member_type=member.get("member_type", "user"),
+                    permission_level=member.get("permission_level"),
+                )
+            )
+
+        count += 1
+
+    # Mark safes not seen as deleted
+    deleted_names = existing_names - seen_names
+    if deleted_names:
+        result = await db.execute(
+            select(CyberArkSafe).where(CyberArkSafe.safe_name.in_(deleted_names))
+        )
+        for safe in result.scalars():
+            if not safe.is_deleted:
+                safe.is_deleted = True
+                safe.deleted_at = datetime.now(timezone.utc)
+
+    await db.flush()
+    return count
+
+
+async def _sync_cyberark_accounts(db: AsyncSession, accounts: list) -> int:
+    """Sync CyberArk accounts to database."""
+    count = 0
+
+    result = await db.execute(select(CyberArkAccount.account_id))
+    existing_ids = set(row[0] for row in result.all())
+    seen_ids = set()
+
+    for acct_data in accounts:
+        account_id = acct_data["account_id"]
+        seen_ids.add(account_id)
+
+        result = await db.execute(
+            select(CyberArkAccount).where(CyberArkAccount.account_id == account_id)
+        )
+        existing = result.scalar_one_or_none()
+
+        if existing:
+            existing.account_name = acct_data["account_name"]
+            existing.safe_name = acct_data["safe_name"]
+            existing.platform_id = acct_data.get("platform_id")
+            existing.address = acct_data.get("address")
+            existing.username = acct_data.get("username")
+            existing.secret_type = acct_data.get("secret_type")
+            existing.is_deleted = False
+            existing.deleted_at = None
+        else:
+            db.add(
+                CyberArkAccount(
+                    account_id=account_id,
+                    account_name=acct_data["account_name"],
+                    safe_name=acct_data["safe_name"],
+                    platform_id=acct_data.get("platform_id"),
+                    address=acct_data.get("address"),
+                    username=acct_data.get("username"),
+                    secret_type=acct_data.get("secret_type"),
+                    is_deleted=False,
+                )
+            )
+
+        count += 1
+
+    # Mark accounts not seen as deleted
+    deleted_ids = existing_ids - seen_ids
+    if deleted_ids:
+        result = await db.execute(
+            select(CyberArkAccount).where(CyberArkAccount.account_id.in_(deleted_ids))
+        )
+        for acct in result.scalars():
+            if not acct.is_deleted:
+                acct.is_deleted = True
+                acct.deleted_at = datetime.now(timezone.utc)
+
+    await db.flush()
+    return count
+
+
+async def _sync_cyberark_sia_policies(db: AsyncSession, policies: list) -> int:
+    """Sync CyberArk SIA policies to database."""
+    count = 0
+
+    result = await db.execute(select(CyberArkSIAPolicy.policy_id))
+    existing_ids = set(row[0] for row in result.all())
+    seen_ids = set()
+
+    for policy_data in policies:
+        policy_id = policy_data["policy_id"]
+        seen_ids.add(policy_id)
+
+        result = await db.execute(
+            select(CyberArkSIAPolicy).where(CyberArkSIAPolicy.policy_id == policy_id)
+        )
+        existing = result.scalar_one_or_none()
+
+        target_criteria = policy_data.get("target_criteria")
+        criteria_json = json.dumps(target_criteria) if target_criteria else None
+
+        if existing:
+            existing.policy_name = policy_data["policy_name"]
+            existing.policy_type = policy_data["policy_type"]
+            existing.description = policy_data.get("description")
+            existing.status = policy_data.get("status", "active")
+            existing.target_criteria = criteria_json
+            existing.is_deleted = False
+            existing.deleted_at = None
+        else:
+            existing = CyberArkSIAPolicy(
+                policy_id=policy_id,
+                policy_name=policy_data["policy_name"],
+                policy_type=policy_data["policy_type"],
+                description=policy_data.get("description"),
+                status=policy_data.get("status", "active"),
+                target_criteria=criteria_json,
+                is_deleted=False,
+            )
+            db.add(existing)
+
+        # Sync principals
+        old_principals = (
+            (
+                await db.execute(
+                    select(CyberArkSIAPolicyPrincipal).where(
+                        CyberArkSIAPolicyPrincipal.policy_id == policy_id
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+        for p in old_principals:
+            await db.delete(p)
+
+        for principal in policy_data.get("principals", []):
+            db.add(
+                CyberArkSIAPolicyPrincipal(
+                    policy_id=policy_id,
+                    principal_name=principal["principal_name"],
+                    principal_type=principal.get("principal_type", "user"),
+                )
+            )
+
+        count += 1
+
+    # Mark policies not seen as deleted
+    deleted_ids = existing_ids - seen_ids
+    if deleted_ids:
+        result = await db.execute(
+            select(CyberArkSIAPolicy).where(
+                CyberArkSIAPolicy.policy_id.in_(deleted_ids)
+            )
+        )
+        for policy in result.scalars():
+            if not policy.is_deleted:
+                policy.is_deleted = True
+                policy.deleted_at = datetime.now(timezone.utc)
+
+    await db.flush()
+    return count
 
 
 async def _update_sync_status(
