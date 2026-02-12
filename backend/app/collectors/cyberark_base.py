@@ -66,12 +66,21 @@ class CyberArkBaseCollector(ABC):
             response.raise_for_status()
             data = response.json()
 
+        token_type = data.get("token_type", "")
+        scope = data.get("scope", "")
         self._token = data["access_token"]
         expires_in = data.get("expires_in", 3600)
         self._token_expiry = datetime.now(timezone.utc) + timedelta(
             seconds=expires_in - 60
         )
-        logger.info("CyberArk auth: token acquired (expires_in=%ds)", expires_in)
+        logger.info(
+            "CyberArk auth: token acquired (token_type=%s, scope=%s, "
+            "expires_in=%ds, token_prefix=%s...)",
+            token_type,
+            scope or "(empty)",
+            expires_in,
+            self._token[:20] if self._token else "None",
+        )
         return self._token
 
     async def _get_headers(self) -> Dict[str, str]:
@@ -87,13 +96,22 @@ class CyberArkBaseCollector(ABC):
     ) -> Dict[str, Any]:
         """Make authenticated GET request to CyberArk API."""
         headers = await self._get_headers()
+        auth_header = headers.get("Authorization", "")
+        logger.debug(
+            "CyberArk API GET %s — Authorization: %s...%s",
+            url,
+            auth_header[:15],
+            auth_header[-6:] if len(auth_header) > 21 else "",
+        )
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.get(url, headers=headers, params=params)
             if response.status_code != 200:
                 logger.error(
-                    "CyberArk API GET %s returned HTTP %s — %s",
+                    "CyberArk API GET %s returned HTTP %s — "
+                    "response_headers=%s — body=%s",
                     url,
                     response.status_code,
+                    dict(response.headers),
                     response.text[:500],
                 )
             response.raise_for_status()
