@@ -334,7 +334,7 @@ class ScimConnectionTestRequest(BaseSchema):
     scim_oauth2_url: str
     scim_scope: str
     scim_client_id: str
-    scim_client_secret: str
+    scim_client_secret: Optional[str] = None
 
 
 class ScimConnectionTestResponse(BaseSchema):
