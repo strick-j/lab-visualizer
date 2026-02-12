@@ -312,6 +312,7 @@ export function useRefreshData() {
       queryClient.invalidateQueries({ queryKey: ["topology"] });
       queryClient.invalidateQueries({ queryKey: ["cyberark-safes"] });
       queryClient.invalidateQueries({ queryKey: ["cyberark-roles"] });
+      queryClient.invalidateQueries({ queryKey: ["cyberark-users"] });
       queryClient.invalidateQueries({ queryKey: ["cyberark-sia-policies"] });
       queryClient.invalidateQueries({ queryKey: ["cyberark-drift"] });
       queryClient.invalidateQueries({ queryKey: ["access-mapping"] });

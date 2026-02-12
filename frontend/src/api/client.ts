@@ -586,6 +586,10 @@ import type {
   CyberArkConnectionTestRequest,
   CyberArkConnectionTestResponse,
   CyberArkSyncStatus,
+  ScimSettingsResponse,
+  ScimSettingsUpdate,
+  ScimConnectionTestRequest,
+  ScimConnectionTestResponse,
 } from "@/types";
 
 export async function getCyberArkSafes(
@@ -706,6 +710,29 @@ export async function testCyberArkConnection(
 
 export async function getCyberArkSyncStatus(): Promise<CyberArkSyncStatus> {
   const response = await api.get("/settings/cyberark/status");
+  return response.data;
+}
+
+// =============================================================================
+// SCIM Settings (Admin only)
+// =============================================================================
+
+export async function getScimSettings(): Promise<ScimSettingsResponse> {
+  const response = await api.get("/settings/cyberark/scim");
+  return response.data;
+}
+
+export async function updateScimSettings(
+  settings: ScimSettingsUpdate,
+): Promise<ScimSettingsResponse> {
+  const response = await api.put("/settings/cyberark/scim", settings);
+  return response.data;
+}
+
+export async function testScimConnection(
+  data: ScimConnectionTestRequest,
+): Promise<ScimConnectionTestResponse> {
+  const response = await api.post("/settings/cyberark/scim/test", data);
   return response.data;
 }
 

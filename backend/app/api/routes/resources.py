@@ -17,6 +17,7 @@ from app.collectors.cyberark_accounts import CyberArkAccountCollector
 from app.collectors.cyberark_roles import CyberArkRoleCollector
 from app.collectors.cyberark_safes import CyberArkSafeCollector
 from app.collectors.cyberark_sia import CyberArkSIAPolicyCollector
+from app.collectors.cyberark_users import CyberArkUserCollector
 from app.collectors.ec2 import EC2Collector
 from app.collectors.ecs import ECSCollector
 from app.collectors.eip import ElasticIPCollector
@@ -35,6 +36,7 @@ from app.models.cyberark import (
     CyberArkSettings,
     CyberArkSIAPolicy,
     CyberArkSIAPolicyPrincipal,
+    CyberArkUser,
 )
 from app.models.database import get_db
 from app.models.resources import (
@@ -1132,54 +1134,124 @@ async def _get_cyberark_config(db: AsyncSession) -> dict | None:
     }
 
 
+async def _get_scim_config(db: AsyncSession) -> dict | None:
+    """Get SCIM connection config from DB.
+
+    Returns None if SCIM is not enabled or not configured.
+    """
+    result = await db.execute(select(CyberArkSettings).limit(1))
+    db_settings = result.scalar_one_or_none()
+
+    if not db_settings or not db_settings.scim_enabled:
+        logger.info(
+            "SCIM: skipping collection — not enabled "
+            "(db_settings=%s, scim_enabled=%s)",
+            db_settings is not None,
+            db_settings.scim_enabled if db_settings else False,
+        )
+        return None
+
+    if not all(
+        [
+            db_settings.identity_url,
+            db_settings.scim_oauth2_url,
+            db_settings.scim_scope,
+            db_settings.scim_client_id,
+            db_settings.scim_client_secret,
+        ]
+    ):
+        logger.warning(
+            "SCIM: enabled but missing required config — "
+            "identity_url=%s, scim_oauth2_url=%s, scim_scope=%s, "
+            "scim_client_id=%s, scim_client_secret=%s",
+            bool(db_settings.identity_url),
+            bool(db_settings.scim_oauth2_url),
+            bool(db_settings.scim_scope),
+            bool(db_settings.scim_client_id),
+            bool(db_settings.scim_client_secret),
+        )
+        return None
+
+    return {
+        "identity_url": db_settings.identity_url,
+        "scim_oauth2_url": db_settings.scim_oauth2_url,
+        "scim_scope": db_settings.scim_scope,
+        "scim_client_id": db_settings.scim_client_id,
+        "scim_client_secret": db_settings.scim_client_secret,
+    }
+
+
 async def _refresh_cyberark(db: AsyncSession) -> int:
     """Collect and sync all CyberArk resources. Returns total count."""
     config = await _get_cyberark_config(db)
-    if not config:
+    scim_config = await _get_scim_config(db)
+
+    if not config and not scim_config:
         return 0
 
     total = 0
 
-    try:
-        # Collect roles
-        role_collector = CyberArkRoleCollector(**config)
-        roles = await role_collector.collect()
-        logger.info("CyberArk: collected %d roles from API", len(roles))
-        role_count = await _sync_cyberark_roles(db, roles)
-        total += role_count
+    # --- Platform Token collectors (safes, accounts, SIA) ---
+    if config:
+        try:
+            # Collect safes
+            safe_collector = CyberArkSafeCollector(**config)
+            safes = await safe_collector.collect()
+            logger.info("CyberArk: collected %d safes from API", len(safes))
+            safe_count = await _sync_cyberark_safes(db, safes)
+            total += safe_count
 
-        # Collect safes
-        safe_collector = CyberArkSafeCollector(**config)
-        safes = await safe_collector.collect()
-        logger.info("CyberArk: collected %d safes from API", len(safes))
-        safe_count = await _sync_cyberark_safes(db, safes)
-        total += safe_count
+            # Collect accounts
+            account_collector = CyberArkAccountCollector(**config)
+            accounts = await account_collector.collect()
+            logger.info("CyberArk: collected %d accounts from API", len(accounts))
+            acct_count = await _sync_cyberark_accounts(db, accounts)
+            total += acct_count
 
-        # Collect accounts
-        account_collector = CyberArkAccountCollector(**config)
-        accounts = await account_collector.collect()
-        logger.info("CyberArk: collected %d accounts from API", len(accounts))
-        acct_count = await _sync_cyberark_accounts(db, accounts)
-        total += acct_count
+            # Collect SIA policies
+            sia_collector = CyberArkSIAPolicyCollector(**config)
+            policies = await sia_collector.collect()
+            logger.info(
+                "CyberArk: collected %d SIA policies from API", len(policies)
+            )
+            policy_count = await _sync_cyberark_sia_policies(db, policies)
+            total += policy_count
 
-        # Collect SIA policies
-        sia_collector = CyberArkSIAPolicyCollector(**config)
-        policies = await sia_collector.collect()
-        logger.info("CyberArk: collected %d SIA policies from API", len(policies))
-        policy_count = await _sync_cyberark_sia_policies(db, policies)
-        total += policy_count
+            logger.info(
+                "CyberArk platform: %d safes, %d accounts, %d policies",
+                safe_count,
+                acct_count,
+                policy_count,
+            )
+        except Exception:
+            logger.exception("Error during CyberArk platform data refresh")
 
-        logger.info(
-            "CyberArk: sync complete — %d roles, %d safes, %d accounts, %d policies",
-            role_count,
-            safe_count,
-            acct_count,
-            policy_count,
-        )
-        await _update_sync_status(db, "cyberark", total)
-    except Exception:
-        logger.exception("Error during CyberArk data refresh")
+    # --- SCIM collectors (roles/groups, users) ---
+    if scim_config:
+        try:
+            # Collect roles via SCIM groups
+            role_collector = CyberArkRoleCollector(**scim_config)
+            roles = await role_collector.collect()
+            logger.info("CyberArk SCIM: collected %d roles from API", len(roles))
+            role_count = await _sync_cyberark_roles(db, roles)
+            total += role_count
 
+            # Collect users via SCIM users
+            user_collector = CyberArkUserCollector(**scim_config)
+            users = await user_collector.collect()
+            logger.info("CyberArk SCIM: collected %d users from API", len(users))
+            user_count = await _sync_cyberark_users(db, users)
+            total += user_count
+
+            logger.info(
+                "CyberArk SCIM: %d roles, %d users",
+                role_count,
+                user_count,
+            )
+        except Exception:
+            logger.exception("Error during CyberArk SCIM data refresh")
+
+    await _update_sync_status(db, "cyberark", total)
     return total
 
 
@@ -1241,16 +1313,25 @@ async def _sync_cyberark_roles(db: AsyncSession, roles: list) -> int:
 
         count += 1
 
-    # Mark roles not seen as deleted
-    deleted_ids = existing_ids - seen_ids
-    if deleted_ids:
-        result = await db.execute(
-            select(CyberArkRole).where(CyberArkRole.role_id.in_(deleted_ids))
+    # Mark roles not seen as deleted — but only if we actually received
+    # results from the API.  An empty response likely means the API call
+    # failed (e.g. 403) and we must not wipe existing data.
+    if seen_ids:
+        deleted_ids = existing_ids - seen_ids
+        if deleted_ids:
+            result = await db.execute(
+                select(CyberArkRole).where(CyberArkRole.role_id.in_(deleted_ids))
+            )
+            for role in result.scalars():
+                if not role.is_deleted:
+                    role.is_deleted = True
+                    role.deleted_at = datetime.now(timezone.utc)
+    elif existing_ids:
+        logger.warning(
+            "CyberArk: received 0 roles but %d exist in DB — "
+            "skipping soft-delete to protect against API failure",
+            len(existing_ids),
         )
-        for role in result.scalars():
-            if not role.is_deleted:
-                role.is_deleted = True
-                role.deleted_at = datetime.now(timezone.utc)
 
     await db.flush()
     return count
@@ -1318,16 +1399,23 @@ async def _sync_cyberark_safes(db: AsyncSession, safes: list) -> int:
 
         count += 1
 
-    # Mark safes not seen as deleted
-    deleted_names = existing_names - seen_names
-    if deleted_names:
-        result = await db.execute(
-            select(CyberArkSafe).where(CyberArkSafe.safe_name.in_(deleted_names))
+    # Mark safes not seen as deleted — only when we received results
+    if seen_names:
+        deleted_names = existing_names - seen_names
+        if deleted_names:
+            result = await db.execute(
+                select(CyberArkSafe).where(CyberArkSafe.safe_name.in_(deleted_names))
+            )
+            for safe in result.scalars():
+                if not safe.is_deleted:
+                    safe.is_deleted = True
+                    safe.deleted_at = datetime.now(timezone.utc)
+    elif existing_names:
+        logger.warning(
+            "CyberArk: received 0 safes but %d exist in DB — "
+            "skipping soft-delete to protect against API failure",
+            len(existing_names),
         )
-        for safe in result.scalars():
-            if not safe.is_deleted:
-                safe.is_deleted = True
-                safe.deleted_at = datetime.now(timezone.utc)
 
     await db.flush()
     return count
@@ -1375,16 +1463,25 @@ async def _sync_cyberark_accounts(db: AsyncSession, accounts: list) -> int:
 
         count += 1
 
-    # Mark accounts not seen as deleted
-    deleted_ids = existing_ids - seen_ids
-    if deleted_ids:
-        result = await db.execute(
-            select(CyberArkAccount).where(CyberArkAccount.account_id.in_(deleted_ids))
+    # Mark accounts not seen as deleted — only when we received results
+    if seen_ids:
+        deleted_ids = existing_ids - seen_ids
+        if deleted_ids:
+            result = await db.execute(
+                select(CyberArkAccount).where(
+                    CyberArkAccount.account_id.in_(deleted_ids)
+                )
+            )
+            for acct in result.scalars():
+                if not acct.is_deleted:
+                    acct.is_deleted = True
+                    acct.deleted_at = datetime.now(timezone.utc)
+    elif existing_ids:
+        logger.warning(
+            "CyberArk: received 0 accounts but %d exist in DB — "
+            "skipping soft-delete to protect against API failure",
+            len(existing_ids),
         )
-        for acct in result.scalars():
-            if not acct.is_deleted:
-                acct.is_deleted = True
-                acct.deleted_at = datetime.now(timezone.utc)
 
     await db.flush()
     return count
@@ -1456,18 +1553,85 @@ async def _sync_cyberark_sia_policies(db: AsyncSession, policies: list) -> int:
 
         count += 1
 
-    # Mark policies not seen as deleted
-    deleted_ids = existing_ids - seen_ids
-    if deleted_ids:
-        result = await db.execute(
-            select(CyberArkSIAPolicy).where(
-                CyberArkSIAPolicy.policy_id.in_(deleted_ids)
+    # Mark policies not seen as deleted — only when we received results
+    if seen_ids:
+        deleted_ids = existing_ids - seen_ids
+        if deleted_ids:
+            result = await db.execute(
+                select(CyberArkSIAPolicy).where(
+                    CyberArkSIAPolicy.policy_id.in_(deleted_ids)
+                )
             )
+            for policy in result.scalars():
+                if not policy.is_deleted:
+                    policy.is_deleted = True
+                    policy.deleted_at = datetime.now(timezone.utc)
+    elif existing_ids:
+        logger.warning(
+            "CyberArk: received 0 SIA policies but %d exist in DB — "
+            "skipping soft-delete to protect against API failure",
+            len(existing_ids),
         )
-        for policy in result.scalars():
-            if not policy.is_deleted:
-                policy.is_deleted = True
-                policy.deleted_at = datetime.now(timezone.utc)
+
+    await db.flush()
+    return count
+
+
+async def _sync_cyberark_users(db: AsyncSession, users: list) -> int:
+    """Sync CyberArk Identity users to database."""
+    count = 0
+
+    result = await db.execute(select(CyberArkUser.user_id))
+    existing_ids = set(row[0] for row in result.all())
+    seen_ids = set()
+
+    for user_data in users:
+        user_id = user_data["user_id"]
+        seen_ids.add(user_id)
+
+        result = await db.execute(
+            select(CyberArkUser).where(CyberArkUser.user_id == user_id)
+        )
+        existing = result.scalar_one_or_none()
+
+        if existing:
+            existing.user_name = user_data["user_name"]
+            existing.display_name = user_data.get("display_name")
+            existing.email = user_data.get("email")
+            existing.active = user_data.get("active", True)
+            existing.is_deleted = False
+            existing.deleted_at = None
+        else:
+            db.add(
+                CyberArkUser(
+                    user_id=user_id,
+                    user_name=user_data["user_name"],
+                    display_name=user_data.get("display_name"),
+                    email=user_data.get("email"),
+                    active=user_data.get("active", True),
+                    is_deleted=False,
+                )
+            )
+
+        count += 1
+
+    # Mark users not seen as deleted — only when we received results
+    if seen_ids:
+        deleted_ids = existing_ids - seen_ids
+        if deleted_ids:
+            result = await db.execute(
+                select(CyberArkUser).where(CyberArkUser.user_id.in_(deleted_ids))
+            )
+            for user in result.scalars():
+                if not user.is_deleted:
+                    user.is_deleted = True
+                    user.deleted_at = datetime.now(timezone.utc)
+    elif existing_ids:
+        logger.warning(
+            "CyberArk: received 0 users but %d exist in DB — "
+            "skipping soft-delete to protect against API failure",
+            len(existing_ids),
+        )
 
     await db.flush()
     return count

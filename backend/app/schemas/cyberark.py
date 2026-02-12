@@ -237,6 +237,31 @@ class AccessMappingTargetList(BaseSchema):
 # =============================================================================
 
 
+class CyberArkUserResponse(BaseSchema):
+    """CyberArk Identity user response schema."""
+
+    id: int
+    user_id: str
+    user_name: str
+    display_name: Optional[str] = None
+    email: Optional[str] = None
+    active: bool = True
+    is_deleted: bool = False
+    updated_at: datetime
+
+
+class CyberArkUserListResponse(BaseSchema):
+    """CyberArk user list response."""
+
+    data: List[CyberArkUserResponse] = []
+    meta: Dict[str, Any] = {}
+
+
+# =============================================================================
+# CyberArk Settings Schemas
+# =============================================================================
+
+
 class CyberArkSettingsResponse(BaseSchema):
     """CyberArk settings response."""
 
@@ -270,6 +295,50 @@ class CyberArkConnectionTestRequest(BaseSchema):
 
 class CyberArkConnectionTestResponse(BaseSchema):
     """Response from CyberArk connection test."""
+
+    success: bool
+    message: str
+    details: Optional[Dict[str, Any]] = None
+
+
+# =============================================================================
+# SCIM Settings Schemas
+# =============================================================================
+
+
+class ScimSettingsResponse(BaseSchema):
+    """SCIM integration settings response."""
+
+    scim_enabled: bool = False
+    scim_oauth2_url: Optional[str] = None
+    scim_scope: Optional[str] = None
+    scim_client_id: Optional[str] = None
+    has_scim_client_secret: bool = False
+    updated_at: Optional[datetime] = None
+    updated_by: Optional[str] = None
+
+
+class ScimSettingsUpdate(BaseSchema):
+    """SCIM settings update request."""
+
+    scim_enabled: Optional[bool] = None
+    scim_oauth2_url: Optional[str] = None
+    scim_scope: Optional[str] = None
+    scim_client_id: Optional[str] = None
+    scim_client_secret: Optional[str] = None
+
+
+class ScimConnectionTestRequest(BaseSchema):
+    """Request to test SCIM OAuth2 connection."""
+
+    scim_oauth2_url: str
+    scim_scope: str
+    scim_client_id: str
+    scim_client_secret: str
+
+
+class ScimConnectionTestResponse(BaseSchema):
+    """Response from SCIM connection test."""
 
     success: bool
     message: str

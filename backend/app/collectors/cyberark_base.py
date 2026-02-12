@@ -118,6 +118,37 @@ class CyberArkBaseCollector(ABC):
             result: Dict[str, Any] = response.json()
             return result
 
+    async def _api_post(
+        self,
+        url: str,
+        json_body: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """Make authenticated POST request to CyberArk API."""
+        headers = await self._get_headers()
+        auth_header = headers.get("Authorization", "")
+        logger.debug(
+            "CyberArk API POST %s — Authorization: %s...%s",
+            url,
+            auth_header[:15],
+            auth_header[-6:] if len(auth_header) > 21 else "",
+        )
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(
+                url, headers=headers, json=json_body or {}
+            )
+            if response.status_code != 200:
+                logger.error(
+                    "CyberArk API POST %s returned HTTP %s — "
+                    "response_headers=%s — body=%s",
+                    url,
+                    response.status_code,
+                    dict(response.headers),
+                    response.text[:500],
+                )
+            response.raise_for_status()
+            result: Dict[str, Any] = response.json()
+            return result
+
     async def _api_get_paginated(
         self,
         url: str,

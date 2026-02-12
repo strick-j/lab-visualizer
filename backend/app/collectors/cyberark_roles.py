@@ -1,59 +1,64 @@
 """
-Collector for CyberArk Identity Roles.
+Collector for CyberArk Identity Roles via SCIM /scim/v2/groups.
 """
 
 import logging
 from typing import Any, Dict, List
 
-from app.collectors.cyberark_base import CyberArkBaseCollector
+from app.collectors.cyberark_scim import CyberArkScimBaseCollector
 
 logger = logging.getLogger(__name__)
 
 
-class CyberArkRoleCollector(CyberArkBaseCollector):
-    """Collects roles and members from CyberArk Identity."""
+class CyberArkRoleCollector(CyberArkScimBaseCollector):
+    """Collects roles (groups) and members from CyberArk Identity SCIM API."""
 
     async def collect(self) -> List[Dict[str, Any]]:
-        """Collect all roles with member details."""
-        url = f"{self.identity_url}/CDirectoryService/GetRoles"
+        """Collect all roles with member details via SCIM groups endpoint."""
+        url = f"{self.identity_url}/scim/v2/groups"
+        logger.info("CyberArk roles: fetching from %s (SCIM)", url)
+
         try:
-            data = await self._api_get(url)
-            roles_data = data.get("Result", {}).get("Results", [])
+            groups = await self._scim_get_paginated(url)
+            logger.info(
+                "CyberArk roles: SCIM returned %d groups", len(groups)
+            )
         except Exception:
-            logger.exception("Failed to collect CyberArk roles")
+            logger.exception(
+                "Failed to collect CyberArk roles from %s", url
+            )
             return []
 
         results = []
-        for role_entry in roles_data:
-            role = role_entry.get("Row", {})
-            role_id = role.get("ID", "")
-            role_name = role.get("Name", "")
-            members = await self._collect_role_members(role_id)
+        for group in groups:
+            group_id = group.get("id", "")
+            display_name = group.get("displayName", "")
+            if not group_id:
+                logger.debug("Skipping SCIM group with no id: %s", group)
+                continue
+
+            members = []
+            for member in group.get("members", []):
+                member_ref = member.get("$ref", "")
+                member_type = "user"
+                if "/groups/" in member_ref.lower():
+                    member_type = "group"
+
+                members.append(
+                    {
+                        "member_name": member.get("display", member.get("value", "")),
+                        "member_type": member_type,
+                    }
+                )
+
             results.append(
                 {
-                    "role_id": role_id,
-                    "role_name": role_name,
-                    "description": role.get("Description"),
+                    "role_id": group_id,
+                    "role_name": display_name,
+                    "description": None,
                     "members": members,
                 }
             )
 
-        logger.info("Collected %d CyberArk roles", len(results))
+        logger.info("Collected %d CyberArk roles (SCIM groups)", len(results))
         return results
-
-    async def _collect_role_members(self, role_id: str) -> List[Dict[str, Any]]:
-        """Collect members of a specific role."""
-        url = f"{self.identity_url}/Roles/GetRoleMembers"
-        try:
-            data = await self._api_get(url, params={"name": role_id})
-            members = data.get("Result", {}).get("Results", [])
-            return [
-                {
-                    "member_name": m.get("Row", {}).get("Name", ""),
-                    "member_type": m.get("Row", {}).get("Type", "user").lower(),
-                }
-                for m in members
-            ]
-        except Exception:
-            logger.warning("Failed to collect members for role %s", role_id)
-            return []

@@ -280,6 +280,31 @@ class CyberArkSIAPolicyPrincipal(Base):
     )
 
 
+class CyberArkUser(Base):
+    """CyberArk Identity User (collected via SCIM)."""
+
+    __tablename__ = "cyberark_users"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
+    user_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    display_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    email: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+    # Deletion tracking
+    is_deleted: Mapped[bool] = mapped_column(Boolean, default=False)
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+
+    # Timestamps
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+
 class CyberArkSettings(Base):
     """Singleton model for storing CyberArk integration configuration."""
 
@@ -287,12 +312,21 @@ class CyberArkSettings(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
 
-    # Connection settings
+    # Connection settings (platform token)
     enabled: Mapped[bool] = mapped_column(Boolean, default=False)
     base_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     identity_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     client_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     client_secret: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+
+    # SCIM integration settings (separate OAuth2 credentials)
+    scim_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    scim_oauth2_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    scim_scope: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    scim_client_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    scim_client_secret: Mapped[Optional[str]] = mapped_column(
+        String(500), nullable=True
+    )
 
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
