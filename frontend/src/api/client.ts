@@ -585,6 +585,7 @@ import type {
   CyberArkSettingsUpdate,
   CyberArkConnectionTestRequest,
   CyberArkConnectionTestResponse,
+  CyberArkSyncStatus,
 } from "@/types";
 
 export async function getCyberArkSafes(
@@ -700,6 +701,11 @@ export async function testCyberArkConnection(
   data: CyberArkConnectionTestRequest,
 ): Promise<CyberArkConnectionTestResponse> {
   const response = await api.post("/settings/cyberark/test", data);
+  return response.data;
+}
+
+export async function getCyberArkSyncStatus(): Promise<CyberArkSyncStatus> {
+  const response = await api.get("/settings/cyberark/status");
   return response.data;
 }
 

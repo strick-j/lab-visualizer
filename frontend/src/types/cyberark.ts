@@ -227,6 +227,32 @@ export interface CyberArkConnectionTestResponse {
   details?: Record<string, unknown>;
 }
 
+export interface CyberArkSyncStatus {
+  config: {
+    source: string;
+    enabled: boolean;
+    all_fields_set: boolean;
+    db_settings_exists: boolean;
+    db_enabled: boolean | null;
+    db_base_url_set: boolean;
+    db_identity_url_set: boolean;
+    db_client_id_set: boolean;
+    db_client_secret_set: boolean;
+  };
+  database_counts: {
+    roles_total: number;
+    roles_active: number;
+    safes: number;
+    accounts: number;
+    sia_policies: number;
+  };
+  last_sync: {
+    synced_at: string | null;
+    status: string | null;
+    resource_count: number | null;
+  };
+}
+
 // =============================================================================
 // CyberArk Drift Types
 // =============================================================================
