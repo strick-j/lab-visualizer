@@ -15,9 +15,7 @@ vi.mock("@/pages", () => ({
     <div data-testid="terraform-page">Terraform Content</div>
   ),
   TopologyPage: () => <div data-testid="topology-page">Topology Content</div>,
-  CyberArkPage: () => (
-    <div data-testid="cyberark-page">CyberArk Content</div>
-  ),
+  CyberArkPage: () => <div data-testid="cyberark-page">CyberArk Content</div>,
   AccessMappingPage: () => (
     <div data-testid="access-mapping-page">Access Mapping Content</div>
   ),
