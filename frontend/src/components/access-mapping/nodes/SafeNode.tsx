@@ -30,7 +30,8 @@ function SafeNodeComponent({ data }: NodeProps<SafeNodeData>) {
           </span>
           {data.accountCount !== undefined && (
             <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
-              {data.accountCount} {data.accountCount === 1 ? "account" : "accounts"}
+              {data.accountCount}{" "}
+              {data.accountCount === 1 ? "account" : "accounts"}
             </div>
           )}
         </div>

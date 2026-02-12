@@ -31,7 +31,11 @@ const cyberarkNavigation = [
 function NavItem({
   item,
 }: {
-  item: { name: string; href: string; icon: React.ComponentType<{ className?: string }> };
+  item: {
+    name: string;
+    href: string;
+    icon: React.ComponentType<{ className?: string }>;
+  };
 }) {
   return (
     <NavLink

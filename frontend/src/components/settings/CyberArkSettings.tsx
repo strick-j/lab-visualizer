@@ -1,10 +1,5 @@
 import { useState, useEffect } from "react";
-import {
-  Shield,
-  AlertCircle,
-  CheckCircle,
-  Loader2,
-} from "lucide-react";
+import { Shield, AlertCircle, CheckCircle, Loader2 } from "lucide-react";
 import {
   getCyberArkSettings,
   updateCyberArkSettings,

@@ -35,7 +35,9 @@ export function SIAPolicyDetailPanel({
   const renderCriteria = (criteria: Record<string, unknown>) => {
     return Object.entries(criteria).map(([key, value]) => {
       if (!value || (Array.isArray(value) && value.length === 0)) return null;
-      const displayValue = Array.isArray(value) ? value.join(", ") : String(value);
+      const displayValue = Array.isArray(value)
+        ? value.join(", ")
+        : String(value);
       return <DetailRow key={key} label={key} value={displayValue} />;
     });
   };

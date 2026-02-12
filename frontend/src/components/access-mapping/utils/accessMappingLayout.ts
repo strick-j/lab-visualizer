@@ -62,7 +62,9 @@ export function calculateAccessMappingLayout(
       if (!seenTargets.has(targetId)) {
         seenTargets.add(targetId);
         const targetType =
-          target.target_type === "ec2" ? "access-ec2-target" : "access-rds-target";
+          target.target_type === "ec2"
+            ? "access-ec2-target"
+            : "access-rds-target";
         const targetData =
           target.target_type === "ec2"
             ? {
@@ -110,7 +112,10 @@ export function calculateAccessMappingLayout(
             case "role":
               nodeId = `role-${step.entity_id}`;
               nodeType = "access-role";
-              nodeData = { label: step.entity_name, roleName: step.entity_name };
+              nodeData = {
+                label: step.entity_name,
+                roleName: step.entity_name,
+              };
               column = 1;
               break;
             case "safe":

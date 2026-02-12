@@ -43,9 +43,7 @@ export function AccessMappingLegend({ stats }: AccessMappingLegendProps) {
             <p className="text-lg font-bold text-blue-600 dark:text-blue-400">
               {stats.total_standing_paths}
             </p>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              Standing
-            </p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">Standing</p>
           </div>
           <div className="text-center">
             <p className="text-lg font-bold text-orange-600 dark:text-orange-400">
