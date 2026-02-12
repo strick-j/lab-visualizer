@@ -180,14 +180,12 @@ async def init_db() -> None:
 
     # Fix any NULL values in NOT-NULL integer columns (from earlier bugs)
     async with get_engine().begin() as conn:
-        for tbl, col in [
-            ("cyberark_safes", "number_of_members"),
-            ("cyberark_safes", "number_of_accounts"),
+        for stmt in [
+            "UPDATE cyberark_safes SET number_of_members = 0 WHERE number_of_members IS NULL",
+            "UPDATE cyberark_safes SET number_of_accounts = 0 WHERE number_of_accounts IS NULL",
         ]:
             try:
-                await conn.execute(
-                    text(f"UPDATE {tbl} SET {col} = 0 WHERE {col} IS NULL")
-                )
+                await conn.execute(text(stmt))
             except Exception:
                 pass  # Table may not exist yet
 
