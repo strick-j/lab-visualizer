@@ -14,7 +14,7 @@ function DetailRow({ label, value }: DetailRowProps) {
       <span className="flex-shrink-0 text-sm text-gray-500 dark:text-gray-400">
         {label}
       </span>
-      <span className="break-all text-right text-sm font-medium text-gray-900 dark:text-gray-100">
+      <span className="min-w-0 break-words text-right text-sm font-medium text-gray-900 dark:text-gray-100">
         {value || "-"}
       </span>
     </div>
@@ -85,17 +85,17 @@ export function SafeDetailPanel({ safeName, onClose }: SafeDetailPanelProps) {
                 <h4 className="mb-2 text-sm font-semibold uppercase text-gray-500 dark:text-gray-400">
                   Members ({safe.members.length})
                 </h4>
-                <div className="rounded-lg border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-700">
-                  <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-600">
+                <div className="overflow-hidden rounded-lg border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-700">
+                  <table className="w-full table-fixed divide-y divide-gray-200 dark:divide-gray-600">
                     <thead>
                       <tr>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">
+                        <th className="w-2/5 px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">
                           Name
                         </th>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">
+                        <th className="w-1/5 px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">
                           Type
                         </th>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">
+                        <th className="w-2/5 px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">
                           Level
                         </th>
                       </tr>
@@ -103,13 +103,13 @@ export function SafeDetailPanel({ safeName, onClose }: SafeDetailPanelProps) {
                     <tbody className="divide-y divide-gray-100 dark:divide-gray-600">
                       {safe.members.map((member) => (
                         <tr key={member.id}>
-                          <td className="px-3 py-2 text-xs text-gray-900 dark:text-gray-100">
+                          <td className="break-words px-3 py-2 text-xs text-gray-900 dark:text-gray-100">
                             {member.member_name}
                           </td>
-                          <td className="px-3 py-2 text-xs text-gray-600 dark:text-gray-400">
+                          <td className="break-words px-3 py-2 text-xs text-gray-600 dark:text-gray-400">
                             {member.member_type}
                           </td>
-                          <td className="px-3 py-2 text-xs text-gray-600 dark:text-gray-400">
+                          <td className="break-words px-3 py-2 text-xs text-gray-600 dark:text-gray-400">
                             {member.permission_level || "-"}
                           </td>
                         </tr>
@@ -125,17 +125,17 @@ export function SafeDetailPanel({ safeName, onClose }: SafeDetailPanelProps) {
                 <h4 className="mb-2 text-sm font-semibold uppercase text-gray-500 dark:text-gray-400">
                   Accounts ({safe.accounts.length})
                 </h4>
-                <div className="rounded-lg border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-700">
-                  <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-600">
+                <div className="overflow-hidden rounded-lg border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-700">
+                  <table className="w-full table-fixed divide-y divide-gray-200 dark:divide-gray-600">
                     <thead>
                       <tr>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">
+                        <th className="w-2/5 px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">
                           Name
                         </th>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">
+                        <th className="w-2/5 px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">
                           Address
                         </th>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">
+                        <th className="w-1/5 px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">
                           Platform
                         </th>
                       </tr>
@@ -143,13 +143,13 @@ export function SafeDetailPanel({ safeName, onClose }: SafeDetailPanelProps) {
                     <tbody className="divide-y divide-gray-100 dark:divide-gray-600">
                       {safe.accounts.map((account) => (
                         <tr key={account.account_id}>
-                          <td className="px-3 py-2 text-xs text-gray-900 dark:text-gray-100">
+                          <td className="break-words px-3 py-2 text-xs text-gray-900 dark:text-gray-100">
                             {account.account_name}
                           </td>
-                          <td className="px-3 py-2 text-xs font-mono text-gray-600 dark:text-gray-400">
+                          <td className="break-all px-3 py-2 text-xs font-mono text-gray-600 dark:text-gray-400">
                             {account.address || "-"}
                           </td>
-                          <td className="px-3 py-2 text-xs text-gray-600 dark:text-gray-400">
+                          <td className="break-words px-3 py-2 text-xs text-gray-600 dark:text-gray-400">
                             {account.platform_id || "-"}
                           </td>
                         </tr>
