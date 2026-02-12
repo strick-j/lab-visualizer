@@ -161,6 +161,7 @@ async def init_db() -> None:
     # Add new columns to existing cyberark_settings table (if missing)
     scim_columns = [
         ("tenant_name", "VARCHAR(255)"),
+        ("uap_base_url", "VARCHAR(500)"),
         ("scim_enabled", "BOOLEAN DEFAULT 0"),
         ("scim_app_id", "VARCHAR(255)"),
         ("scim_oauth2_url", "VARCHAR(500)"),

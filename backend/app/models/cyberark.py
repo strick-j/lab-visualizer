@@ -323,6 +323,7 @@ class CyberArkSettings(Base):
     enabled: Mapped[bool] = mapped_column(Boolean, default=False)
     base_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     identity_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    uap_base_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     client_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     client_secret: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
 

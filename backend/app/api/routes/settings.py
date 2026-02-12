@@ -791,6 +791,7 @@ async def get_cyberark_settings(
         enabled=settings.enabled,
         base_url=settings.base_url,
         identity_url=settings.identity_url,
+        uap_base_url=settings.uap_base_url,
         client_id=settings.client_id,
         has_client_secret=bool(settings.client_secret),
         updated_at=settings.updated_at,
@@ -826,6 +827,7 @@ async def update_cyberark_settings(
         enabled=settings.enabled,
         base_url=settings.base_url,
         identity_url=settings.identity_url,
+        uap_base_url=settings.uap_base_url,
         client_id=settings.client_id,
         has_client_secret=bool(settings.client_secret),
         updated_at=settings.updated_at,
@@ -946,9 +948,11 @@ async def discover_cyberark_tenant(
 
         pcloud = data.get("pcloud", {})
         identity = data.get("identity_administration", {})
+        uap = data.get("uap", {})
 
         base_url = pcloud.get("api", "").rstrip("/")
         identity_url = identity.get("api", "").rstrip("/")
+        uap_base_url = uap.get("api", "").rstrip("/")
         region = pcloud.get("region", "")
 
         if not base_url or not identity_url:
@@ -961,6 +965,7 @@ async def discover_cyberark_tenant(
             success=True,
             base_url=base_url,
             identity_url=identity_url,
+            uap_base_url=uap_base_url or None,
             region=region,
         )
 

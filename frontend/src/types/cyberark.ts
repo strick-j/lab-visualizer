@@ -221,6 +221,7 @@ export interface CyberArkSettingsResponse {
   enabled: boolean;
   base_url: string | null;
   identity_url: string | null;
+  uap_base_url: string | null;
   client_id: string | null;
   has_client_secret: boolean;
   updated_at: string | null;
@@ -232,6 +233,7 @@ export interface CyberArkSettingsUpdate {
   enabled?: boolean;
   base_url?: string;
   identity_url?: string;
+  uap_base_url?: string;
   client_id?: string;
   client_secret?: string;
 }
@@ -251,6 +253,7 @@ export interface TenantDiscoveryResponse {
   success: boolean;
   base_url: string | null;
   identity_url: string | null;
+  uap_base_url: string | null;
   region: string | null;
   message: string | null;
 }

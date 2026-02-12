@@ -269,6 +269,7 @@ class CyberArkSettingsResponse(BaseSchema):
     enabled: bool = False
     base_url: Optional[str] = None
     identity_url: Optional[str] = None
+    uap_base_url: Optional[str] = None
     client_id: Optional[str] = None
     has_client_secret: bool = False
     updated_at: Optional[datetime] = None
@@ -282,6 +283,7 @@ class CyberArkSettingsUpdate(BaseSchema):
     enabled: Optional[bool] = None
     base_url: Optional[str] = None
     identity_url: Optional[str] = None
+    uap_base_url: Optional[str] = None
     client_id: Optional[str] = None
     client_secret: Optional[str] = None
 
@@ -307,6 +309,7 @@ class TenantDiscoveryResponse(BaseSchema):
     success: bool
     base_url: Optional[str] = None
     identity_url: Optional[str] = None
+    uap_base_url: Optional[str] = None
     region: Optional[str] = None
     message: Optional[str] = None
 

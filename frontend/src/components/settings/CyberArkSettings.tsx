@@ -240,6 +240,7 @@ export function CyberArkSettings() {
   const [tenantName, setTenantName] = useState("");
   const [baseUrl, setBaseUrl] = useState("");
   const [identityUrl, setIdentityUrl] = useState("");
+  const [uapBaseUrl, setUapBaseUrl] = useState("");
   const [clientId, setClientId] = useState("");
   const [clientSecret, setClientSecret] = useState("");
   const [isSaving, setIsSaving] = useState(false);
@@ -289,6 +290,7 @@ export function CyberArkSettings() {
       setTenantName(data.tenant_name || "");
       setBaseUrl(data.base_url || "");
       setIdentityUrl(data.identity_url || "");
+      setUapBaseUrl(data.uap_base_url || "");
       setClientId(data.client_id || "");
     } catch {
       // Settings may not exist yet
@@ -334,6 +336,7 @@ export function CyberArkSettings() {
       if (result.success) {
         setBaseUrl(result.base_url || "");
         setIdentityUrl(result.identity_url || "");
+        setUapBaseUrl(result.uap_base_url || "");
         setDiscoveryRegion(result.region);
       } else {
         setDiscoveryError(result.message || "Discovery failed");
@@ -377,6 +380,7 @@ export function CyberArkSettings() {
       enabled,
       base_url: baseUrl || undefined,
       identity_url: identityUrl || undefined,
+      uap_base_url: uapBaseUrl || undefined,
       client_id: clientId || undefined,
     };
 
@@ -571,8 +575,8 @@ export function CyberArkSettings() {
               )}
             </div>
 
-            {/* Resolved URLs (read-only style) */}
-            <div className="grid gap-3 sm:grid-cols-2">
+            {/* Resolved URLs */}
+            <div className="grid gap-3 sm:grid-cols-3">
               <div>
                 <label className={labelClasses}>Privilege Cloud URL</label>
                 <input
@@ -590,6 +594,16 @@ export function CyberArkSettings() {
                   value={identityUrl}
                   onChange={(e) => setIdentityUrl(e.target.value)}
                   placeholder="https://abc1234.id.cyberark.cloud"
+                  className={inputClasses}
+                />
+              </div>
+              <div>
+                <label className={labelClasses}>SIA / UAP URL</label>
+                <input
+                  type="url"
+                  value={uapBaseUrl}
+                  onChange={(e) => setUapBaseUrl(e.target.value)}
+                  placeholder="https://tenant.uap.cyberark.cloud/api"
                   className={inputClasses}
                 />
               </div>
