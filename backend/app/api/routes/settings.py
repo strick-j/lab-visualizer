@@ -19,8 +19,15 @@ from sqlalchemy.orm import selectinload
 from app.api.deps import get_current_admin_user
 from app.config import get_settings
 from app.models.auth import User
+from app.models.cyberark import CyberArkSettings
 from app.models.database import get_db
 from app.models.resources import TerraformStateBucket, TerraformStatePath
+from app.schemas.cyberark import (
+    CyberArkConnectionTestRequest,
+    CyberArkConnectionTestResponse,
+    CyberArkSettingsResponse,
+    CyberArkSettingsUpdate,
+)
 from app.schemas.settings import (
     AuthSettingsResponse,
     OIDCSettingsResponse,
@@ -728,4 +735,154 @@ async def list_s3_bucket_objects(
             message="An unexpected error occurred",
             bucket_name=bucket_name,
             prefix=prefix,
+        )
+
+
+# =============================================================================
+# CyberArk Settings Management
+# =============================================================================
+
+
+async def _get_or_create_cyberark_settings(
+    db: AsyncSession,
+) -> CyberArkSettings:
+    """Get existing CyberArk settings or create defaults from env vars."""
+    result = await db.execute(select(CyberArkSettings).limit(1))
+    settings = result.scalar_one_or_none()
+    if settings:
+        return settings
+
+    settings = CyberArkSettings(
+        enabled=env_settings.cyberark_enabled,
+        base_url=env_settings.cyberark_base_url,
+        identity_url=env_settings.cyberark_identity_url,
+        client_id=env_settings.cyberark_client_id,
+        client_secret=env_settings.cyberark_client_secret,
+    )
+    db.add(settings)
+    await db.commit()
+    await db.refresh(settings)
+    return settings
+
+
+@router.get("/cyberark", response_model=CyberArkSettingsResponse)
+async def get_cyberark_settings(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_admin_user),
+):
+    """Get CyberArk integration settings. Admin only."""
+    settings = await _get_or_create_cyberark_settings(db)
+
+    return CyberArkSettingsResponse(
+        enabled=settings.enabled,
+        base_url=settings.base_url,
+        identity_url=settings.identity_url,
+        client_id=settings.client_id,
+        has_client_secret=bool(settings.client_secret),
+        updated_at=settings.updated_at,
+        updated_by=settings.updated_by,
+    )
+
+
+@router.put("/cyberark", response_model=CyberArkSettingsResponse)
+async def update_cyberark_settings(
+    update_data: CyberArkSettingsUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_admin_user),
+):
+    """Update CyberArk integration settings. Admin only."""
+    settings = await _get_or_create_cyberark_settings(db)
+
+    update_fields = update_data.model_dump(exclude_unset=True)
+    for field, value in update_fields.items():
+        setattr(settings, field, value)
+
+    settings.updated_by = current_user.username
+
+    await db.commit()
+    await db.refresh(settings)
+    logger.info(
+        "User %s updated CyberArk settings (enabled=%s)",
+        current_user.username,
+        settings.enabled,
+    )
+
+    return CyberArkSettingsResponse(
+        enabled=settings.enabled,
+        base_url=settings.base_url,
+        identity_url=settings.identity_url,
+        client_id=settings.client_id,
+        has_client_secret=bool(settings.client_secret),
+        updated_at=settings.updated_at,
+        updated_by=settings.updated_by,
+    )
+
+
+@router.post("/cyberark/test", response_model=CyberArkConnectionTestResponse)
+async def test_cyberark_connection(
+    test_data: CyberArkConnectionTestRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_admin_user),
+):
+    """Test CyberArk API connection by authenticating with the identity tenant. Admin only."""
+    identity_url = test_data.identity_url.strip().rstrip("/")
+    token_url = f"{identity_url}/oauth2/platformtoken"
+
+    logger.info(
+        "User %s testing CyberArk connection to %s",
+        current_user.username,
+        _sanitize_for_log(identity_url),
+    )
+
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(
+                token_url,
+                data={
+                    "grant_type": "client_credentials",
+                    "client_id": test_data.client_id,
+                    "client_secret": test_data.client_secret,
+                },
+                headers={"Content-Type": "application/x-www-form-urlencoded"},
+            )
+            response.raise_for_status()
+            data = response.json()
+
+        return CyberArkConnectionTestResponse(
+            success=True,
+            message="Successfully authenticated with CyberArk Identity",
+            details={
+                "token_type": data.get("token_type", ""),
+                "expires_in": data.get("expires_in", 0),
+            },
+        )
+
+    except httpx.HTTPStatusError as e:
+        logger.warning(
+            "CyberArk test connection HTTP error: %s", e.response.status_code
+        )
+        detail_msg = "Authentication failed"
+        try:
+            err_body = e.response.json()
+            if "error_description" in err_body:
+                detail_msg = err_body["error_description"]
+            elif "error" in err_body:
+                detail_msg = err_body["error"]
+        except Exception:
+            pass
+        return CyberArkConnectionTestResponse(
+            success=False,
+            message=f"Authentication failed: {detail_msg}",
+        )
+    except httpx.RequestError:
+        logger.warning("CyberArk test connection request error", exc_info=True)
+        return CyberArkConnectionTestResponse(
+            success=False,
+            message="Could not connect to CyberArk Identity tenant",
+        )
+    except Exception:
+        logger.exception("Unexpected error testing CyberArk connection")
+        return CyberArkConnectionTestResponse(
+            success=False,
+            message="An unexpected error occurred while testing the connection",
         )
