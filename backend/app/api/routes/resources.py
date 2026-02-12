@@ -1019,6 +1019,63 @@ async def _sync_terraform_state(db: AsyncSession) -> int:
                     container.managed_by = "terraform"
                 count += 1
 
+        # Update CyberArk Safes
+        for tf_resource in tf_resources.get("cyberark_safe", []):
+            result = await db.execute(
+                select(CyberArkSafe).where(
+                    CyberArkSafe.safe_name == tf_resource.resource_id
+                )
+            )
+            safe = result.scalar_one_or_none()
+            if safe:
+                safe.tf_managed = True
+                safe.tf_state_source = tf_resource.state_source
+                safe.tf_resource_address = tf_resource.resource_address
+                count += 1
+
+        # Update CyberArk Accounts
+        for tf_resource in tf_resources.get("cyberark_account", []):
+            result = await db.execute(
+                select(CyberArkAccount).where(
+                    CyberArkAccount.account_id == tf_resource.resource_id
+                )
+            )
+            account = result.scalar_one_or_none()
+            if account:
+                account.tf_managed = True
+                account.tf_state_source = tf_resource.state_source
+                account.tf_resource_address = tf_resource.resource_address
+                count += 1
+
+        # Update CyberArk Roles
+        for tf_resource in tf_resources.get("cyberark_role", []):
+            result = await db.execute(
+                select(CyberArkRole).where(
+                    CyberArkRole.role_name == tf_resource.resource_id
+                )
+            )
+            role = result.scalar_one_or_none()
+            if role:
+                role.tf_managed = True
+                role.tf_state_source = tf_resource.state_source
+                role.tf_resource_address = tf_resource.resource_address
+                count += 1
+
+        # Update CyberArk SIA Policies (VM + DB)
+        for policy_type in ("cyberark_sia_vm_policy", "cyberark_sia_db_policy"):
+            for tf_resource in tf_resources.get(policy_type, []):
+                result = await db.execute(
+                    select(CyberArkSIAPolicy).where(
+                        CyberArkSIAPolicy.policy_name == tf_resource.resource_id
+                    )
+                )
+                policy = result.scalar_one_or_none()
+                if policy:
+                    policy.tf_managed = True
+                    policy.tf_state_source = tf_resource.state_source
+                    policy.tf_resource_address = tf_resource.resource_address
+                    count += 1
+
         await db.flush()
         return count
 
