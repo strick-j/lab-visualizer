@@ -586,6 +586,8 @@ import type {
   CyberArkConnectionTestRequest,
   CyberArkConnectionTestResponse,
   CyberArkSyncStatus,
+  TenantDiscoveryRequest,
+  TenantDiscoveryResponse,
   ScimSettingsResponse,
   ScimSettingsUpdate,
   ScimConnectionTestRequest,
@@ -710,6 +712,13 @@ export async function testCyberArkConnection(
 
 export async function getCyberArkSyncStatus(): Promise<CyberArkSyncStatus> {
   const response = await api.get("/settings/cyberark/status");
+  return response.data;
+}
+
+export async function discoverCyberArkTenant(
+  data: TenantDiscoveryRequest,
+): Promise<TenantDiscoveryResponse> {
+  const response = await api.post("/settings/cyberark/discover", data);
   return response.data;
 }
 

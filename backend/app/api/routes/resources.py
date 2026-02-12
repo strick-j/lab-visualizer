@@ -1125,12 +1125,14 @@ async def _get_cyberark_config(db: AsyncSession) -> dict | None:
         logger.info("CyberArk: using DB settings (enabled=%s)", db_settings.enabled)
         base_url = db_settings.base_url
         identity_url = db_settings.identity_url
+        uap_base_url = db_settings.uap_base_url
         client_id = db_settings.client_id
         client_secret = db_settings.client_secret
     elif settings.cyberark_enabled:
         logger.info("CyberArk: using environment variable settings")
         base_url = settings.cyberark_base_url
         identity_url = settings.cyberark_identity_url
+        uap_base_url = None
         client_id = settings.cyberark_client_id
         client_secret = settings.cyberark_client_secret
     else:
@@ -1158,6 +1160,7 @@ async def _get_cyberark_config(db: AsyncSession) -> dict | None:
         "identity_url": identity_url,
         "client_id": client_id,
         "client_secret": client_secret,
+        "uap_base_url": uap_base_url,
     }
 
 
@@ -1220,6 +1223,8 @@ async def _refresh_cyberark(db: AsyncSession) -> int:
 
     # --- Platform Token collectors (safes, accounts, SIA) ---
     if config:
+        # Split UAP URL from base config (safe/account collectors don't need it)
+        uap_base_url = config.pop("uap_base_url", None)
         try:
             # Collect safes
             safe_collector = CyberArkSafeCollector(**config)
@@ -1238,8 +1243,10 @@ async def _refresh_cyberark(db: AsyncSession) -> int:
             # Update safe account counts from synced accounts
             await _update_safe_account_counts(db)
 
-            # Collect SIA policies
-            sia_collector = CyberArkSIAPolicyCollector(**config)
+            # Collect SIA policies (uses UAP service, not Privilege Cloud)
+            sia_collector = CyberArkSIAPolicyCollector(
+                uap_base_url=uap_base_url, **config
+            )
             policies = await sia_collector.collect()
             logger.info(
                 "CyberArk: collected %d SIA policies from API", len(policies)

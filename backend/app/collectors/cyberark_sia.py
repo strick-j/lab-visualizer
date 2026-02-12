@@ -1,9 +1,15 @@
 """
 Collector for CyberArk SIA (Secure Infrastructure Access) Policies.
+
+SIA policies live on the UAP (Unified Access Portal) service, not Privilege
+Cloud.  The UAP base URL is discovered from the platform-discovery API
+(``uap.api``) and looks like ``https://<subdomain>.uap.cyberark.cloud/api``.
+
+The response format is ``{ "results": [...], "nextToken": "...", "total": N }``.
 """
 
 import logging
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from app.collectors.cyberark_base import CyberArkBaseCollector
 
@@ -11,10 +17,24 @@ logger = logging.getLogger(__name__)
 
 
 class CyberArkSIAPolicyCollector(CyberArkBaseCollector):
-    """Collects SIA policies from CyberArk."""
+    """Collects SIA policies from CyberArk UAP service."""
+
+    def __init__(
+        self,
+        uap_base_url: Optional[str] = None,
+        **kwargs: Any,
+    ):
+        super().__init__(**kwargs)
+        self.uap_base_url = (uap_base_url or "").rstrip("/")
 
     async def collect(self) -> List[Dict[str, Any]]:
         """Collect all SIA policies (VM and database)."""
+        if not self.uap_base_url:
+            logger.warning(
+                "SIA: skipping collection — uap_base_url not configured"
+            )
+            return []
+
         results = []
 
         # Collect VM access policies
@@ -29,21 +49,31 @@ class CyberArkSIAPolicyCollector(CyberArkBaseCollector):
         return results
 
     async def _collect_policies(self, policy_type: str) -> List[Dict[str, Any]]:
-        """Collect SIA policies of a given type."""
+        """Collect SIA policies of a given type with nextToken pagination."""
         if policy_type == "vm":
-            url = f"{self.base_url}/api/access-policies/vm"
+            url = f"{self.uap_base_url}/access-policies/vm"
         else:
-            url = f"{self.base_url}/api/access-policies/database"
+            url = f"{self.uap_base_url}/access-policies/database"
+
+        all_policies: List[Dict[str, Any]] = []
+        params: Dict[str, Any] = {}
 
         try:
-            data = await self._api_get(url)
-            policies = data.get("policies", data.get("value", []))
+            while True:
+                data = await self._api_get(url, params=params if params else None)
+                policies = data.get("results", [])
+                all_policies.extend(policies)
+
+                next_token = data.get("nextToken")
+                if not next_token or len(policies) == 0:
+                    break
+                params["nextToken"] = next_token
         except Exception:
             logger.exception("Failed to collect SIA %s policies", policy_type)
             return []
 
         results = []
-        for policy in policies:
+        for policy in all_policies:
             policy_id = policy.get("id", policy.get("policyId", ""))
             principals = self._extract_principals(policy)
             target_criteria = self._extract_target_criteria(policy, policy_type)

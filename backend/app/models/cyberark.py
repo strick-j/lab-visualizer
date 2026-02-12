@@ -316,15 +316,20 @@ class CyberArkSettings(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
 
+    # Tenant discovery (auto-populates base_url and identity_url)
+    tenant_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+
     # Connection settings (platform token)
     enabled: Mapped[bool] = mapped_column(Boolean, default=False)
     base_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     identity_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    uap_base_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     client_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     client_secret: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
 
     # SCIM integration settings (separate OAuth2 credentials)
     scim_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    scim_app_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     scim_oauth2_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     scim_scope: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     scim_client_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
