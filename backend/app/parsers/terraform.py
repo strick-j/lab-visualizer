@@ -68,14 +68,16 @@ class TerraformStateParser:
 
         CyberArk resource type names are configurable via settings
         since the idsec provider may use different naming conventions.
+        Always included regardless of the cyberark_enabled env var so
+        that TF-managed detection works when CyberArk is enabled via
+        the database settings UI.
         """
         types = dict(cls.SUPPORTED_RESOURCE_TYPES)
-        if settings.cyberark_enabled:
-            types[settings.cyberark_tf_safe_type] = "cyberark_safe"
-            types[settings.cyberark_tf_account_type] = "cyberark_account"
-            types[settings.cyberark_tf_role_type] = "cyberark_role"
-            types[settings.cyberark_tf_sia_vm_policy_type] = "cyberark_sia_vm_policy"
-            types[settings.cyberark_tf_sia_db_policy_type] = "cyberark_sia_db_policy"
+        types[settings.cyberark_tf_safe_type] = "cyberark_safe"
+        types[settings.cyberark_tf_account_type] = "cyberark_account"
+        types[settings.cyberark_tf_role_type] = "cyberark_role"
+        types[settings.cyberark_tf_sia_vm_policy_type] = "cyberark_sia_vm_policy"
+        types[settings.cyberark_tf_sia_db_policy_type] = "cyberark_sia_db_policy"
         return types
 
     def __init__(self, bucket: Optional[str] = None):
@@ -297,12 +299,11 @@ class TerraformStateParser:
         }
 
         # Add CyberArk resource ID mappings (configurable type names)
-        if settings.cyberark_enabled:
-            id_mappings[settings.cyberark_tf_safe_type] = "safe_name"
-            id_mappings[settings.cyberark_tf_account_type] = "id"
-            id_mappings[settings.cyberark_tf_role_type] = "name"
-            id_mappings[settings.cyberark_tf_sia_vm_policy_type] = "name"
-            id_mappings[settings.cyberark_tf_sia_db_policy_type] = "name"
+        id_mappings[settings.cyberark_tf_safe_type] = "safe_name"
+        id_mappings[settings.cyberark_tf_account_type] = "id"
+        id_mappings[settings.cyberark_tf_role_type] = "name"
+        id_mappings[settings.cyberark_tf_sia_vm_policy_type] = "name"
+        id_mappings[settings.cyberark_tf_sia_db_policy_type] = "name"
 
         id_field = id_mappings.get(resource_type, "id")
         return attributes.get(id_field)
@@ -556,19 +557,12 @@ class TerraformStateAggregator:
             "ecs_cluster": [],
             "ecs_service": [],
             "ecs_task_definition": [],
+            "cyberark_safe": [],
+            "cyberark_account": [],
+            "cyberark_role": [],
+            "cyberark_sia_vm_policy": [],
+            "cyberark_sia_db_policy": [],
         }
-
-        # Add CyberArk categories when enabled
-        if settings.cyberark_enabled:
-            all_resources.update(
-                {
-                    "cyberark_safe": [],
-                    "cyberark_account": [],
-                    "cyberark_role": [],
-                    "cyberark_sia_vm_policy": [],
-                    "cyberark_sia_db_policy": [],
-                }
-            )
 
         bucket_entries = await self._get_all_bucket_configs()
 

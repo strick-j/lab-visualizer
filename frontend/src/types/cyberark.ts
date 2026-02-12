@@ -300,7 +300,7 @@ export interface ScimConnectionTestRequest {
   scim_oauth2_url: string;
   scim_scope: string;
   scim_client_id: string;
-  scim_client_secret: string;
+  scim_client_secret?: string;
 }
 
 export interface ScimConnectionTestResponse {

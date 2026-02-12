@@ -1022,7 +1022,9 @@ async def _sync_terraform_state(db: AsyncSession) -> int:
                 count += 1
 
         # Update CyberArk Safes
-        for tf_resource in tf_resources.get("cyberark_safe", []):
+        tf_safes = tf_resources.get("cyberark_safe", [])
+        logger.info("TF sync: %d CyberArk safes from Terraform", len(tf_safes))
+        for tf_resource in tf_safes:
             result = await db.execute(
                 select(CyberArkSafe).where(
                     CyberArkSafe.safe_name == tf_resource.resource_id
@@ -1034,9 +1036,16 @@ async def _sync_terraform_state(db: AsyncSession) -> int:
                 safe.tf_state_source = tf_resource.state_source
                 safe.tf_resource_address = tf_resource.resource_address
                 count += 1
+            else:
+                logger.debug(
+                    "TF sync: safe '%s' in TF but not in DB",
+                    tf_resource.resource_id,
+                )
 
         # Update CyberArk Accounts
-        for tf_resource in tf_resources.get("cyberark_account", []):
+        tf_accounts = tf_resources.get("cyberark_account", [])
+        logger.info("TF sync: %d CyberArk accounts from Terraform", len(tf_accounts))
+        for tf_resource in tf_accounts:
             result = await db.execute(
                 select(CyberArkAccount).where(
                     CyberArkAccount.account_id == tf_resource.resource_id
@@ -1048,9 +1057,16 @@ async def _sync_terraform_state(db: AsyncSession) -> int:
                 account.tf_state_source = tf_resource.state_source
                 account.tf_resource_address = tf_resource.resource_address
                 count += 1
+            else:
+                logger.debug(
+                    "TF sync: account '%s' in TF but not in DB",
+                    tf_resource.resource_id,
+                )
 
         # Update CyberArk Roles
-        for tf_resource in tf_resources.get("cyberark_role", []):
+        tf_roles = tf_resources.get("cyberark_role", [])
+        logger.info("TF sync: %d CyberArk roles from Terraform", len(tf_roles))
+        for tf_resource in tf_roles:
             result = await db.execute(
                 select(CyberArkRole).where(
                     CyberArkRole.role_name == tf_resource.resource_id
@@ -1062,10 +1078,21 @@ async def _sync_terraform_state(db: AsyncSession) -> int:
                 role.tf_state_source = tf_resource.state_source
                 role.tf_resource_address = tf_resource.resource_address
                 count += 1
+            else:
+                logger.debug(
+                    "TF sync: role '%s' in TF but not in DB",
+                    tf_resource.resource_id,
+                )
 
         # Update CyberArk SIA Policies (VM + DB)
         for policy_type in ("cyberark_sia_vm_policy", "cyberark_sia_db_policy"):
-            for tf_resource in tf_resources.get(policy_type, []):
+            tf_policies = tf_resources.get(policy_type, [])
+            logger.info(
+                "TF sync: %d CyberArk %s from Terraform",
+                len(tf_policies),
+                policy_type,
+            )
+            for tf_resource in tf_policies:
                 result = await db.execute(
                     select(CyberArkSIAPolicy).where(
                         CyberArkSIAPolicy.policy_name == tf_resource.resource_id

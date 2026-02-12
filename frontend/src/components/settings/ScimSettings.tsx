@@ -55,7 +55,7 @@ export function ScimSettings() {
         scim_oauth2_url: oauth2Url,
         scim_scope: scope,
         scim_client_id: clientId,
-        scim_client_secret: clientSecret || "existing",
+        scim_client_secret: clientSecret || undefined,
       });
       setTestResult(result);
     } catch {

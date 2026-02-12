@@ -1057,6 +1057,17 @@ async def test_scim_connection(
     """Test SCIM OAuth2 connection by acquiring a token. Admin only."""
     oauth2_url = test_data.scim_oauth2_url.strip().rstrip("/")
 
+    # Resolve the client secret: prefer the one in the request, fall back to DB
+    scim_secret = test_data.scim_client_secret
+    if not scim_secret:
+        db_settings = await _get_or_create_cyberark_settings(db)
+        scim_secret = db_settings.scim_client_secret
+    if not scim_secret:
+        return ScimConnectionTestResponse(
+            success=False,
+            message="No SCIM client secret provided or saved",
+        )
+
     logger.info(
         "User %s testing SCIM connection to %s",
         current_user.username,
@@ -1070,7 +1081,7 @@ async def test_scim_connection(
                 data={
                     "grant_type": "client_credentials",
                     "client_id": test_data.scim_client_id,
-                    "client_secret": test_data.scim_client_secret,
+                    "client_secret": scim_secret,
                     "scope": test_data.scim_scope,
                 },
                 headers={"Content-Type": "application/x-www-form-urlencoded"},
@@ -1090,7 +1101,9 @@ async def test_scim_connection(
 
     except httpx.HTTPStatusError as e:
         logger.warning(
-            "SCIM test connection HTTP error: %s", e.response.status_code
+            "SCIM test connection HTTP %s — body: %s",
+            e.response.status_code,
+            e.response.text[:500],
         )
         detail_msg = "Authentication failed"
         try:
@@ -1100,7 +1113,7 @@ async def test_scim_connection(
             elif "error" in err_body:
                 detail_msg = err_body["error"]
         except Exception:
-            pass
+            detail_msg = e.response.text[:200] or detail_msg
         return ScimConnectionTestResponse(
             success=False,
             message=f"Authentication failed: {detail_msg}",
