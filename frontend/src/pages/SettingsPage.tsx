@@ -27,6 +27,7 @@ import type {
 } from "@/types";
 import { TerraformBucketsSettings } from "@/components/settings/TerraformBucketsSettings";
 import { UserManagementPanel } from "@/components/settings/UserManagementPanel";
+import { CyberArkSettings } from "@/components/settings/CyberArkSettings";
 
 export function SettingsPage() {
   const { user, logout } = useAuth();
@@ -197,6 +198,8 @@ export function SettingsPage() {
             </div>
           </div>
         )}
+
+        {activeTab === "cyberark" && <CyberArkSettings />}
       </div>
     </div>
   );

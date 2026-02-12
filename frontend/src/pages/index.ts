@@ -9,3 +9,5 @@ export { LoginPage } from "./LoginPage";
 export { SettingsPage } from "./SettingsPage";
 export { AuthCallbackPage } from "./AuthCallbackPage";
 export { SetupPage } from "./SetupPage";
+export { CyberArkPage } from "./CyberArkPage";
+export { AccessMappingPage } from "./AccessMappingPage";

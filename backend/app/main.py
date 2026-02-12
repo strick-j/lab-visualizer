@@ -23,6 +23,7 @@ from app.api.routes import (
     rds,
     resources,
 )
+from app.api.routes import access_mapping, cyberark
 from app.api.routes import settings as settings_routes
 from app.api.routes import subnet, terraform, topology, users, vpc
 from app.config import get_settings
@@ -144,6 +145,22 @@ app.include_router(
     users.router,
     prefix="/api/users",
     tags=["Users"],
+    dependencies=auth_dependency,
+)
+
+# CyberArk resource routes
+app.include_router(
+    cyberark.router,
+    prefix="/api/cyberark",
+    tags=["CyberArk"],
+    dependencies=auth_dependency,
+)
+
+# Access mapping routes
+app.include_router(
+    access_mapping.router,
+    prefix="/api",
+    tags=["Access Mapping"],
     dependencies=auth_dependency,
 )
 

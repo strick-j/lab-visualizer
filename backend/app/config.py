@@ -113,6 +113,47 @@ class Settings(BaseSettings):
         description="Frontend URL for SSO callback redirects (e.g., http://192.168.1.100:3000)",
     )
 
+    # -------------------------------------------------------------------------
+    # CyberArk Integration
+    # -------------------------------------------------------------------------
+    cyberark_enabled: bool = Field(
+        default=False, description="Enable CyberArk integration"
+    )
+    cyberark_base_url: Optional[str] = Field(
+        default=None, description="CyberArk Privilege Cloud base URL"
+    )
+    cyberark_identity_url: Optional[str] = Field(
+        default=None, description="CyberArk Identity tenant URL"
+    )
+    cyberark_client_id: Optional[str] = Field(
+        default=None, description="CyberArk API client ID"
+    )
+    cyberark_client_secret: Optional[str] = Field(
+        default=None, description="CyberArk API client secret"
+    )
+
+    # Configurable TF resource type names (idsec provider)
+    cyberark_tf_safe_type: str = Field(
+        default="idsec_safe",
+        description="Terraform resource type for CyberArk Safe",
+    )
+    cyberark_tf_account_type: str = Field(
+        default="idsec_privileged_account",
+        description="Terraform resource type for CyberArk Account",
+    )
+    cyberark_tf_role_type: str = Field(
+        default="idsec_role",
+        description="Terraform resource type for CyberArk Role",
+    )
+    cyberark_tf_sia_vm_policy_type: str = Field(
+        default="idsec_sia_vm_policy",
+        description="Terraform resource type for SIA VM policy",
+    )
+    cyberark_tf_sia_db_policy_type: str = Field(
+        default="idsec_sia_db_policy",
+        description="Terraform resource type for SIA DB policy",
+    )
+
     @property
     def cors_origins_list(self) -> List[str]:
         """Parse CORS origins string into a list."""
@@ -127,6 +168,17 @@ class Settings(BaseSettings):
     def oidc_enabled(self) -> bool:
         """Check if OIDC authentication is configured."""
         return bool(self.oidc_issuer and self.oidc_client_id)
+
+    @property
+    def cyberark_api_configured(self) -> bool:
+        """Check if CyberArk API integration is fully configured."""
+        return bool(
+            self.cyberark_enabled
+            and self.cyberark_base_url
+            and self.cyberark_identity_url
+            and self.cyberark_client_id
+            and self.cyberark_client_secret
+        )
 
     @model_validator(mode="after")
     def validate_security_settings(self) -> "Settings":

@@ -13,6 +13,8 @@ import {
   SettingsPage,
   AuthCallbackPage,
   SetupPage,
+  CyberArkPage,
+  AccessMappingPage,
 } from "@/pages";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { AuthProvider } from "@/contexts/AuthContext";
@@ -57,6 +59,8 @@ function App() {
                 <Route path="vpc" element={<VPCPage />} />
                 <Route path="terraform" element={<TerraformPage />} />
                 <Route path="topology" element={<TopologyPage />} />
+                <Route path="cyberark" element={<CyberArkPage />} />
+                <Route path="access-mapping" element={<AccessMappingPage />} />
                 <Route path="settings" element={<SettingsPage />} />
               </Route>
 
