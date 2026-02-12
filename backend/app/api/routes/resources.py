@@ -1241,16 +1241,25 @@ async def _sync_cyberark_roles(db: AsyncSession, roles: list) -> int:
 
         count += 1
 
-    # Mark roles not seen as deleted
-    deleted_ids = existing_ids - seen_ids
-    if deleted_ids:
-        result = await db.execute(
-            select(CyberArkRole).where(CyberArkRole.role_id.in_(deleted_ids))
+    # Mark roles not seen as deleted — but only if we actually received
+    # results from the API.  An empty response likely means the API call
+    # failed (e.g. 403) and we must not wipe existing data.
+    if seen_ids:
+        deleted_ids = existing_ids - seen_ids
+        if deleted_ids:
+            result = await db.execute(
+                select(CyberArkRole).where(CyberArkRole.role_id.in_(deleted_ids))
+            )
+            for role in result.scalars():
+                if not role.is_deleted:
+                    role.is_deleted = True
+                    role.deleted_at = datetime.now(timezone.utc)
+    elif existing_ids:
+        logger.warning(
+            "CyberArk: received 0 roles but %d exist in DB — "
+            "skipping soft-delete to protect against API failure",
+            len(existing_ids),
         )
-        for role in result.scalars():
-            if not role.is_deleted:
-                role.is_deleted = True
-                role.deleted_at = datetime.now(timezone.utc)
 
     await db.flush()
     return count
@@ -1318,16 +1327,23 @@ async def _sync_cyberark_safes(db: AsyncSession, safes: list) -> int:
 
         count += 1
 
-    # Mark safes not seen as deleted
-    deleted_names = existing_names - seen_names
-    if deleted_names:
-        result = await db.execute(
-            select(CyberArkSafe).where(CyberArkSafe.safe_name.in_(deleted_names))
+    # Mark safes not seen as deleted — only when we received results
+    if seen_names:
+        deleted_names = existing_names - seen_names
+        if deleted_names:
+            result = await db.execute(
+                select(CyberArkSafe).where(CyberArkSafe.safe_name.in_(deleted_names))
+            )
+            for safe in result.scalars():
+                if not safe.is_deleted:
+                    safe.is_deleted = True
+                    safe.deleted_at = datetime.now(timezone.utc)
+    elif existing_names:
+        logger.warning(
+            "CyberArk: received 0 safes but %d exist in DB — "
+            "skipping soft-delete to protect against API failure",
+            len(existing_names),
         )
-        for safe in result.scalars():
-            if not safe.is_deleted:
-                safe.is_deleted = True
-                safe.deleted_at = datetime.now(timezone.utc)
 
     await db.flush()
     return count
@@ -1375,16 +1391,25 @@ async def _sync_cyberark_accounts(db: AsyncSession, accounts: list) -> int:
 
         count += 1
 
-    # Mark accounts not seen as deleted
-    deleted_ids = existing_ids - seen_ids
-    if deleted_ids:
-        result = await db.execute(
-            select(CyberArkAccount).where(CyberArkAccount.account_id.in_(deleted_ids))
+    # Mark accounts not seen as deleted — only when we received results
+    if seen_ids:
+        deleted_ids = existing_ids - seen_ids
+        if deleted_ids:
+            result = await db.execute(
+                select(CyberArkAccount).where(
+                    CyberArkAccount.account_id.in_(deleted_ids)
+                )
+            )
+            for acct in result.scalars():
+                if not acct.is_deleted:
+                    acct.is_deleted = True
+                    acct.deleted_at = datetime.now(timezone.utc)
+    elif existing_ids:
+        logger.warning(
+            "CyberArk: received 0 accounts but %d exist in DB — "
+            "skipping soft-delete to protect against API failure",
+            len(existing_ids),
         )
-        for acct in result.scalars():
-            if not acct.is_deleted:
-                acct.is_deleted = True
-                acct.deleted_at = datetime.now(timezone.utc)
 
     await db.flush()
     return count
@@ -1456,18 +1481,25 @@ async def _sync_cyberark_sia_policies(db: AsyncSession, policies: list) -> int:
 
         count += 1
 
-    # Mark policies not seen as deleted
-    deleted_ids = existing_ids - seen_ids
-    if deleted_ids:
-        result = await db.execute(
-            select(CyberArkSIAPolicy).where(
-                CyberArkSIAPolicy.policy_id.in_(deleted_ids)
+    # Mark policies not seen as deleted — only when we received results
+    if seen_ids:
+        deleted_ids = existing_ids - seen_ids
+        if deleted_ids:
+            result = await db.execute(
+                select(CyberArkSIAPolicy).where(
+                    CyberArkSIAPolicy.policy_id.in_(deleted_ids)
+                )
             )
+            for policy in result.scalars():
+                if not policy.is_deleted:
+                    policy.is_deleted = True
+                    policy.deleted_at = datetime.now(timezone.utc)
+    elif existing_ids:
+        logger.warning(
+            "CyberArk: received 0 SIA policies but %d exist in DB — "
+            "skipping soft-delete to protect against API failure",
+            len(existing_ids),
         )
-        for policy in result.scalars():
-            if not policy.is_deleted:
-                policy.is_deleted = True
-                policy.deleted_at = datetime.now(timezone.utc)
 
     await db.flush()
     return count
