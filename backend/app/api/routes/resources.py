@@ -1235,6 +1235,9 @@ async def _refresh_cyberark(db: AsyncSession) -> int:
             acct_count = await _sync_cyberark_accounts(db, accounts)
             total += acct_count
 
+            # Update safe account counts from synced accounts
+            await _update_safe_account_counts(db)
+
             # Collect SIA policies
             sia_collector = CyberArkSIAPolicyCollector(**config)
             policies = await sia_collector.collect()
@@ -1384,8 +1387,7 @@ async def _sync_cyberark_safes(db: AsyncSession, safes: list) -> int:
         if existing:
             existing.description = safe_data.get("description")
             existing.managing_cpm = safe_data.get("managing_cpm")
-            existing.number_of_members = safe_data.get("number_of_members", 0)
-            existing.number_of_accounts = safe_data.get("number_of_accounts", 0)
+            existing.number_of_members = safe_data.get("number_of_members") or 0
             existing.is_deleted = False
             existing.deleted_at = None
         else:
@@ -1393,8 +1395,8 @@ async def _sync_cyberark_safes(db: AsyncSession, safes: list) -> int:
                 safe_name=safe_name,
                 description=safe_data.get("description"),
                 managing_cpm=safe_data.get("managing_cpm"),
-                number_of_members=safe_data.get("number_of_members", 0),
-                number_of_accounts=safe_data.get("number_of_accounts", 0),
+                number_of_members=safe_data.get("number_of_members") or 0,
+                number_of_accounts=0,
                 is_deleted=False,
             )
             db.add(existing)
@@ -1512,6 +1514,34 @@ async def _sync_cyberark_accounts(db: AsyncSession, accounts: list) -> int:
 
     await db.flush()
     return count
+
+
+async def _update_safe_account_counts(db: AsyncSession) -> None:
+    """Update number_of_accounts on each safe by counting active accounts."""
+    result = await db.execute(
+        select(
+            CyberArkAccount.safe_name,
+            func.count(CyberArkAccount.account_id),
+        )
+        .where(CyberArkAccount.is_deleted == False)  # noqa: E712
+        .group_by(CyberArkAccount.safe_name)
+    )
+    counts = {row[0]: row[1] for row in result.all()}
+
+    safes_result = await db.execute(
+        select(CyberArkSafe).where(CyberArkSafe.is_deleted == False)  # noqa: E712
+    )
+    updated = 0
+    for safe in safes_result.scalars():
+        safe.number_of_accounts = counts.get(safe.safe_name, 0)
+        updated += 1
+
+    await db.flush()
+    logger.info(
+        "Updated account counts on %d safes (%d safes have accounts)",
+        updated,
+        len(counts),
+    )
 
 
 async def _sync_cyberark_sia_policies(db: AsyncSession, policies: list) -> int:

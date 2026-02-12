@@ -178,4 +178,17 @@ async def init_db() -> None:
             except Exception:
                 pass  # Column already exists
 
+    # Fix any NULL values in NOT-NULL integer columns (from earlier bugs)
+    async with get_engine().begin() as conn:
+        for tbl, col in [
+            ("cyberark_safes", "number_of_members"),
+            ("cyberark_safes", "number_of_accounts"),
+        ]:
+            try:
+                await conn.execute(
+                    text(f"UPDATE {tbl} SET {col} = 0 WHERE {col} IS NULL")
+                )
+            except Exception:
+                pass  # Table may not exist yet
+
     logger.info("Database tables created successfully")

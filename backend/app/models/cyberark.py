@@ -23,8 +23,12 @@ class CyberArkSafe(Base):
     safe_name: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     managing_cpm: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    number_of_members: Mapped[int] = mapped_column(Integer, default=0)
-    number_of_accounts: Mapped[int] = mapped_column(Integer, default=0)
+    number_of_members: Mapped[int] = mapped_column(
+        Integer, default=0, server_default="0"
+    )
+    number_of_accounts: Mapped[int] = mapped_column(
+        Integer, default=0, server_default="0"
+    )
 
     # Terraform tracking
     tf_managed: Mapped[bool] = mapped_column(Boolean, default=False)
