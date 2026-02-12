@@ -1384,8 +1384,8 @@ async def _sync_cyberark_safes(db: AsyncSession, safes: list) -> int:
         if existing:
             existing.description = safe_data.get("description")
             existing.managing_cpm = safe_data.get("managing_cpm")
-            existing.number_of_members = safe_data.get("number_of_members", 0)
-            existing.number_of_accounts = safe_data.get("number_of_accounts", 0)
+            existing.number_of_members = safe_data.get("number_of_members") or 0
+            existing.number_of_accounts = safe_data.get("number_of_accounts") or 0
             existing.is_deleted = False
             existing.deleted_at = None
         else:
@@ -1393,8 +1393,8 @@ async def _sync_cyberark_safes(db: AsyncSession, safes: list) -> int:
                 safe_name=safe_name,
                 description=safe_data.get("description"),
                 managing_cpm=safe_data.get("managing_cpm"),
-                number_of_members=safe_data.get("number_of_members", 0),
-                number_of_accounts=safe_data.get("number_of_accounts", 0),
+                number_of_members=safe_data.get("number_of_members") or 0,
+                number_of_accounts=safe_data.get("number_of_accounts") or 0,
                 is_deleted=False,
             )
             db.add(existing)

@@ -34,7 +34,7 @@ class CyberArkSafeCollector(CyberArkBaseCollector):
                     "description": safe.get("description"),
                     "managing_cpm": safe.get("managingCPM"),
                     "number_of_members": len(members),
-                    "number_of_accounts": safe.get("numberOfVersionsRetention", 0),
+                    "number_of_accounts": safe.get("numberOfAccounts") or 0,
                     "members": members,
                 }
             )
