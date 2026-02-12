@@ -859,6 +859,7 @@ async def test_cyberark_connection(
             message="Successfully authenticated with CyberArk Identity",
             details={
                 "token_type": data.get("token_type", ""),
+                "scope": data.get("scope", ""),
                 "expires_in": data.get("expires_in", 0),
             },
         )
