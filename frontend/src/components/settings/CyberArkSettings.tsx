@@ -1,15 +1,156 @@
 import { useState, useEffect } from "react";
-import { Shield, AlertCircle, CheckCircle, Loader2 } from "lucide-react";
+import {
+  Shield,
+  AlertCircle,
+  CheckCircle,
+  Loader2,
+  Database,
+  RefreshCw,
+} from "lucide-react";
 import {
   getCyberArkSettings,
   updateCyberArkSettings,
   testCyberArkConnection,
+  getCyberArkSyncStatus,
 } from "@/api/client";
 import type {
   CyberArkSettingsResponse,
   CyberArkSettingsUpdate,
   CyberArkConnectionTestResponse,
+  CyberArkSyncStatus,
 } from "@/types";
+
+function SyncStatusPanel({ status }: { status: CyberArkSyncStatus }) {
+  const { config, database_counts, last_sync } = status;
+
+  const configIssues: string[] = [];
+  if (!config.db_settings_exists) {
+    configIssues.push("No settings saved yet — save settings first");
+  } else if (!config.db_enabled) {
+    configIssues.push("CyberArk is not enabled — toggle it on and save");
+  } else if (!config.all_fields_set) {
+    const missing: string[] = [];
+    if (!config.db_base_url_set) missing.push("Base URL");
+    if (!config.db_identity_url_set) missing.push("Identity URL");
+    if (!config.db_client_id_set) missing.push("Client ID");
+    if (!config.db_client_secret_set) missing.push("Client Secret");
+    configIssues.push(`Missing fields: ${missing.join(", ")}`);
+  }
+
+  const totalResources =
+    database_counts.roles_total +
+    database_counts.safes +
+    database_counts.accounts +
+    database_counts.sia_policies;
+
+  const hasData = totalResources > 0;
+  const hasSynced = last_sync.synced_at !== null;
+
+  return (
+    <div className="rounded-lg border border-gray-200 p-4 dark:border-gray-700">
+      <div className="mb-3 flex items-center gap-2">
+        <Database className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+        <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100">
+          Sync Status
+        </h4>
+      </div>
+
+      {configIssues.length > 0 && (
+        <div className="mb-3 rounded-md bg-yellow-50 p-3 dark:bg-yellow-900/20">
+          <div className="flex items-start gap-2">
+            <AlertCircle className="mt-0.5 h-4 w-4 text-yellow-600 dark:text-yellow-400" />
+            <div className="text-sm text-yellow-800 dark:text-yellow-200">
+              {configIssues.map((issue, i) => (
+                <p key={i}>{issue}</p>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {configIssues.length === 0 && !hasSynced && (
+        <div className="mb-3 rounded-md bg-blue-50 p-3 dark:bg-blue-900/20">
+          <p className="text-sm text-blue-800 dark:text-blue-200">
+            Configuration looks good. Click the Refresh button in the header to
+            pull data from CyberArk.
+          </p>
+        </div>
+      )}
+
+      {configIssues.length === 0 && hasSynced && !hasData && (
+        <div className="mb-3 rounded-md bg-yellow-50 p-3 dark:bg-yellow-900/20">
+          <div className="flex items-start gap-2">
+            <AlertCircle className="mt-0.5 h-4 w-4 text-yellow-600 dark:text-yellow-400" />
+            <p className="text-sm text-yellow-800 dark:text-yellow-200">
+              Sync ran but collected 0 resources. Check the backend logs for API
+              errors (authentication failures, permission issues, or unexpected
+              response formats).
+            </p>
+          </div>
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+        <div className="text-gray-500 dark:text-gray-400">Config source</div>
+        <div className="font-mono text-gray-900 dark:text-gray-100">
+          {config.source}
+        </div>
+
+        <div className="text-gray-500 dark:text-gray-400">Enabled</div>
+        <div className="font-mono text-gray-900 dark:text-gray-100">
+          {config.enabled ? "yes" : "no"}
+        </div>
+
+        <div className="text-gray-500 dark:text-gray-400">All fields set</div>
+        <div className="font-mono text-gray-900 dark:text-gray-100">
+          {config.all_fields_set ? "yes" : "no"}
+        </div>
+
+        <div className="col-span-2 my-1 border-t border-gray-200 dark:border-gray-700" />
+
+        <div className="text-gray-500 dark:text-gray-400">Roles</div>
+        <div className="font-mono text-gray-900 dark:text-gray-100">
+          {database_counts.roles_active}
+          {database_counts.roles_total !== database_counts.roles_active &&
+            ` (${database_counts.roles_total} total)`}
+        </div>
+
+        <div className="text-gray-500 dark:text-gray-400">Safes</div>
+        <div className="font-mono text-gray-900 dark:text-gray-100">
+          {database_counts.safes}
+        </div>
+
+        <div className="text-gray-500 dark:text-gray-400">Accounts</div>
+        <div className="font-mono text-gray-900 dark:text-gray-100">
+          {database_counts.accounts}
+        </div>
+
+        <div className="text-gray-500 dark:text-gray-400">SIA Policies</div>
+        <div className="font-mono text-gray-900 dark:text-gray-100">
+          {database_counts.sia_policies}
+        </div>
+
+        <div className="col-span-2 my-1 border-t border-gray-200 dark:border-gray-700" />
+
+        <div className="text-gray-500 dark:text-gray-400">Last sync</div>
+        <div className="font-mono text-gray-900 dark:text-gray-100">
+          {last_sync.synced_at
+            ? new Date(last_sync.synced_at).toLocaleString()
+            : "never"}
+        </div>
+
+        {last_sync.status && (
+          <>
+            <div className="text-gray-500 dark:text-gray-400">Sync result</div>
+            <div className="font-mono text-gray-900 dark:text-gray-100">
+              {last_sync.status} ({last_sync.resource_count} resources)
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export function CyberArkSettings() {
   const [settings, setSettings] = useState<CyberArkSettingsResponse | null>(
@@ -27,9 +168,12 @@ export function CyberArkSettings() {
     useState<CyberArkConnectionTestResponse | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<CyberArkSyncStatus | null>(null);
+  const [isSyncStatusLoading, setIsSyncStatusLoading] = useState(false);
 
   useEffect(() => {
     loadSettings();
+    loadSyncStatus();
   }, []);
 
   const loadSettings = async () => {
@@ -45,6 +189,18 @@ export function CyberArkSettings() {
       // Settings may not exist yet
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const loadSyncStatus = async () => {
+    try {
+      setIsSyncStatusLoading(true);
+      const data = await getCyberArkSyncStatus();
+      setSyncStatus(data);
+    } catch {
+      // Status endpoint may not be available
+    } finally {
+      setIsSyncStatusLoading(false);
     }
   };
 
@@ -92,6 +248,8 @@ export function CyberArkSettings() {
       setSaveSuccess(true);
       setClientSecret("");
       setTimeout(() => setSaveSuccess(false), 3000);
+      // Refresh sync status after save
+      loadSyncStatus();
     } catch (err: unknown) {
       const axiosError = err as { response?: { data?: { detail?: string } } };
       setSaveError(
@@ -126,6 +284,27 @@ export function CyberArkSettings() {
               </p>
             </div>
           </div>
+
+          {/* Sync Status Panel */}
+          {syncStatus && <SyncStatusPanel status={syncStatus} />}
+          {isSyncStatusLoading && !syncStatus && (
+            <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Loading sync status...
+            </div>
+          )}
+          {syncStatus && (
+            <button
+              onClick={loadSyncStatus}
+              disabled={isSyncStatusLoading}
+              className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 disabled:opacity-50 dark:text-gray-400 dark:hover:text-gray-300"
+            >
+              <RefreshCw
+                className={`h-3 w-3 ${isSyncStatusLoading ? "animate-spin" : ""}`}
+              />
+              Refresh status
+            </button>
+          )}
 
           {/* Enable toggle */}
           <div className="flex items-center justify-between rounded-lg border border-gray-200 p-4 dark:border-gray-700">
