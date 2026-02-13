@@ -5,7 +5,7 @@ SIA policies live on the UAP (Unified Access Portal) service, not Privilege
 Cloud.  The UAP base URL is discovered from the platform-discovery API
 (``uap.api``) and looks like ``https://<subdomain>.uap.cyberark.cloud/api``.
 
-The list endpoint is ``GET /access-policies`` (no filter).  Each item in the
+The list endpoint is ``GET /policies`` (no filter).  Each item in the
 ``results`` array has a ``metadata`` object and a top-level ``principals``
 array.  The ``metadata.policyEntitlement.targetCategory`` field indicates the
 policy type (``VM``, ``DB``, ``Cloud Console``, etc.).
@@ -62,7 +62,7 @@ class CyberArkSIAPolicyCollector(CyberArkBaseCollector):
 
     async def _fetch_all_policies(self) -> List[Dict[str, Any]]:
         """Fetch all access policies with nextToken pagination."""
-        url = f"{self.uap_base_url}/access-policies"
+        url = f"{self.uap_base_url}/policies"
         all_policies: List[Dict[str, Any]] = []
         params: Dict[str, str] = {}
 
