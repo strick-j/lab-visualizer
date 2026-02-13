@@ -548,6 +548,10 @@ class AccessMappingService:
         if not criteria:
             return []
 
+        # Unrestricted policies with all target arrays empty match ALL targets
+        if criteria.get("match_all"):
+            return await self._all_targets()
+
         matched: List[
             Tuple[
                 str,
@@ -635,6 +639,65 @@ class AccessMappingService:
 
         return matched
 
+    async def _all_targets(
+        self,
+    ) -> List[
+        Tuple[
+            str,
+            str,
+            Optional[str],
+            Optional[str],
+            Optional[str],
+            str,
+            Optional[str],
+            Optional[str],
+            Optional[str],
+        ]
+    ]:
+        """Return all EC2/RDS instances (for unrestricted match-all policies)."""
+        results: List[
+            Tuple[
+                str,
+                str,
+                Optional[str],
+                Optional[str],
+                Optional[str],
+                str,
+                Optional[str],
+                Optional[str],
+                Optional[str],
+            ]
+        ] = []
+        for ec2 in await self._get_ec2_instances():
+            results.append(
+                (
+                    "ec2",
+                    ec2.instance_id,
+                    ec2.name,
+                    ec2.private_ip,
+                    ec2.vpc_id,
+                    ec2.display_status,
+                    ec2.instance_type,
+                    None,
+                    None,
+                )
+            )
+        for rds in await self._get_rds_instances():
+            results.append(
+                (
+                    "rds",
+                    rds.db_instance_identifier,
+                    rds.name,
+                    rds.endpoint,
+                    rds.vpc_id,
+                    rds.display_status,
+                    rds.db_instance_class,
+                    rds.engine,
+                    rds.engine,
+                )
+            )
+        return results
+
     @staticmethod
     def _target_matches_criteria(
         target_vpc_id: Optional[str],
@@ -666,9 +729,15 @@ class AccessMappingService:
                     else target_tags_json
                 )
                 if isinstance(target_tags, dict):
-                    for key, value in tag_filters.items():
-                        if target_tags.get(key) == value:
-                            return True
+                    for key, values in tag_filters.items():
+                        target_val = target_tags.get(key)
+                        if target_val is not None:
+                            # Support multi-value lists (e.g. ["linux", "unix"])
+                            if isinstance(values, list):
+                                if target_val in values:
+                                    return True
+                            elif target_val == values:
+                                return True
             except (json.JSONDecodeError, TypeError):
                 pass
 
