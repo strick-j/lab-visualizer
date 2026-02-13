@@ -147,6 +147,7 @@ export interface AccessPathStep {
   entity_type: string;
   entity_id: string;
   entity_name: string;
+  context?: Record<string, unknown> | null;
 }
 
 export interface AccessPath {
@@ -161,6 +162,9 @@ export interface TargetAccessInfo {
   target_address: string | null;
   vpc_id: string | null;
   display_status: string | null;
+  instance_type: string | null;
+  engine: string | null;
+  platform: string | null;
   access_paths: AccessPath[];
 }
 

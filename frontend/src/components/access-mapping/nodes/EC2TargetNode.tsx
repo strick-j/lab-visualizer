@@ -8,6 +8,8 @@ interface EC2TargetNodeData {
   instanceId: string;
   privateIp?: string;
   displayStatus?: string;
+  instanceType?: string;
+  vpcId?: string;
 }
 
 const statusColors: Record<string, string> = {
@@ -64,6 +66,21 @@ function EC2TargetNodeComponent({ data }: NodeProps<EC2TargetNodeData>) {
           )}
         </div>
       </div>
+
+      {(data.instanceType || data.vpcId) && (
+        <div className="mt-1.5 flex flex-wrap gap-1">
+          {data.instanceType && (
+            <span className="px-1.5 py-0.5 text-[10px] font-medium bg-orange-50 text-orange-600 dark:bg-orange-900/40 dark:text-orange-300 rounded">
+              {data.instanceType}
+            </span>
+          )}
+          {data.vpcId && (
+            <span className="px-1.5 py-0.5 text-[10px] font-mono bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400 rounded">
+              {data.vpcId}
+            </span>
+          )}
+        </div>
+      )}
 
       <Handle type="source" position={Position.Right} className="opacity-0" />
     </div>

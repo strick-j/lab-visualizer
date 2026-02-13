@@ -241,6 +241,17 @@ class AccessMappingService:
                     )
                 )
 
+            # Build account context with available metadata
+            account_context: Dict[str, Any] = {}
+            if account.platform_id:
+                account_context["platform_id"] = account.platform_id
+            if account.username:
+                account_context["username"] = account.username
+            if account.secret_type:
+                account_context["secret_type"] = account.secret_type
+            if account.address:
+                account_context["address"] = account.address
+
             steps.extend(
                 [
                     AccessPathStep(
@@ -252,6 +263,7 @@ class AccessMappingService:
                         entity_type="account",
                         entity_id=account.account_id,
                         entity_name=account.account_name,
+                        context=account_context if account_context else None,
                     ),
                 ]
             )
@@ -269,6 +281,9 @@ class AccessMappingService:
                     target_address,
                     vpc_id,
                     status,
+                    inst_type,
+                    engine,
+                    platform,
                 ) = target
                 target_results.append(
                     TargetAccessInfo(
@@ -278,6 +293,9 @@ class AccessMappingService:
                         target_address=target_address,
                         vpc_id=vpc_id,
                         display_status=status,
+                        instance_type=inst_type,
+                        engine=engine,
+                        platform=platform,
                         access_paths=[AccessPath(access_type="standing", steps=steps)],
                     )
                 )
@@ -402,6 +420,9 @@ class AccessMappingService:
                 addr,
                 vpc_id,
                 status,
+                inst_type,
+                engine,
+                platform,
             ) in matched_targets:
                 steps = [
                     AccessPathStep(
@@ -436,18 +457,32 @@ class AccessMappingService:
                         target_address=addr,
                         vpc_id=vpc_id,
                         display_status=status,
+                        instance_type=inst_type,
+                        engine=engine,
+                        platform=platform,
                         access_paths=[AccessPath(access_type="jit", steps=steps)],
                     )
                 )
 
         return results
 
-    async def _match_account_to_target(
-        self, address: str
-    ) -> Optional[Tuple[str, str, Optional[str], str, Optional[str], str]]:
+    async def _match_account_to_target(self, address: str) -> Optional[
+        Tuple[
+            str,
+            str,
+            Optional[str],
+            str,
+            Optional[str],
+            str,
+            Optional[str],
+            Optional[str],
+            Optional[str],
+        ]
+    ]:
         """Match account address to EC2/RDS target.
 
-        Returns (target_type, target_id, target_name, address, vpc_id, status)
+        Returns (target_type, target_id, target_name, address, vpc_id, status,
+                 instance_type, engine, platform)
         """
         if not address:
             return None
@@ -456,41 +491,27 @@ class AccessMappingService:
 
         # Check EC2 instances
         for ec2 in await self._get_ec2_instances():
+            ec2_match_addr = None
             if ec2.private_ip and ec2.private_ip == address_lower:
+                ec2_match_addr = ec2.private_ip
+            elif ec2.private_dns and ec2.private_dns.lower() == address_lower:
+                ec2_match_addr = ec2.private_dns
+            elif ec2.public_ip and ec2.public_ip == address_lower:
+                ec2_match_addr = ec2.public_ip
+            elif ec2.public_dns and ec2.public_dns.lower() == address_lower:
+                ec2_match_addr = ec2.public_dns
+
+            if ec2_match_addr:
                 return (
                     "ec2",
                     ec2.instance_id,
                     ec2.name,
-                    ec2.private_ip,
+                    ec2_match_addr,
                     ec2.vpc_id,
                     ec2.display_status,
-                )
-            if ec2.private_dns and ec2.private_dns.lower() == address_lower:
-                return (
-                    "ec2",
-                    ec2.instance_id,
-                    ec2.name,
-                    ec2.private_dns,
-                    ec2.vpc_id,
-                    ec2.display_status,
-                )
-            if ec2.public_ip and ec2.public_ip == address_lower:
-                return (
-                    "ec2",
-                    ec2.instance_id,
-                    ec2.name,
-                    ec2.public_ip,
-                    ec2.vpc_id,
-                    ec2.display_status,
-                )
-            if ec2.public_dns and ec2.public_dns.lower() == address_lower:
-                return (
-                    "ec2",
-                    ec2.instance_id,
-                    ec2.name,
-                    ec2.public_dns,
-                    ec2.vpc_id,
-                    ec2.display_status,
+                    ec2.instance_type,
+                    None,
+                    None,
                 )
 
         # Check RDS instances
@@ -503,19 +524,42 @@ class AccessMappingService:
                     rds.endpoint,
                     rds.vpc_id,
                     rds.display_status,
+                    rds.db_instance_class,
+                    rds.engine,
+                    rds.engine,
                 )
 
         return None
 
-    async def _match_sia_criteria_to_targets(
-        self, criteria: Dict[str, Any]
-    ) -> List[Tuple[str, str, Optional[str], Optional[str], Optional[str], str]]:
+    async def _match_sia_criteria_to_targets(self, criteria: Dict[str, Any]) -> List[
+        Tuple[
+            str,
+            str,
+            Optional[str],
+            Optional[str],
+            Optional[str],
+            str,
+            Optional[str],
+            Optional[str],
+            Optional[str],
+        ]
+    ]:
         """Match SIA policy criteria to EC2/RDS instances."""
         if not criteria:
             return []
 
         matched: List[
-            Tuple[str, str, Optional[str], Optional[str], Optional[str], str]
+            Tuple[
+                str,
+                str,
+                Optional[str],
+                Optional[str],
+                Optional[str],
+                str,
+                Optional[str],
+                Optional[str],
+                Optional[str],
+            ]
         ] = []
         seen: Set[str] = set()
 
@@ -551,6 +595,9 @@ class AccessMappingService:
                         ec2.private_ip,
                         ec2.vpc_id,
                         ec2.display_status,
+                        ec2.instance_type,
+                        None,
+                        None,
                     )
                 )
 
@@ -580,6 +627,9 @@ class AccessMappingService:
                         rds.endpoint,
                         rds.vpc_id,
                         rds.display_status,
+                        rds.db_instance_class,
+                        rds.engine,
+                        rds.engine,
                     )
                 )
 
