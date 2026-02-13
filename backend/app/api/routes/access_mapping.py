@@ -45,9 +45,10 @@ async def get_access_mapping(
             for p in t.access_paths
             if p.access_type == "jit"
         )
+        has_data = bool(user_mapping.targets or user_mapping.access_paths)
         return AccessMappingResponse(
-            users=[user_mapping] if user_mapping.targets else [],
-            total_users=1 if user_mapping.targets else 0,
+            users=[user_mapping] if has_data else [],
+            total_users=1 if has_data else 0,
             total_targets=len(user_mapping.targets),
             total_standing_paths=standing,
             total_jit_paths=jit,

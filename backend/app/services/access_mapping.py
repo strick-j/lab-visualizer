@@ -2,6 +2,8 @@
 Access Mapping Service.
 
 Computes access paths between CyberArk users and AWS targets (EC2/RDS).
+Also computes relationship-only paths (user→role, user→safe) for cases
+where no AWS target is matched.
 """
 
 import ipaddress
@@ -15,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.cyberark import (
     CyberArkAccount,
+    CyberArkRole,
     CyberArkRoleMember,
     CyberArkSafeMember,
     CyberArkSIAPolicy,
@@ -50,7 +53,7 @@ class AccessMappingService:
 
         for user_name in all_users:
             mapping = await self.compute_user_access(user_name)
-            if mapping.targets:
+            if mapping.targets or mapping.access_paths:
                 all_user_mappings.append(mapping)
                 for t in mapping.targets:
                     target_ids.add(f"{t.target_type}:{t.target_id}")
@@ -69,13 +72,15 @@ class AccessMappingService:
         )
 
     async def compute_user_access(self, user_name: str) -> UserAccessMapping:
-        """Compute all targets a specific user can access."""
-        standing = await self._compute_standing_access(user_name)
+        """Compute all targets and relationships for a specific user."""
+        standing_targets, standing_paths = await self._compute_standing_access(
+            user_name
+        )
         jit = await self._compute_jit_access(user_name)
 
         # Merge targets by target_id, combining access paths
         target_map: Dict[str, TargetAccessInfo] = {}
-        for t in standing + jit:
+        for t in standing_targets + jit:
             key = f"{t.target_type}:{t.target_id}"
             if key in target_map:
                 target_map[key].access_paths.extend(t.access_paths)
@@ -83,7 +88,9 @@ class AccessMappingService:
                 target_map[key] = t
 
         return UserAccessMapping(
-            user_name=user_name, targets=list(target_map.values())
+            user_name=user_name,
+            targets=list(target_map.values()),
+            access_paths=standing_paths,
         )
 
     async def _get_all_users(self) -> List[str]:
@@ -116,23 +123,31 @@ class AccessMappingService:
 
         return sorted(users)
 
-    async def _get_user_roles(self, user_name: str) -> List[str]:
-        """Get all role IDs the user is a member of."""
+    async def _get_user_roles(self, user_name: str) -> Dict[str, str]:
+        """Get all roles the user is a member of.
+
+        Returns a dict mapping role_id to role_name (display name).
+        The role_name is what appears in safe member lists and SIA
+        policy principal lists.
+        """
         result = await self.db.execute(
-            select(CyberArkRoleMember.role_id).where(
+            select(CyberArkRoleMember.role_id, CyberArkRole.role_name)
+            .join(
+                CyberArkRole,
+                CyberArkRoleMember.role_id == CyberArkRole.role_id,
+            )
+            .where(
                 CyberArkRoleMember.member_name == user_name,
                 CyberArkRoleMember.member_type == "user",
             )
         )
-        return [row[0] for row in result.all()]
+        return {row[0]: row[1] for row in result.all()}
 
     async def _get_ec2_instances(self) -> List[EC2Instance]:
         """Get cached EC2 instances."""
         if self._ec2_cache is None:
             result = await self.db.execute(
-                select(EC2Instance).where(
-                    EC2Instance.is_deleted == False  # noqa: E712
-                )
+                select(EC2Instance).where(EC2Instance.is_deleted == False)  # noqa: E712
             )
             self._ec2_cache = list(result.scalars().all())
         return self._ec2_cache
@@ -141,19 +156,26 @@ class AccessMappingService:
         """Get cached RDS instances."""
         if self._rds_cache is None:
             result = await self.db.execute(
-                select(RDSInstance).where(
-                    RDSInstance.is_deleted == False  # noqa: E712
-                )
+                select(RDSInstance).where(RDSInstance.is_deleted == False)  # noqa: E712
             )
             self._rds_cache = list(result.scalars().all())
         return self._rds_cache
 
     async def _compute_standing_access(
         self, user_name: str
-    ) -> List[TargetAccessInfo]:
-        """Compute standing access: User -> (Role) -> Safe -> Account -> Target."""
-        results: List[TargetAccessInfo] = []
-        role_ids = await self._get_user_roles(user_name)
+    ) -> Tuple[List[TargetAccessInfo], List[AccessPath]]:
+        """Compute standing access: User -> (Role) -> Safe -> Account -> Target.
+
+        Returns a tuple of (target_results, relationship_paths).
+        - target_results: paths that reach a matched AWS target
+        - relationship_paths: paths that show relationships without a target
+          (e.g. user→role, user→safe, user→role→safe→account)
+        """
+        target_results: List[TargetAccessInfo] = []
+        relationship_paths: List[AccessPath] = []
+
+        role_map = await self._get_user_roles(user_name)
+        role_names = set(role_map.values())
 
         # Find safes where user is a direct member
         direct_safes_result = await self.db.execute(
@@ -164,45 +186,41 @@ class AccessMappingService:
         )
         direct_safe_names = {row[0] for row in direct_safes_result.all()}
 
-        # Find safes where user's roles are members
-        role_safes: Dict[str, str] = {}  # safe_name -> role_id
-        if role_ids:
+        # Find safes where user's roles are members.
+        # CyberArk safe members may have memberType "Role" or "Group"
+        # (lowercased to "role" or "group" by the collector).  Match both.
+        role_safes: Dict[str, str] = {}  # safe_name -> role_name
+        if role_names:
             role_safes_result = await self.db.execute(
                 select(
                     CyberArkSafeMember.safe_name,
                     CyberArkSafeMember.member_name,
                 ).where(
-                    CyberArkSafeMember.member_name.in_(role_ids),
-                    CyberArkSafeMember.member_type == "role",
+                    CyberArkSafeMember.member_name.in_(role_names),
+                    CyberArkSafeMember.member_type.in_(["role", "group"]),
                 )
             )
-            for safe_name, role_name in role_safes_result.all():
+            for safe_name, member_name in role_safes_result.all():
                 if safe_name not in direct_safe_names:
-                    role_safes[safe_name] = role_name
+                    role_safes[safe_name] = member_name
 
         all_safe_names = direct_safe_names | set(role_safes.keys())
-        if not all_safe_names:
-            return results
 
         # Get accounts in these safes
-        accounts_result = await self.db.execute(
-            select(CyberArkAccount).where(
-                CyberArkAccount.safe_name.in_(all_safe_names),
-                CyberArkAccount.is_deleted == False,  # noqa: E712
-                CyberArkAccount.address.isnot(None),
-                CyberArkAccount.address != "",
+        accounts: list = []
+        if all_safe_names:
+            accounts_result = await self.db.execute(
+                select(CyberArkAccount).where(
+                    CyberArkAccount.safe_name.in_(all_safe_names),
+                    CyberArkAccount.is_deleted == False,  # noqa: E712
+                )
             )
-        )
-        accounts = accounts_result.scalars().all()
+            accounts = list(accounts_result.scalars().all())
+
+        safes_with_accounts: Set[str] = set()
 
         for account in accounts:
-            target = await self._match_account_to_target(account.address)
-            if not target:
-                continue
-
-            target_type, target_id, target_name, target_address, vpc_id, status = (
-                target
-            )
+            safes_with_accounts.add(account.safe_name)
 
             # Build access path steps
             steps = [
@@ -214,11 +232,12 @@ class AccessMappingService:
             ]
 
             if account.safe_name in role_safes:
+                role_name = role_safes[account.safe_name]
                 steps.append(
                     AccessPathStep(
                         entity_type="role",
-                        entity_id=role_safes[account.safe_name],
-                        entity_name=role_safes[account.safe_name],
+                        entity_id=role_name,
+                        entity_name=role_name,
                     )
                 )
 
@@ -237,26 +256,91 @@ class AccessMappingService:
                 ]
             )
 
-            results.append(
-                TargetAccessInfo(
-                    target_type=target_type,
-                    target_id=target_id,
-                    target_name=target_name,
-                    target_address=target_address,
-                    vpc_id=vpc_id,
-                    display_status=status,
-                    access_paths=[
-                        AccessPath(access_type="standing", steps=steps)
-                    ],
+            # Try to match account address to an AWS target
+            target = None
+            if account.address:
+                target = await self._match_account_to_target(account.address)
+
+            if target:
+                (
+                    target_type,
+                    target_id,
+                    target_name,
+                    target_address,
+                    vpc_id,
+                    status,
+                ) = target
+                target_results.append(
+                    TargetAccessInfo(
+                        target_type=target_type,
+                        target_id=target_id,
+                        target_name=target_name,
+                        target_address=target_address,
+                        vpc_id=vpc_id,
+                        display_status=status,
+                        access_paths=[AccessPath(access_type="standing", steps=steps)],
+                    )
+                )
+            else:
+                # Account without a matching AWS target — still show the path
+                relationship_paths.append(
+                    AccessPath(access_type="standing", steps=steps)
+                )
+
+        # For safes with no accounts, show user→(role→)safe relationship
+        for safe_name in all_safe_names - safes_with_accounts:
+            steps = [
+                AccessPathStep(
+                    entity_type="user",
+                    entity_id=user_name,
+                    entity_name=user_name,
+                )
+            ]
+            if safe_name in role_safes:
+                role_name = role_safes[safe_name]
+                steps.append(
+                    AccessPathStep(
+                        entity_type="role",
+                        entity_id=role_name,
+                        entity_name=role_name,
+                    )
+                )
+            steps.append(
+                AccessPathStep(
+                    entity_type="safe",
+                    entity_id=safe_name,
+                    entity_name=safe_name,
                 )
             )
+            relationship_paths.append(AccessPath(access_type="standing", steps=steps))
 
-        return results
+        # For roles that have no safe membership at all, show user→role
+        roles_in_safes = set(role_safes.values())
+        for _role_id, role_name in role_map.items():
+            if role_name not in roles_in_safes:
+                steps = [
+                    AccessPathStep(
+                        entity_type="user",
+                        entity_id=user_name,
+                        entity_name=user_name,
+                    ),
+                    AccessPathStep(
+                        entity_type="role",
+                        entity_id=role_name,
+                        entity_name=role_name,
+                    ),
+                ]
+                relationship_paths.append(
+                    AccessPath(access_type="standing", steps=steps)
+                )
+
+        return target_results, relationship_paths
 
     async def _compute_jit_access(self, user_name: str) -> List[TargetAccessInfo]:
         """Compute JIT access: User -> (Role) -> SIA Policy -> Target."""
         results: List[TargetAccessInfo] = []
-        role_ids = await self._get_user_roles(user_name)
+        role_map = await self._get_user_roles(user_name)
+        role_names = set(role_map.values())
 
         # Find policies where user is a direct principal
         direct_policies_result = await self.db.execute(
@@ -268,14 +352,14 @@ class AccessMappingService:
         direct_policy_ids = {row[0] for row in direct_policies_result.all()}
 
         # Find policies where user's roles are principals
-        role_policies: Dict[str, str] = {}  # policy_id -> role_id
-        if role_ids:
+        role_policies: Dict[str, str] = {}  # policy_id -> role_name
+        if role_names:
             role_policies_result = await self.db.execute(
                 select(
                     CyberArkSIAPolicyPrincipal.policy_id,
                     CyberArkSIAPolicyPrincipal.principal_name,
                 ).where(
-                    CyberArkSIAPolicyPrincipal.principal_name.in_(role_ids),
+                    CyberArkSIAPolicyPrincipal.principal_name.in_(role_names),
                     CyberArkSIAPolicyPrincipal.principal_type == "role",
                 )
             )
@@ -311,9 +395,14 @@ class AccessMappingService:
 
             matched_targets = await self._match_sia_criteria_to_targets(criteria)
 
-            for target_type, target_id, target_name, addr, vpc_id, status in (
-                matched_targets
-            ):
+            for (
+                target_type,
+                target_id,
+                target_name,
+                addr,
+                vpc_id,
+                status,
+            ) in matched_targets:
                 steps = [
                     AccessPathStep(
                         entity_type="user",
@@ -347,9 +436,7 @@ class AccessMappingService:
                         target_address=addr,
                         vpc_id=vpc_id,
                         display_status=status,
-                        access_paths=[
-                            AccessPath(access_type="jit", steps=steps)
-                        ],
+                        access_paths=[AccessPath(access_type="jit", steps=steps)],
                     )
                 )
 
@@ -371,31 +458,51 @@ class AccessMappingService:
         for ec2 in await self._get_ec2_instances():
             if ec2.private_ip and ec2.private_ip == address_lower:
                 return (
-                    "ec2", ec2.instance_id, ec2.name, ec2.private_ip,
-                    ec2.vpc_id, ec2.display_status,
+                    "ec2",
+                    ec2.instance_id,
+                    ec2.name,
+                    ec2.private_ip,
+                    ec2.vpc_id,
+                    ec2.display_status,
                 )
             if ec2.private_dns and ec2.private_dns.lower() == address_lower:
                 return (
-                    "ec2", ec2.instance_id, ec2.name,
-                    ec2.private_dns, ec2.vpc_id, ec2.display_status,
+                    "ec2",
+                    ec2.instance_id,
+                    ec2.name,
+                    ec2.private_dns,
+                    ec2.vpc_id,
+                    ec2.display_status,
                 )
             if ec2.public_ip and ec2.public_ip == address_lower:
                 return (
-                    "ec2", ec2.instance_id, ec2.name, ec2.public_ip,
-                    ec2.vpc_id, ec2.display_status,
+                    "ec2",
+                    ec2.instance_id,
+                    ec2.name,
+                    ec2.public_ip,
+                    ec2.vpc_id,
+                    ec2.display_status,
                 )
             if ec2.public_dns and ec2.public_dns.lower() == address_lower:
                 return (
-                    "ec2", ec2.instance_id, ec2.name,
-                    ec2.public_dns, ec2.vpc_id, ec2.display_status,
+                    "ec2",
+                    ec2.instance_id,
+                    ec2.name,
+                    ec2.public_dns,
+                    ec2.vpc_id,
+                    ec2.display_status,
                 )
 
         # Check RDS instances
         for rds in await self._get_rds_instances():
             if rds.endpoint and rds.endpoint.lower() == address_lower:
                 return (
-                    "rds", rds.db_instance_identifier, rds.name,
-                    rds.endpoint, rds.vpc_id, rds.display_status,
+                    "rds",
+                    rds.db_instance_identifier,
+                    rds.name,
+                    rds.endpoint,
+                    rds.vpc_id,
+                    rds.display_status,
                 )
 
         return None
@@ -424,15 +531,26 @@ class AccessMappingService:
             if key in seen:
                 continue
             if self._target_matches_criteria(
-                ec2.vpc_id, ec2.subnet_id, ec2.tags,
-                ec2.private_ip, ec2.private_dns,
-                vpc_ids, subnet_ids, tag_filters, fqdn_patterns, ip_ranges,
+                ec2.vpc_id,
+                ec2.subnet_id,
+                ec2.tags,
+                ec2.private_ip,
+                ec2.private_dns,
+                vpc_ids,
+                subnet_ids,
+                tag_filters,
+                fqdn_patterns,
+                ip_ranges,
             ):
                 seen.add(key)
                 matched.append(
                     (
-                        "ec2", ec2.instance_id, ec2.name,
-                        ec2.private_ip, ec2.vpc_id, ec2.display_status,
+                        "ec2",
+                        ec2.instance_id,
+                        ec2.name,
+                        ec2.private_ip,
+                        ec2.vpc_id,
+                        ec2.display_status,
                     )
                 )
 
@@ -442,15 +560,26 @@ class AccessMappingService:
             if key in seen:
                 continue
             if self._target_matches_criteria(
-                rds.vpc_id, None, rds.tags,
-                None, rds.endpoint,
-                vpc_ids, subnet_ids, tag_filters, fqdn_patterns, ip_ranges,
+                rds.vpc_id,
+                None,
+                rds.tags,
+                None,
+                rds.endpoint,
+                vpc_ids,
+                subnet_ids,
+                tag_filters,
+                fqdn_patterns,
+                ip_ranges,
             ):
                 seen.add(key)
                 matched.append(
                     (
-                        "rds", rds.db_instance_identifier, rds.name,
-                        rds.endpoint, rds.vpc_id, rds.display_status,
+                        "rds",
+                        rds.db_instance_identifier,
+                        rds.name,
+                        rds.endpoint,
+                        rds.vpc_id,
+                        rds.display_status,
                     )
                 )
 

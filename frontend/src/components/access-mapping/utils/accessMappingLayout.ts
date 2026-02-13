@@ -19,6 +19,133 @@ interface LayoutResult {
   edges: Edge[];
 }
 
+/**
+ * Process the steps of an access path, creating intermediate nodes and edges.
+ * If targetId is null, the path ends at the last step (relationship-only).
+ */
+function processPathSteps(
+  path: {
+    access_type: string;
+    steps: { entity_type: string; entity_id: string; entity_name: string }[];
+  },
+  userId: string,
+  nodes: Node[],
+  edges: Edge[],
+  colY: number[],
+  seenRoles: Set<string>,
+  seenSafes: Set<string>,
+  seenAccounts: Set<string>,
+  seenPolicies: Set<string>,
+  targetId: string | null,
+): void {
+  const isStanding = path.access_type === "standing";
+  const edgeStyle = isStanding
+    ? { stroke: "#3b82f6", strokeWidth: 2 }
+    : { stroke: "#f97316", strokeWidth: 2, strokeDasharray: "5 5" };
+
+  let prevNodeId = userId;
+
+  for (const step of path.steps) {
+    let nodeId = "";
+    let nodeType = "";
+    let nodeData: Record<string, unknown> = {};
+    let column = 0;
+
+    switch (step.entity_type) {
+      case "role":
+        nodeId = `role-${step.entity_id}`;
+        nodeType = "access-role";
+        nodeData = {
+          label: step.entity_name,
+          roleName: step.entity_name,
+        };
+        column = 1;
+        break;
+      case "safe":
+        nodeId = `safe-${step.entity_id}`;
+        nodeType = "access-safe";
+        nodeData = {
+          label: step.entity_name,
+          safeName: step.entity_name,
+        };
+        column = 2;
+        break;
+      case "account":
+        nodeId = `account-${step.entity_id}`;
+        nodeType = "access-account";
+        nodeData = {
+          label: step.entity_name,
+          accountName: step.entity_name,
+        };
+        column = 3;
+        break;
+      case "sia_policy":
+        nodeId = `policy-${step.entity_id}`;
+        nodeType = "access-sia-policy";
+        nodeData = {
+          label: step.entity_name,
+          policyName: step.entity_name,
+        };
+        column = 2;
+        break;
+      default:
+        continue;
+    }
+
+    // Add the intermediate node if not already added
+    const seenSet =
+      step.entity_type === "role"
+        ? seenRoles
+        : step.entity_type === "safe"
+          ? seenSafes
+          : step.entity_type === "account"
+            ? seenAccounts
+            : seenPolicies;
+
+    if (!seenSet.has(step.entity_id)) {
+      seenSet.add(step.entity_id);
+      nodes.push({
+        id: nodeId,
+        type: nodeType,
+        position: {
+          x: START_X + COLUMN_SPACING * column,
+          y: colY[column],
+        },
+        data: nodeData,
+      });
+      colY[column] += ROW_SPACING;
+    }
+
+    // Create edge from previous node
+    const edgeId = `${prevNodeId}->${nodeId}`;
+    if (!edges.find((e) => e.id === edgeId)) {
+      edges.push({
+        id: edgeId,
+        source: prevNodeId,
+        target: nodeId,
+        style: edgeStyle,
+        animated: !isStanding,
+      });
+    }
+
+    prevNodeId = nodeId;
+  }
+
+  // Connect last step to target (only when a target exists)
+  if (targetId) {
+    const finalEdgeId = `${prevNodeId}->${targetId}`;
+    if (!edges.find((e) => e.id === finalEdgeId)) {
+      edges.push({
+        id: finalEdgeId,
+        source: prevNodeId,
+        target: targetId,
+        style: edgeStyle,
+        animated: !isStanding,
+      });
+    }
+  }
+}
+
 export function calculateAccessMappingLayout(
   data: AccessMappingResponse,
   filters?: { accessType?: string; selectedUser?: string },
@@ -94,112 +221,40 @@ export function calculateAccessMappingLayout(
           continue;
         }
 
-        const isStanding = path.access_type === "standing";
-        const edgeStyle = isStanding
-          ? { stroke: "#3b82f6", strokeWidth: 2 }
-          : { stroke: "#f97316", strokeWidth: 2, strokeDasharray: "5 5" };
-
-        // Process each step in the path to create intermediate nodes and edges
-        let prevNodeId = userId;
-
-        for (const step of path.steps) {
-          let nodeId = "";
-          let nodeType = "";
-          let nodeData: Record<string, unknown> = {};
-          let column = 0;
-
-          switch (step.entity_type) {
-            case "role":
-              nodeId = `role-${step.entity_id}`;
-              nodeType = "access-role";
-              nodeData = {
-                label: step.entity_name,
-                roleName: step.entity_name,
-              };
-              column = 1;
-              break;
-            case "safe":
-              nodeId = `safe-${step.entity_id}`;
-              nodeType = "access-safe";
-              nodeData = {
-                label: step.entity_name,
-                safeName: step.entity_name,
-              };
-              column = 2;
-              break;
-            case "account":
-              nodeId = `account-${step.entity_id}`;
-              nodeType = "access-account";
-              nodeData = {
-                label: step.entity_name,
-                accountName: step.entity_name,
-              };
-              column = 3;
-              break;
-            case "sia_policy":
-              nodeId = `policy-${step.entity_id}`;
-              nodeType = "access-sia-policy";
-              nodeData = {
-                label: step.entity_name,
-                policyName: step.entity_name,
-              };
-              column = 2;
-              break;
-            default:
-              continue;
-          }
-
-          // Add the intermediate node if not already added
-          const seenSet =
-            step.entity_type === "role"
-              ? seenRoles
-              : step.entity_type === "safe"
-                ? seenSafes
-                : step.entity_type === "account"
-                  ? seenAccounts
-                  : seenPolicies;
-
-          if (!seenSet.has(step.entity_id)) {
-            seenSet.add(step.entity_id);
-            nodes.push({
-              id: nodeId,
-              type: nodeType,
-              position: {
-                x: START_X + COLUMN_SPACING * column,
-                y: colY[column],
-              },
-              data: nodeData,
-            });
-            colY[column] += ROW_SPACING;
-          }
-
-          // Create edge from previous node
-          const edgeId = `${prevNodeId}->${nodeId}`;
-          if (!edges.find((e) => e.id === edgeId)) {
-            edges.push({
-              id: edgeId,
-              source: prevNodeId,
-              target: nodeId,
-              style: edgeStyle,
-              animated: !isStanding,
-            });
-          }
-
-          prevNodeId = nodeId;
-        }
-
-        // Connect last step to target
-        const finalEdgeId = `${prevNodeId}->${targetId}`;
-        if (!edges.find((e) => e.id === finalEdgeId)) {
-          edges.push({
-            id: finalEdgeId,
-            source: prevNodeId,
-            target: targetId,
-            style: edgeStyle,
-            animated: !isStanding,
-          });
-        }
+        processPathSteps(
+          path,
+          userId,
+          nodes,
+          edges,
+          colY,
+          seenRoles,
+          seenSafes,
+          seenAccounts,
+          seenPolicies,
+          targetId,
+        );
       }
+    }
+
+    // Process relationship-only paths (no target at the end)
+    const relationshipPaths = userMapping.access_paths || [];
+    for (const path of relationshipPaths) {
+      if (filters?.accessType && path.access_type !== filters.accessType) {
+        continue;
+      }
+
+      processPathSteps(
+        path,
+        userId,
+        nodes,
+        edges,
+        colY,
+        seenRoles,
+        seenSafes,
+        seenAccounts,
+        seenPolicies,
+        null,
+      );
     }
   }
 

@@ -85,8 +85,8 @@ export function AccessMappingPage() {
           </h3>
           <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
             Configure CyberArk integration in Settings and refresh data to see
-            user-to-target access paths. Make sure CyberArk safes, roles, and
-            SIA policies are synced.
+            user access mappings. Make sure CyberArk safes, roles, and accounts
+            are synced.
           </p>
         </div>
         <button
