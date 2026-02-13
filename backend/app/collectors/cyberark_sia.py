@@ -5,8 +5,13 @@ SIA policies live on the UAP (Unified Access Portal) service, not Privilege
 Cloud.  The UAP base URL is discovered from the platform-discovery API
 (``uap.api``) and looks like ``https://<subdomain>.uap.cyberark.cloud/api``.
 
-The endpoint is ``/access-policies`` with a ``filter`` query parameter to
-select by target category, e.g. ``filter=(targetCategory eq 'VM')``.
+The list endpoint is ``GET /access-policies`` (no filter).  Each item in the
+``results`` array has a ``metadata`` object and a top-level ``principals``
+array.  The ``metadata.policyEntitlement.targetCategory`` field indicates the
+policy type (``VM``, ``DB``, ``Cloud Console``, etc.).
+
+Full policy details (including target criteria) can be fetched individually
+via ``GET /policies/{policyId}``.
 
 The response format is ``{ "results": [...], "nextToken": "...", "total": N }``.
 """
@@ -18,10 +23,11 @@ from app.collectors.cyberark_base import CyberArkBaseCollector
 
 logger = logging.getLogger(__name__)
 
-# Map internal policy type names to UAP targetCategory filter values
-_CATEGORY_FILTERS: Dict[str, str] = {
-    "vm": "(targetCategory eq 'VM')",
-    "database": "(targetCategory eq 'Database')",
+# Map targetCategory values from the API to normalised internal names
+_CATEGORY_MAP: Dict[str, str] = {
+    "vm": "vm",
+    "db": "database",
+    "cloud console": "cloud_console",
 }
 
 
@@ -37,37 +43,28 @@ class CyberArkSIAPolicyCollector(CyberArkBaseCollector):
         self.uap_base_url = (uap_base_url or "").rstrip("/")
 
     async def collect(self) -> List[Dict[str, Any]]:
-        """Collect all SIA policies (VM and database)."""
+        """Collect all SIA access policies."""
         if not self.uap_base_url:
             logger.warning("SIA: skipping collection — uap_base_url not configured")
             return []
 
-        results = []
-
-        # Collect VM access policies
-        vm_policies = await self._collect_policies("vm")
-        results.extend(vm_policies)
-
-        # Collect database access policies
-        db_policies = await self._collect_policies("database")
-        results.extend(db_policies)
+        all_policies = await self._fetch_all_policies()
+        results = [self._normalise_policy(p) for p in all_policies]
+        # Filter out any that failed to parse (returned None)
+        results = [r for r in results if r is not None]
 
         logger.info("Collected %d CyberArk SIA policies", len(results))
         return results
 
-    async def _collect_policies(self, policy_type: str) -> List[Dict[str, Any]]:
-        """Collect SIA policies of a given type with nextToken pagination.
+    # ------------------------------------------------------------------
+    # Fetch
+    # ------------------------------------------------------------------
 
-        Uses the single ``/access-policies`` endpoint with a ``filter``
-        query parameter to select by target category.
-        """
+    async def _fetch_all_policies(self) -> List[Dict[str, Any]]:
+        """Fetch all access policies with nextToken pagination."""
         url = f"{self.uap_base_url}/access-policies"
-        category_filter = _CATEGORY_FILTERS.get(policy_type, "")
-
         all_policies: List[Dict[str, Any]] = []
         params: Dict[str, str] = {}
-        if category_filter:
-            params["filter"] = category_filter
 
         try:
             while True:
@@ -80,77 +77,75 @@ class CyberArkSIAPolicyCollector(CyberArkBaseCollector):
                     break
                 params["nextToken"] = next_token
         except Exception:
-            logger.exception("Failed to collect SIA %s policies", policy_type)
-            return []
+            logger.exception("Failed to collect SIA policies")
 
-        results = []
-        for policy in all_policies:
-            policy_id = policy.get("id", policy.get("policyId", ""))
-            principals = self._extract_principals(policy)
-            target_criteria = self._extract_target_criteria(policy, policy_type)
+        return all_policies
 
-            results.append(
-                {
-                    "policy_id": policy_id,
-                    "policy_name": policy.get("name", policy.get("policyName", "")),
-                    "policy_type": policy_type,
-                    "description": policy.get("description"),
-                    "status": policy.get("status", "active"),
-                    "target_criteria": target_criteria,
-                    "principals": principals,
-                }
-            )
+    # ------------------------------------------------------------------
+    # Normalise
+    # ------------------------------------------------------------------
 
-        return results
+    def _normalise_policy(self, raw: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """Convert the UAP API response shape into our internal format.
+
+        The API wraps most fields under ``metadata``.
+        """
+        metadata = raw.get("metadata", {})
+        policy_id = metadata.get("policyId", "")
+        if not policy_id:
+            logger.debug("Skipping SIA policy with no policyId: %s", raw)
+            return None
+
+        # Determine policy type from policyEntitlement.targetCategory
+        entitlement = metadata.get("policyEntitlement", {})
+        raw_category = (entitlement.get("targetCategory") or "").strip().lower()
+        policy_type = _CATEGORY_MAP.get(raw_category, raw_category or "unknown")
+
+        # Status lives under metadata.status.status
+        status_obj = metadata.get("status", {})
+        status = (
+            status_obj.get("status", "Active")
+            if isinstance(status_obj, dict)
+            else "Active"
+        ).lower()
+
+        principals = self._extract_principals(raw.get("principals", []))
+
+        return {
+            "policy_id": policy_id,
+            "policy_name": metadata.get("name", ""),
+            "policy_type": policy_type,
+            "description": metadata.get("description"),
+            "status": status,
+            "target_criteria": {},  # detail fetch not implemented yet
+            "principals": principals,
+        }
+
+    # ------------------------------------------------------------------
+    # Helpers
+    # ------------------------------------------------------------------
 
     @staticmethod
-    def _extract_principals(policy: Dict[str, Any]) -> List[Dict[str, Any]]:
+    def _extract_principals(
+        principals_list: List[Any],
+    ) -> List[Dict[str, Any]]:
         """Extract principal assignments from a policy."""
         principals = []
-        for p in policy.get("principals", policy.get("userAccessRules", [])):
+        for p in principals_list:
             if isinstance(p, dict):
+                raw_type = p.get("type", p.get("principalType", "USER")).lower()
+                # Normalise: USER -> user, GROUP -> role, ROLE -> role
+                if raw_type in ("group", "role"):
+                    ptype = "role"
+                else:
+                    ptype = "user"
+
                 principals.append(
                     {
                         "principal_name": p.get("name", p.get("principalName", "")),
-                        "principal_type": p.get("type", p.get("principalType", "user"))
-                        .lower()
-                        .replace("group", "role"),
+                        "principal_type": ptype,
                     }
                 )
             elif isinstance(p, str):
                 principals.append({"principal_name": p, "principal_type": "user"})
         return principals
-
-    @staticmethod
-    def _extract_target_criteria(
-        policy: Dict[str, Any], policy_type: str
-    ) -> Dict[str, Any]:
-        """Extract target matching criteria from a policy."""
-        criteria: Dict[str, Any] = {}
-
-        # AWS-specific attributes
-        locations = policy.get("locations", policy.get("targetScope", {}))
-        if isinstance(locations, dict):
-            if locations.get("vpcIds"):
-                criteria["vpc_ids"] = locations["vpcIds"]
-            if locations.get("subnetIds"):
-                criteria["subnet_ids"] = locations["subnetIds"]
-            if locations.get("tags"):
-                criteria["tags"] = locations["tags"]
-            if locations.get("regions"):
-                criteria["regions"] = locations["regions"]
-            if locations.get("accountIds"):
-                criteria["account_ids"] = locations["accountIds"]
-
-        # FQDN/IP patterns
-        if policy.get("fqdnPatterns"):
-            criteria["fqdn_patterns"] = policy["fqdnPatterns"]
-        if policy.get("ipRanges"):
-            criteria["ip_ranges"] = policy["ipRanges"]
-
-        # For VM policies, check connection rules
-        connection = policy.get("connectionBehavior", {})
-        if connection.get("protocols"):
-            criteria["protocols"] = connection["protocols"]
-
-        return criteria
