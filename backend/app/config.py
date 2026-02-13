@@ -131,6 +131,10 @@ class Settings(BaseSettings):
     cyberark_client_secret: Optional[str] = Field(
         default=None, description="CyberArk API client secret"
     )
+    cyberark_uap_base_url: Optional[str] = Field(
+        default=None,
+        description="CyberArk UAP (Unified Access Portal) base URL for SIA policies",
+    )
 
     # Configurable TF resource type names (idsec provider)
     cyberark_tf_safe_type: str = Field(

@@ -1132,7 +1132,7 @@ async def _get_cyberark_config(db: AsyncSession) -> dict | None:
         logger.info("CyberArk: using environment variable settings")
         base_url = settings.cyberark_base_url
         identity_url = settings.cyberark_identity_url
-        uap_base_url = None
+        uap_base_url = settings.cyberark_uap_base_url
         client_id = settings.cyberark_client_id
         client_secret = settings.cyberark_client_secret
     else:
@@ -1248,9 +1248,7 @@ async def _refresh_cyberark(db: AsyncSession) -> int:
                 uap_base_url=uap_base_url, **config
             )
             policies = await sia_collector.collect()
-            logger.info(
-                "CyberArk: collected %d SIA policies from API", len(policies)
-            )
+            logger.info("CyberArk: collected %d SIA policies from API", len(policies))
             policy_count = await _sync_cyberark_sia_policies(db, policies)
             total += policy_count
 
