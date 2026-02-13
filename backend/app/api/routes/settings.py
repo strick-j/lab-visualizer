@@ -766,12 +766,25 @@ async def _get_or_create_cyberark_settings(
         return settings
 
     settings = CyberArkSettings(
+        tenant_name=env_settings.cyberark_tenant_name,
         enabled=env_settings.cyberark_enabled,
         base_url=env_settings.cyberark_base_url,
         identity_url=env_settings.cyberark_identity_url,
+        uap_base_url=env_settings.cyberark_uap_base_url,
         client_id=env_settings.cyberark_client_id,
         client_secret=env_settings.cyberark_client_secret,
+        scim_enabled=env_settings.cyberark_scim_enabled,
+        scim_app_id=env_settings.cyberark_scim_app_id,
+        scim_scope=env_settings.cyberark_scim_scope,
+        scim_client_id=env_settings.cyberark_scim_client_id,
+        scim_client_secret=env_settings.cyberark_scim_client_secret,
     )
+    # Auto-derive scim_oauth2_url if both identity_url and scim_app_id are set
+    if settings.identity_url and settings.scim_app_id:
+        identity_base = settings.identity_url.rstrip("/")
+        settings.scim_oauth2_url = (
+            f"{identity_base}/oauth2/token/{settings.scim_app_id}"
+        )
     db.add(settings)
     await db.commit()
     await db.refresh(settings)

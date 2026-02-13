@@ -85,6 +85,20 @@ locals {
     OIDC_ISSUER      = var.oidc_issuer
     OIDC_CLIENT_ID   = var.oidc_client_id
     ADMIN_USERNAME   = var.admin_username
+
+    # CyberArk
+    CYBERARK_ENABLED      = tostring(var.cyberark_enabled)
+    CYBERARK_TENANT_NAME  = var.cyberark_tenant_name
+    CYBERARK_BASE_URL     = var.cyberark_base_url
+    CYBERARK_IDENTITY_URL = var.cyberark_identity_url
+    CYBERARK_CLIENT_ID    = var.cyberark_client_id
+    CYBERARK_UAP_BASE_URL = var.cyberark_uap_base_url
+
+    # CyberArk SCIM
+    CYBERARK_SCIM_ENABLED   = tostring(var.cyberark_scim_enabled)
+    CYBERARK_SCIM_APP_ID    = var.cyberark_scim_app_id
+    CYBERARK_SCIM_SCOPE     = var.cyberark_scim_scope
+    CYBERARK_SCIM_CLIENT_ID = var.cyberark_scim_client_id
   }
 
   # Secrets mapping (env var name -> Secret ARN)
@@ -97,7 +111,19 @@ locals {
   _admin_secrets = var.admin_password != "" ? {
     ADMIN_PASSWORD = module.secrets.admin_password_arn
   } : {}
-  secrets = merge(local._base_secrets, local._oidc_secrets, local._admin_secrets)
+  _cyberark_secrets = var.cyberark_client_secret != "" ? {
+    CYBERARK_CLIENT_SECRET = module.secrets.cyberark_client_secret_arn
+  } : {}
+  _scim_secrets = var.cyberark_scim_client_secret != "" ? {
+    CYBERARK_SCIM_CLIENT_SECRET = module.secrets.scim_client_secret_arn
+  } : {}
+  secrets = merge(
+    local._base_secrets,
+    local._oidc_secrets,
+    local._admin_secrets,
+    local._cyberark_secrets,
+    local._scim_secrets,
+  )
 }
 
 # -----------------------------------------------------------------------------
@@ -148,7 +174,14 @@ module "secrets" {
   oidc_client_secret  = var.oidc_client_secret
   create_admin_secret = var.admin_password != ""
   admin_password      = var.admin_password
-  tags                = local.common_tags
+
+  # CyberArk secrets
+  create_cyberark_secret      = var.cyberark_client_secret != ""
+  cyberark_client_secret      = var.cyberark_client_secret
+  create_scim_secret          = var.cyberark_scim_client_secret != ""
+  cyberark_scim_client_secret = var.cyberark_scim_client_secret
+
+  tags = local.common_tags
 }
 
 # -----------------------------------------------------------------------------
