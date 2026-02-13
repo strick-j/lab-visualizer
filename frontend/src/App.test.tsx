@@ -15,6 +15,16 @@ vi.mock("@/pages", () => ({
     <div data-testid="terraform-page">Terraform Content</div>
   ),
   TopologyPage: () => <div data-testid="topology-page">Topology Content</div>,
+  CyberArkPage: () => <div data-testid="cyberark-page">CyberArk Content</div>,
+  CyberArkDashboardPage: () => (
+    <div data-testid="cyberark-dashboard-page">CyberArk Dashboard Content</div>
+  ),
+  CyberArkUsersPage: () => (
+    <div data-testid="cyberark-users-page">CyberArk Users Content</div>
+  ),
+  AccessMappingPage: () => (
+    <div data-testid="access-mapping-page">Access Mapping Content</div>
+  ),
   LoginPage: () => <div data-testid="login-page">Login Content</div>,
   SettingsPage: () => <div data-testid="settings-page">Settings Content</div>,
   AuthCallbackPage: () => (
@@ -44,6 +54,13 @@ vi.mock("@/hooks", () => ({
       timestamp: "2024-01-15T12:00:00Z",
     },
   }),
+  useCyberArkSafes: () => ({ data: { data: [], meta: { total: 0 } } }),
+  useCyberArkRoles: () => ({ data: { data: [], meta: { total: 0 } } }),
+  useCyberArkSIAPolicies: () => ({ data: { data: [], meta: { total: 0 } } }),
+  useCyberArkDrift: () => ({
+    data: { drift_detected: false, items: [] },
+  }),
+  useCyberArkUsers: () => ({ data: { data: [], meta: { total: 0 } } }),
 }));
 
 // Mock the auth context
@@ -106,7 +123,7 @@ describe("App", () => {
 
   it("renders the sidebar navigation", () => {
     render(<App />);
-    expect(screen.getByText("Dashboard")).toBeInTheDocument();
+    expect(screen.getByText("Home")).toBeInTheDocument();
     expect(screen.getByText("EC2 Instances")).toBeInTheDocument();
     expect(screen.getByText("RDS Databases")).toBeInTheDocument();
     expect(screen.getByText("ECS Containers")).toBeInTheDocument();
