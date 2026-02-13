@@ -12,7 +12,9 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.deps import get_current_user
 from app.api.routes import (
+    access_mapping,
     auth,
+    cyberark,
     ec2,
     ecs,
     eip,
@@ -23,7 +25,6 @@ from app.api.routes import (
     rds,
     resources,
 )
-from app.api.routes import access_mapping, cyberark
 from app.api.routes import settings as settings_routes
 from app.api.routes import subnet, terraform, topology, users, vpc
 from app.config import get_settings
@@ -44,15 +45,17 @@ async def lifespan(app: FastAPI):
     """Application lifespan handler for startup and shutdown events."""
     from app.models.database import async_session_maker
     from app.services.auth import ensure_admin_user
+    from app.services.cyberark_settings import ensure_cyberark_settings
 
     # Startup
     logger.info("Starting AWS Infrastructure Visualizer...")
     await init_db()
     logger.info("Database initialized")
 
-    # Ensure admin user exists if configured
+    # Ensure admin user and CyberArk settings exist if configured
     async with async_session_maker() as session:
         await ensure_admin_user(session)
+        await ensure_cyberark_settings(session)
 
     yield
 

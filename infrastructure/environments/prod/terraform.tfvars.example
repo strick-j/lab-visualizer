@@ -35,6 +35,22 @@ oidc_client_secret = "..."  # Use Terraform variables or environment
 # admin_username = "admin"
 # admin_password = "YourStr0ng!Password"
 
+# CyberArk integration (optional)
+# cyberark_enabled       = true
+# cyberark_tenant_name   = "your-tenant-name"
+# cyberark_base_url      = "https://your-tenant.privilegecloud.cyberark.cloud"
+# cyberark_identity_url  = "https://your-tenant.id.cyberark.cloud"
+# cyberark_client_id     = "your-api-client-id"
+# cyberark_client_secret = "..."  # Use Terraform variables or environment
+# cyberark_uap_base_url  = "https://your-tenant.uap.cyberark.cloud/api"
+
+# CyberArk SCIM integration (optional - requires CyberArk identity URL above)
+# cyberark_scim_enabled       = true
+# cyberark_scim_app_id        = "your-scim-app-id"
+# cyberark_scim_scope         = "scim"
+# cyberark_scim_client_id     = "your-scim-client-id"
+# cyberark_scim_client_secret = "..."  # Use Terraform variables or environment
+
 # Application settings
 log_level = "INFO"
 debug     = false

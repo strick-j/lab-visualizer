@@ -158,6 +158,28 @@ class Settings(BaseSettings):
         description="Terraform resource type for SIA DB policy",
     )
 
+    # CyberArk tenant name (seeds CyberArkSettings in database on startup)
+    cyberark_tenant_name: Optional[str] = Field(
+        default=None, description="CyberArk tenant name for auto-discovery"
+    )
+
+    # SCIM integration (seeds CyberArkSettings in database on startup)
+    cyberark_scim_enabled: bool = Field(
+        default=False, description="Enable CyberArk SCIM user collection"
+    )
+    cyberark_scim_app_id: Optional[str] = Field(
+        default=None, description="CyberArk Identity SCIM application ID"
+    )
+    cyberark_scim_scope: Optional[str] = Field(
+        default=None, description="OAuth2 scope for SCIM token request"
+    )
+    cyberark_scim_client_id: Optional[str] = Field(
+        default=None, description="SCIM OAuth2 client ID"
+    )
+    cyberark_scim_client_secret: Optional[str] = Field(
+        default=None, description="SCIM OAuth2 client secret"
+    )
+
     @property
     def cors_origins_list(self) -> List[str]:
         """Parse CORS origins string into a list."""
