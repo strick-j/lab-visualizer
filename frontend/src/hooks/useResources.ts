@@ -31,6 +31,7 @@ import {
   getCyberArkSIAPolicies,
   getCyberArkSIAPolicy,
   getCyberArkDrift,
+  getCyberArkUsers,
   getAccessMapping,
   getAccessMappingUsers,
   getAccessMappingTargets,
@@ -84,6 +85,8 @@ export const queryKeys = {
     ["cyberark-sia-policies", filters] as const,
   cyberArkSIAPolicy: (id: string) => ["cyberark-sia-policy", id] as const,
   cyberArkDrift: ["cyberark-drift"] as const,
+  cyberArkUsers: (filters?: CyberArkFilters) =>
+    ["cyberark-users", filters] as const,
   accessMapping: (params?: { user?: string }) =>
     ["access-mapping", params] as const,
   accessMappingUsers: ["access-mapping-users"] as const,
@@ -404,6 +407,13 @@ export function useCyberArkDrift() {
   return useQuery({
     queryKey: queryKeys.cyberArkDrift,
     queryFn: getCyberArkDrift,
+  });
+}
+
+export function useCyberArkUsers(filters?: CyberArkFilters) {
+  return useQuery({
+    queryKey: queryKeys.cyberArkUsers(filters),
+    queryFn: () => getCyberArkUsers(filters),
   });
 }
 

@@ -578,6 +578,7 @@ import type {
   CyberArkSIAPolicyDetail,
   CyberArkDriftResponse,
   CyberArkFilters,
+  CyberArkUserListResponse,
   AccessMappingResponse,
   AccessMappingUserList,
   AccessMappingTargetList,
@@ -660,6 +661,16 @@ export async function getCyberArkSIAPolicy(
 
 export async function getCyberArkDrift(): Promise<CyberArkDriftResponse> {
   const response = await api.get("/cyberark/drift");
+  return response.data;
+}
+
+export async function getCyberArkUsers(
+  filters?: CyberArkFilters,
+): Promise<CyberArkUserListResponse> {
+  const params = new URLSearchParams();
+  if (filters?.search) params.append("search", filters.search);
+
+  const response = await api.get("/cyberark/users", { params });
   return response.data;
 }
 

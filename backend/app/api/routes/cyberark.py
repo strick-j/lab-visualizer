@@ -21,6 +21,7 @@ from app.models.cyberark import (
     CyberArkSafeMember,
     CyberArkSIAPolicy,
     CyberArkSIAPolicyPrincipal,
+    CyberArkUser,
 )
 from app.models.database import get_db
 from app.schemas.cyberark import (
@@ -34,6 +35,7 @@ from app.schemas.cyberark import (
     CyberArkSIAPolicyDetail,
     CyberArkSIAPolicyPrincipalResponse,
     CyberArkSIAPolicyResponse,
+    CyberArkUserResponse,
 )
 from app.schemas.resources import DriftItem, DriftResponse, ListResponse, MetaInfo
 
@@ -252,6 +254,34 @@ async def get_sia_policy(
         CyberArkSIAPolicyPrincipalResponse.model_validate(pr) for pr in principals
     ]
     return CyberArkSIAPolicyDetail(**pdict)
+
+
+# =============================================================================
+# User Endpoints
+# =============================================================================
+
+
+@router.get("/users", response_model=ListResponse[CyberArkUserResponse])
+async def list_users(
+    search: Optional[str] = Query(None),
+    db: AsyncSession = Depends(get_db),
+    _user=Depends(get_current_user),
+):
+    """List CyberArk Identity users."""
+    query = select(CyberArkUser).where(CyberArkUser.is_deleted == False)  # noqa: E712
+    if search:
+        query = query.where(
+            CyberArkUser.user_name.icontains(search)
+            | CyberArkUser.display_name.icontains(search)
+        )
+    query = query.order_by(CyberArkUser.user_name)
+
+    result = await db.execute(query)
+    users = result.scalars().all()
+    return ListResponse(
+        data=[CyberArkUserResponse.model_validate(u) for u in users],
+        meta=MetaInfo(total=len(users)),
+    )
 
 
 # =============================================================================
