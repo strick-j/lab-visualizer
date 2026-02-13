@@ -31,25 +31,25 @@ function VPCNodeComponent({ data, selected }: NodeProps<VPCNodeData>) {
       <Handle type="target" position={Position.Top} className="opacity-0" />
 
       {/* Header */}
-      <div className="flex items-center gap-2 mb-3 pb-2 border-b border-gray-200 dark:border-gray-700">
-        <div className="p-1.5 rounded bg-purple-100 dark:bg-purple-900/50">
+      <div className="flex items-center gap-2 mb-3 pb-2 border-b border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div className="p-1.5 rounded bg-purple-100 dark:bg-purple-900/50 shrink-0">
           <Network className="h-4 w-4 text-purple-600 dark:text-purple-400" />
         </div>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 overflow-hidden">
             <span className="font-semibold text-gray-900 dark:text-gray-100 truncate">
               {data.label || "VPC"}
             </span>
             {data.tfManaged && (
-              <span className="px-1.5 py-0.5 text-xs font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300 rounded">
+              <span className="px-1.5 py-0.5 text-xs font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300 rounded shrink-0">
                 TF
               </span>
             )}
           </div>
-          <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-            <span>{data.cidrBlock}</span>
-            <span>|</span>
-            <span className="font-mono">{data.vpcId}</span>
+          <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 overflow-hidden">
+            <span className="shrink-0">{data.cidrBlock}</span>
+            <span className="shrink-0">|</span>
+            <span className="font-mono truncate">{data.vpcId}</span>
           </div>
         </div>
       </div>

@@ -51,28 +51,28 @@ function SubnetNodeComponent({ data, selected }: NodeProps<SubnetNodeData>) {
       <Handle type="target" position={Position.Top} className="opacity-0" />
 
       {/* Header */}
-      <div className="flex items-center gap-2 mb-2">
-        <Boxes className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+      <div className="flex items-center gap-2 mb-2 overflow-hidden">
+        <Boxes className="h-4 w-4 text-gray-500 dark:text-gray-400 shrink-0" />
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 overflow-hidden">
             <span className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
               {data.label || "Subnet"}
             </span>
             <span
               className={cn(
-                "px-1.5 py-0.5 text-xs font-medium rounded",
+                "px-1.5 py-0.5 text-xs font-medium rounded shrink-0",
                 subnetTypeBadge[data.subnetType],
               )}
             >
               {data.subnetType}
             </span>
             {data.tfManaged && (
-              <span className="px-1.5 py-0.5 text-xs font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300 rounded">
+              <span className="px-1.5 py-0.5 text-xs font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300 rounded shrink-0">
                 TF
               </span>
             )}
           </div>
-          <div className="text-xs text-gray-500 dark:text-gray-400">
+          <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
             {data.cidrBlock} | {data.availabilityZone}
           </div>
         </div>
