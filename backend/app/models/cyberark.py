@@ -186,9 +186,7 @@ class CyberArkRoleMember(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     role_id: Mapped[str] = mapped_column(String(255), nullable=False)
     member_name: Mapped[str] = mapped_column(String(255), nullable=False)
-    member_type: Mapped[str] = mapped_column(
-        String(20), nullable=False
-    )  # user, group
+    member_type: Mapped[str] = mapped_column(String(20), nullable=False)  # user, group
 
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
@@ -215,8 +213,8 @@ class CyberArkSIAPolicy(Base):
     policy_id: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
     policy_name: Mapped[str] = mapped_column(String(255), nullable=False)
     policy_type: Mapped[str] = mapped_column(
-        String(20), nullable=False
-    )  # vm, database
+        String(50), nullable=False
+    )  # vm, database, cloud_console
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(
         String(20), nullable=False, default="active"
