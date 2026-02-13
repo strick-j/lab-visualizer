@@ -5,6 +5,7 @@ import {
   useAccessMappingUsers,
   useRefreshData,
 } from "@/hooks";
+import { useAuth } from "@/contexts/AuthContext";
 import { AccessMappingCanvas } from "@/components/access-mapping/AccessMappingCanvas";
 import {
   AccessMappingFilterBar,
@@ -20,6 +21,7 @@ const EMPTY_FILTERS: AccessMappingFilters = {
 };
 
 export function AccessMappingPage() {
+  const { user: authUser } = useAuth();
   const [filters, setFilters] = useState<AccessMappingFilters>(EMPTY_FILTERS);
 
   // Fetch data - pass user filter to API if selected
@@ -111,6 +113,7 @@ export function AccessMappingPage() {
           filters={filters}
           onChange={setFilters}
           users={usersData?.users || []}
+          isAdmin={authUser?.is_admin ?? false}
         />
         <AccessMappingLegend
           stats={{

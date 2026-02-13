@@ -4,7 +4,7 @@ import {
   ChevronUp,
   User,
   ShieldCheck,
-  Lock,
+  Vault,
   Key,
   Zap,
   Server,
@@ -85,7 +85,7 @@ export function AccessMappingLegend({ stats }: AccessMappingLegendProps) {
               color="bg-purple-100"
             />
             <LegendItem
-              icon={<Lock className="h-3.5 w-3.5 text-amber-600" />}
+              icon={<Vault className="h-3.5 w-3.5 text-amber-600" />}
               label="Safe"
               color="bg-amber-100"
             />

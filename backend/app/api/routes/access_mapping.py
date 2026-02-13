@@ -22,14 +22,51 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+async def _resolve_cyberark_user(
+    service: AccessMappingService, current_user
+) -> Optional[str]:
+    """Match the authenticated user to a CyberArk user name.
+
+    Tries case-insensitive matching of the user's email and username
+    against known CyberArk user names.
+    """
+    all_users = await service._get_all_users()
+    lower_map = {u.lower(): u for u in all_users}
+
+    if current_user.email:
+        match = lower_map.get(current_user.email.lower())
+        if match:
+            return match
+
+    if current_user.username:
+        match = lower_map.get(current_user.username.lower())
+        if match:
+            return match
+
+    return None
+
+
 @router.get("/access-mapping", response_model=AccessMappingResponse)
 async def get_access_mapping(
     user: Optional[str] = Query(None, description="Filter by user name"),
     db: AsyncSession = Depends(get_db),
-    _user=Depends(get_current_user),
+    current_user=Depends(get_current_user),
 ):
     """Get access mapping data for visualization."""
     service = AccessMappingService(db)
+
+    # Non-admin users can only see their own access
+    if not current_user.is_admin:
+        resolved = await _resolve_cyberark_user(service, current_user)
+        if not resolved:
+            return AccessMappingResponse(
+                users=[],
+                total_users=0,
+                total_targets=0,
+                total_standing_paths=0,
+                total_jit_paths=0,
+            )
+        user = resolved
 
     if user:
         user_mapping = await service.compute_user_access(user)
@@ -60,12 +97,18 @@ async def get_access_mapping(
 @router.get("/access-mapping/users", response_model=AccessMappingUserList)
 async def list_access_users(
     db: AsyncSession = Depends(get_db),
-    _user=Depends(get_current_user),
+    current_user=Depends(get_current_user),
 ):
     """List all unique users from CyberArk memberships."""
     service = AccessMappingService(db)
-    users = await service._get_all_users()
-    return AccessMappingUserList(users=users)
+
+    if current_user.is_admin:
+        users = await service._get_all_users()
+        return AccessMappingUserList(users=users)
+
+    # Non-admin: return only their own CyberArk identity
+    resolved = await _resolve_cyberark_user(service, current_user)
+    return AccessMappingUserList(users=[resolved] if resolved else [])
 
 
 @router.get("/access-mapping/targets", response_model=AccessMappingTargetList)

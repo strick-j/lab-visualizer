@@ -8,9 +8,9 @@
 import type { Node, Edge } from "reactflow";
 import type { AccessMappingResponse } from "@/types";
 
-const COLUMN_SPACING = 280;
+const COLUMN_SPACING = 360;
 const ROW_SPACING = 100;
-const NODE_WIDTH = 170;
+const NODE_WIDTH = 280;
 const START_X = 50;
 const START_Y = 50;
 

@@ -12,7 +12,7 @@ function RoleNodeComponent({ data }: NodeProps<RoleNodeData>) {
   return (
     <div
       className={cn(
-        "w-[160px] rounded-lg border-2 p-2.5 shadow-sm",
+        "w-[280px] rounded-lg border-2 p-2.5 shadow-sm",
         "border-purple-500 bg-white dark:bg-gray-900",
       )}
     >
