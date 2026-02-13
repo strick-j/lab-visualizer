@@ -24,19 +24,8 @@ import {
   getTerraformStates,
   getDrift,
   getTopology,
-  getCyberArkSafes,
-  getCyberArkSafe,
-  getCyberArkRoles,
-  getCyberArkRole,
-  getCyberArkSIAPolicies,
-  getCyberArkSIAPolicy,
-  getCyberArkDrift,
-  getCyberArkUsers,
-  getAccessMapping,
-  getAccessMappingUsers,
-  getAccessMappingTargets,
 } from "@/api";
-import type { ResourceFilters, CyberArkFilters } from "@/types";
+import type { ResourceFilters } from "@/types";
 
 // =============================================================================
 // Query Keys
@@ -75,22 +64,6 @@ export const queryKeys = {
   terraformStates: ["terraform-states"] as const,
   drift: ["drift"] as const,
   topology: (filters?: { vpc_id?: string }) => ["topology", filters] as const,
-  cyberArkSafes: (filters?: CyberArkFilters) =>
-    ["cyberark-safes", filters] as const,
-  cyberArkSafe: (name: string) => ["cyberark-safe", name] as const,
-  cyberArkRoles: (filters?: CyberArkFilters) =>
-    ["cyberark-roles", filters] as const,
-  cyberArkRole: (id: string) => ["cyberark-role", id] as const,
-  cyberArkSIAPolicies: (filters?: CyberArkFilters) =>
-    ["cyberark-sia-policies", filters] as const,
-  cyberArkSIAPolicy: (id: string) => ["cyberark-sia-policy", id] as const,
-  cyberArkDrift: ["cyberark-drift"] as const,
-  cyberArkUsers: (filters?: CyberArkFilters) =>
-    ["cyberark-users", filters] as const,
-  accessMapping: (params?: { user?: string }) =>
-    ["access-mapping", params] as const,
-  accessMappingUsers: ["access-mapping-users"] as const,
-  accessMappingTargets: ["access-mapping-targets"] as const,
 };
 
 // =============================================================================
@@ -313,14 +286,6 @@ export function useRefreshData() {
       queryClient.invalidateQueries({ queryKey: ["terraform-states"] });
       queryClient.invalidateQueries({ queryKey: ["drift"] });
       queryClient.invalidateQueries({ queryKey: ["topology"] });
-      queryClient.invalidateQueries({ queryKey: ["cyberark-safes"] });
-      queryClient.invalidateQueries({ queryKey: ["cyberark-roles"] });
-      queryClient.invalidateQueries({ queryKey: ["cyberark-users"] });
-      queryClient.invalidateQueries({ queryKey: ["cyberark-sia-policies"] });
-      queryClient.invalidateQueries({ queryKey: ["cyberark-drift"] });
-      queryClient.invalidateQueries({ queryKey: ["access-mapping"] });
-      queryClient.invalidateQueries({ queryKey: ["access-mapping-users"] });
-      queryClient.invalidateQueries({ queryKey: ["access-mapping-targets"] });
     },
   });
 }
@@ -351,93 +316,5 @@ export function useTopology(filters?: { vpc_id?: string }) {
   return useQuery({
     queryKey: queryKeys.topology(filters),
     queryFn: () => getTopology(filters),
-  });
-}
-
-// =============================================================================
-// CyberArk
-// =============================================================================
-
-export function useCyberArkSafes(filters?: CyberArkFilters) {
-  return useQuery({
-    queryKey: queryKeys.cyberArkSafes(filters),
-    queryFn: () => getCyberArkSafes(filters),
-  });
-}
-
-export function useCyberArkSafe(safeName: string) {
-  return useQuery({
-    queryKey: queryKeys.cyberArkSafe(safeName),
-    queryFn: () => getCyberArkSafe(safeName),
-    enabled: !!safeName,
-  });
-}
-
-export function useCyberArkRoles(filters?: CyberArkFilters) {
-  return useQuery({
-    queryKey: queryKeys.cyberArkRoles(filters),
-    queryFn: () => getCyberArkRoles(filters),
-  });
-}
-
-export function useCyberArkRole(roleId: string) {
-  return useQuery({
-    queryKey: queryKeys.cyberArkRole(roleId),
-    queryFn: () => getCyberArkRole(roleId),
-    enabled: !!roleId,
-  });
-}
-
-export function useCyberArkSIAPolicies(filters?: CyberArkFilters) {
-  return useQuery({
-    queryKey: queryKeys.cyberArkSIAPolicies(filters),
-    queryFn: () => getCyberArkSIAPolicies(filters),
-  });
-}
-
-export function useCyberArkSIAPolicy(policyId: string) {
-  return useQuery({
-    queryKey: queryKeys.cyberArkSIAPolicy(policyId),
-    queryFn: () => getCyberArkSIAPolicy(policyId),
-    enabled: !!policyId,
-  });
-}
-
-export function useCyberArkDrift() {
-  return useQuery({
-    queryKey: queryKeys.cyberArkDrift,
-    queryFn: getCyberArkDrift,
-  });
-}
-
-export function useCyberArkUsers(filters?: CyberArkFilters) {
-  return useQuery({
-    queryKey: queryKeys.cyberArkUsers(filters),
-    queryFn: () => getCyberArkUsers(filters),
-  });
-}
-
-// =============================================================================
-// Access Mapping
-// =============================================================================
-
-export function useAccessMapping(params?: { user?: string }) {
-  return useQuery({
-    queryKey: queryKeys.accessMapping(params),
-    queryFn: () => getAccessMapping(params),
-  });
-}
-
-export function useAccessMappingUsers() {
-  return useQuery({
-    queryKey: queryKeys.accessMappingUsers,
-    queryFn: getAccessMappingUsers,
-  });
-}
-
-export function useAccessMappingTargets() {
-  return useQuery({
-    queryKey: queryKeys.accessMappingTargets,
-    queryFn: getAccessMappingTargets,
   });
 }

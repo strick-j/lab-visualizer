@@ -148,31 +148,12 @@ interface BaseNodeData {
   tfResourceAddress?: string;
 }
 
-export interface VPCChildSummary {
-  subnetCount: number;
-  ec2Count: number;
-  rdsCount: number;
-  ecsCount: number;
-  natCount: number;
-  igwCount: number;
-}
-
 export interface VPCNodeData extends BaseNodeData {
   type: "vpc";
   vpcId: string;
   cidrBlock: string;
   minWidth?: number;
   minHeight?: number;
-  collapsed?: boolean;
-  onToggleCollapse?: () => void;
-  childSummary?: VPCChildSummary;
-}
-
-export interface SubnetChildSummary {
-  ec2Count: number;
-  rdsCount: number;
-  ecsCount: number;
-  natCount: number;
 }
 
 export interface SubnetNodeData extends BaseNodeData {
@@ -183,9 +164,6 @@ export interface SubnetNodeData extends BaseNodeData {
   availabilityZone: string;
   minWidth?: number;
   minHeight?: number;
-  collapsed?: boolean;
-  onToggleCollapse?: () => void;
-  childSummary?: SubnetChildSummary;
 }
 
 export interface EC2NodeData extends BaseNodeData {
