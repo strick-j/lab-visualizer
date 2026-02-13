@@ -387,6 +387,14 @@ class AccessMappingService:
 
         all_policy_ids = direct_policy_ids | set(role_policies.keys())
         if not all_policy_ids:
+            logger.debug(
+                "JIT: no SIA policies matched for user %s "
+                "(direct=%d, role-based=%d, roles=%s)",
+                user_name,
+                len(direct_policy_ids),
+                len(role_policies),
+                list(role_names)[:10],
+            )
             return results
 
         # Get active policies
@@ -398,6 +406,12 @@ class AccessMappingService:
             )
         )
         policies = policies_result.scalars().all()
+        logger.debug(
+            "JIT: user %s matched %d policies (%d active)",
+            user_name,
+            len(all_policy_ids),
+            len(policies),
+        )
 
         for policy in policies:
             criteria = {}
@@ -412,6 +426,13 @@ class AccessMappingService:
                     pass
 
             matched_targets = await self._match_sia_criteria_to_targets(criteria)
+            logger.debug(
+                "JIT: policy %s (%s) criteria_keys=%s matched %d targets",
+                policy.policy_id,
+                policy.policy_name,
+                list(criteria.keys()) if criteria else [],
+                len(matched_targets),
+            )
 
             for (
                 target_type,
