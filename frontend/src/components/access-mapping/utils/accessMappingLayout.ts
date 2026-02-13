@@ -2,11 +2,16 @@
  * Layout calculator for access mapping visualization.
  *
  * Creates a left-to-right columnar layout:
- * Col 1: Users → Col 2: Roles → Col 3: Safes/SIA Policies → Col 4: Accounts → Col 5: Targets
+ * Col 0: Users → Col 1: Roles → Col 2: Safes/SIA Policies → Col 3: Accounts → Col 4: Targets
+ *
+ * Supports collapsible nodes. When a node is collapsed, its outgoing edges
+ * are hidden and any downstream nodes that become unreachable are also hidden.
+ * Shared nodes (e.g., a role used by two users) remain visible as long as at
+ * least one incoming edge is still visible.
  */
 
 import type { Node, Edge } from "reactflow";
-import type { AccessMappingResponse } from "@/types";
+import type { AccessMappingResponse, AccessNodeChildSummary } from "@/types";
 
 const COLUMN_SPACING = 360;
 const ROW_SPACING = 100;
@@ -17,6 +22,106 @@ const START_Y = 50;
 interface LayoutResult {
   nodes: Node[];
   edges: Edge[];
+}
+
+/**
+ * Determine the column index for an entity type
+ */
+function entityColumn(entityType: string): number {
+  switch (entityType) {
+    case "role":
+      return 1;
+    case "safe":
+    case "sia_policy":
+      return 2;
+    case "account":
+      return 3;
+    default:
+      return -1;
+  }
+}
+
+/**
+ * Map entity type to React Flow node type
+ */
+function entityNodeType(entityType: string): string {
+  switch (entityType) {
+    case "role":
+      return "access-role";
+    case "safe":
+      return "access-safe";
+    case "account":
+      return "access-account";
+    case "sia_policy":
+      return "access-sia-policy";
+    default:
+      return "";
+  }
+}
+
+/**
+ * Build node data for an entity type
+ */
+function entityNodeData(
+  entityType: string,
+  entityName: string,
+): Record<string, unknown> {
+  switch (entityType) {
+    case "role":
+      return { label: entityName, roleName: entityName };
+    case "safe":
+      return { label: entityName, safeName: entityName };
+    case "account":
+      return { label: entityName, accountName: entityName };
+    case "sia_policy":
+      return { label: entityName, policyName: entityName };
+    default:
+      return { label: entityName };
+  }
+}
+
+/**
+ * Seen set for a given entity type
+ */
+function getSeenSet(
+  entityType: string,
+  seenSets: {
+    roles: Set<string>;
+    safes: Set<string>;
+    accounts: Set<string>;
+    policies: Set<string>;
+  },
+): Set<string> {
+  switch (entityType) {
+    case "role":
+      return seenSets.roles;
+    case "safe":
+      return seenSets.safes;
+    case "account":
+      return seenSets.accounts;
+    case "sia_policy":
+      return seenSets.policies;
+    default:
+      return new Set();
+  }
+}
+
+/**
+ * Map entity type to a node ID prefix
+ */
+function entityNodeId(entityType: string, entityId: string): string {
+  switch (entityType) {
+    case "role":
+      return `role-${entityId}`;
+    case "safe":
+      return `safe-${entityId}`;
+    case "account":
+      return `account-${entityId}`;
+    case "sia_policy":
+      return `policy-${entityId}`;
+    default:
+      return `${entityType}-${entityId}`;
+  }
 }
 
 /**
@@ -32,10 +137,12 @@ function processPathSteps(
   nodes: Node[],
   edges: Edge[],
   colY: number[],
-  seenRoles: Set<string>,
-  seenSafes: Set<string>,
-  seenAccounts: Set<string>,
-  seenPolicies: Set<string>,
+  seenSets: {
+    roles: Set<string>;
+    safes: Set<string>;
+    accounts: Set<string>;
+    policies: Set<string>;
+  },
   targetId: string | null,
 ): void {
   const isStanding = path.access_type === "standing";
@@ -46,62 +153,15 @@ function processPathSteps(
   let prevNodeId = userId;
 
   for (const step of path.steps) {
-    let nodeId = "";
-    let nodeType = "";
-    let nodeData: Record<string, unknown> = {};
-    let column = 0;
+    const column = entityColumn(step.entity_type);
+    if (column === -1) continue;
 
-    switch (step.entity_type) {
-      case "role":
-        nodeId = `role-${step.entity_id}`;
-        nodeType = "access-role";
-        nodeData = {
-          label: step.entity_name,
-          roleName: step.entity_name,
-        };
-        column = 1;
-        break;
-      case "safe":
-        nodeId = `safe-${step.entity_id}`;
-        nodeType = "access-safe";
-        nodeData = {
-          label: step.entity_name,
-          safeName: step.entity_name,
-        };
-        column = 2;
-        break;
-      case "account":
-        nodeId = `account-${step.entity_id}`;
-        nodeType = "access-account";
-        nodeData = {
-          label: step.entity_name,
-          accountName: step.entity_name,
-        };
-        column = 3;
-        break;
-      case "sia_policy":
-        nodeId = `policy-${step.entity_id}`;
-        nodeType = "access-sia-policy";
-        nodeData = {
-          label: step.entity_name,
-          policyName: step.entity_name,
-        };
-        column = 2;
-        break;
-      default:
-        continue;
-    }
+    const nodeId = entityNodeId(step.entity_type, step.entity_id);
+    const nodeType = entityNodeType(step.entity_type);
+    const nodeData = entityNodeData(step.entity_type, step.entity_name);
+    const seenSet = getSeenSet(step.entity_type, seenSets);
 
     // Add the intermediate node if not already added
-    const seenSet =
-      step.entity_type === "role"
-        ? seenRoles
-        : step.entity_type === "safe"
-          ? seenSafes
-          : step.entity_type === "account"
-            ? seenAccounts
-            : seenPolicies;
-
     if (!seenSet.has(step.entity_id)) {
       seenSet.add(step.entity_id);
       nodes.push({
@@ -140,8 +200,130 @@ function processPathSteps(
         source: prevNodeId,
         target: targetId,
         style: edgeStyle,
-        animated: !isStanding,
+        animated: path.access_type !== "standing",
       });
+    }
+  }
+}
+
+/**
+ * Compute child summary for a collapsed node by traversing its outgoing edges
+ */
+function computeChildSummary(
+  nodeId: string,
+  edges: Edge[],
+  nodes: Node[],
+): AccessNodeChildSummary {
+  const summary: AccessNodeChildSummary = {};
+  const visited = new Set<string>();
+  const queue = [nodeId];
+
+  // BFS from the collapsed node through outgoing edges
+  while (queue.length > 0) {
+    const currentId = queue.shift()!;
+    const outgoing = edges.filter((e) => e.source === currentId);
+
+    for (const edge of outgoing) {
+      if (visited.has(edge.target)) continue;
+      visited.add(edge.target);
+
+      const targetNode = nodes.find((n) => n.id === edge.target);
+      if (!targetNode) continue;
+
+      switch (targetNode.type) {
+        case "access-role":
+          summary.roleCount = (summary.roleCount || 0) + 1;
+          break;
+        case "access-safe":
+          summary.safeCount = (summary.safeCount || 0) + 1;
+          break;
+        case "access-sia-policy":
+          summary.policyCount = (summary.policyCount || 0) + 1;
+          break;
+        case "access-account":
+          summary.accountCount = (summary.accountCount || 0) + 1;
+          break;
+        case "access-ec2-target":
+        case "access-rds-target":
+          summary.targetCount = (summary.targetCount || 0) + 1;
+          break;
+      }
+
+      // Count standing vs JIT from edge styles
+      if (
+        targetNode.type === "access-ec2-target" ||
+        targetNode.type === "access-rds-target"
+      ) {
+        if (edge.animated) {
+          summary.jitCount = (summary.jitCount || 0) + 1;
+        } else {
+          summary.standingCount = (summary.standingCount || 0) + 1;
+        }
+      }
+
+      // Continue BFS downstream
+      queue.push(edge.target);
+    }
+  }
+
+  return summary;
+}
+
+/**
+ * Apply collapse logic: hide outgoing edges from collapsed nodes,
+ * then hide any nodes that become unreachable.
+ */
+function applyCollapseState(
+  nodes: Node[],
+  edges: Edge[],
+  collapsedNodeIds: Set<string>,
+): void {
+  // User nodes are root nodes - always visible
+  const rootNodeTypes = new Set(["access-user"]);
+
+  // Step 1: Compute child summaries and mark collapsed nodes
+  for (const node of nodes) {
+    if (collapsedNodeIds.has(node.id)) {
+      node.data = {
+        ...node.data,
+        collapsed: true,
+        childSummary: computeChildSummary(node.id, edges, nodes),
+      };
+    }
+  }
+
+  // Step 2: Hide outgoing edges from collapsed nodes
+  for (const edge of edges) {
+    if (collapsedNodeIds.has(edge.source)) {
+      edge.hidden = true;
+    }
+  }
+
+  // Step 3: Fixed-point iteration - hide nodes with no visible incoming edges
+  // Root nodes (users) are always visible. Non-root nodes need at least
+  // one visible incoming edge to remain visible.
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const node of nodes) {
+      if (node.hidden) continue;
+      if (rootNodeTypes.has(node.type || "")) continue;
+
+      const hasVisibleIncoming = edges.some(
+        (e) => e.target === node.id && !e.hidden,
+      );
+
+      if (!hasVisibleIncoming) {
+        node.hidden = true;
+        // Also hide all outgoing edges from this now-hidden node
+        for (const edge of edges) {
+          if (edge.source === node.id && !edge.hidden) {
+            edge.hidden = true;
+            changed = true;
+          }
+        }
+        changed = true;
+      }
     }
   }
 }
@@ -149,17 +331,20 @@ function processPathSteps(
 export function calculateAccessMappingLayout(
   data: AccessMappingResponse,
   filters?: { accessType?: string; selectedUser?: string },
+  collapsedNodeIds?: Set<string>,
 ): LayoutResult {
   const nodes: Node[] = [];
   const edges: Edge[] = [];
 
   // Track unique entities to avoid duplicates
   const seenUsers = new Set<string>();
-  const seenRoles = new Set<string>();
-  const seenSafes = new Set<string>();
-  const seenAccounts = new Set<string>();
-  const seenPolicies = new Set<string>();
   const seenTargets = new Set<string>();
+  const seenSets = {
+    roles: new Set<string>(),
+    safes: new Set<string>(),
+    accounts: new Set<string>(),
+    policies: new Set<string>(),
+  };
 
   // Column position trackers (y offset for each column)
   const colY = [START_Y, START_Y, START_Y, START_Y, START_Y];
@@ -221,18 +406,7 @@ export function calculateAccessMappingLayout(
           continue;
         }
 
-        processPathSteps(
-          path,
-          userId,
-          nodes,
-          edges,
-          colY,
-          seenRoles,
-          seenSafes,
-          seenAccounts,
-          seenPolicies,
-          targetId,
-        );
+        processPathSteps(path, userId, nodes, edges, colY, seenSets, targetId);
       }
     }
 
@@ -243,22 +417,16 @@ export function calculateAccessMappingLayout(
         continue;
       }
 
-      processPathSteps(
-        path,
-        userId,
-        nodes,
-        edges,
-        colY,
-        seenRoles,
-        seenSafes,
-        seenAccounts,
-        seenPolicies,
-        null,
-      );
+      processPathSteps(path, userId, nodes, edges, colY, seenSets, null);
     }
   }
 
-  // Center columns vertically
+  // Apply collapse state (hides edges and unreachable nodes)
+  if (collapsedNodeIds && collapsedNodeIds.size > 0) {
+    applyCollapseState(nodes, edges, collapsedNodeIds);
+  }
+
+  // Center columns vertically (only visible nodes)
   centerColumn(nodes, "access-user", START_X);
   centerColumn(nodes, "access-role", START_X + COLUMN_SPACING);
   centerColumn(
@@ -282,7 +450,9 @@ function centerColumn(
   _x: number,
 ): void {
   const typeArr = Array.isArray(types) ? types : [types];
-  const columnNodes = nodes.filter((n) => typeArr.includes(n.type || ""));
+  const columnNodes = nodes.filter(
+    (n) => typeArr.includes(n.type || "") && !n.hidden,
+  );
   if (columnNodes.length === 0) return;
 
   const totalHeight = (columnNodes.length - 1) * ROW_SPACING;
