@@ -8,6 +8,9 @@ interface RDSTargetNodeData {
   dbIdentifier: string;
   endpoint?: string;
   displayStatus?: string;
+  instanceClass?: string;
+  engine?: string;
+  vpcId?: string;
 }
 
 const statusColors: Record<string, string> = {
@@ -64,6 +67,26 @@ function RDSTargetNodeComponent({ data }: NodeProps<RDSTargetNodeData>) {
           )}
         </div>
       </div>
+
+      {(data.engine || data.instanceClass || data.vpcId) && (
+        <div className="mt-1.5 flex flex-wrap gap-1">
+          {data.engine && (
+            <span className="px-1.5 py-0.5 text-[10px] font-medium bg-blue-50 text-blue-600 dark:bg-blue-900/40 dark:text-blue-300 rounded">
+              {data.engine}
+            </span>
+          )}
+          {data.instanceClass && (
+            <span className="px-1.5 py-0.5 text-[10px] font-medium bg-blue-50 text-blue-600 dark:bg-blue-900/40 dark:text-blue-300 rounded">
+              {data.instanceClass}
+            </span>
+          )}
+          {data.vpcId && (
+            <span className="px-1.5 py-0.5 text-[10px] font-mono bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400 rounded">
+              {data.vpcId}
+            </span>
+          )}
+        </div>
+      )}
 
       <Handle type="source" position={Position.Right} className="opacity-0" />
     </div>

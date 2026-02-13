@@ -65,14 +65,24 @@ function entityNodeType(entityType: string): string {
 function entityNodeData(
   entityType: string,
   entityName: string,
+  context?: Record<string, unknown> | null,
 ): Record<string, unknown> {
   switch (entityType) {
     case "role":
       return { label: entityName, roleName: entityName };
     case "safe":
       return { label: entityName, safeName: entityName };
-    case "account":
-      return { label: entityName, accountName: entityName };
+    case "account": {
+      const data: Record<string, unknown> = {
+        label: entityName,
+        accountName: entityName,
+      };
+      if (context?.platform_id) data.platformId = context.platform_id;
+      if (context?.username) data.username = context.username;
+      if (context?.secret_type) data.secretType = context.secret_type;
+      if (context?.address) data.address = context.address;
+      return data;
+    }
     case "sia_policy":
       return { label: entityName, policyName: entityName };
     default:
@@ -131,7 +141,12 @@ function entityNodeId(entityType: string, entityId: string): string {
 function processPathSteps(
   path: {
     access_type: string;
-    steps: { entity_type: string; entity_id: string; entity_name: string }[];
+    steps: {
+      entity_type: string;
+      entity_id: string;
+      entity_name: string;
+      context?: Record<string, unknown> | null;
+    }[];
   },
   userId: string,
   nodes: Node[],
@@ -158,7 +173,11 @@ function processPathSteps(
 
     const nodeId = entityNodeId(step.entity_type, step.entity_id);
     const nodeType = entityNodeType(step.entity_type);
-    const nodeData = entityNodeData(step.entity_type, step.entity_name);
+    const nodeData = entityNodeData(
+      step.entity_type,
+      step.entity_name,
+      step.context,
+    );
     const seenSet = getSeenSet(step.entity_type, seenSets);
 
     // Add the intermediate node if not already added
@@ -384,12 +403,17 @@ export function calculateAccessMappingLayout(
                 instanceId: target.target_id,
                 privateIp: target.target_address,
                 displayStatus: target.display_status,
+                instanceType: target.instance_type,
+                vpcId: target.vpc_id,
               }
             : {
                 label: target.target_name || target.target_id,
                 dbIdentifier: target.target_id,
                 endpoint: target.target_address,
                 displayStatus: target.display_status,
+                instanceClass: target.instance_type,
+                engine: target.engine,
+                vpcId: target.vpc_id,
               };
         nodes.push({
           id: targetId,

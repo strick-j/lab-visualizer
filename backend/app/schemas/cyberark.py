@@ -173,6 +173,7 @@ class AccessPathStep(BaseSchema):
     entity_type: str  # user, role, safe, account, sia_policy
     entity_id: str
     entity_name: str
+    context: Optional[Dict[str, Any]] = None
 
 
 class AccessPath(BaseSchema):
@@ -191,6 +192,9 @@ class TargetAccessInfo(BaseSchema):
     target_address: Optional[str] = None
     vpc_id: Optional[str] = None
     display_status: Optional[str] = None
+    instance_type: Optional[str] = None  # EC2 instance type or RDS instance class
+    engine: Optional[str] = None  # RDS engine (e.g., "postgres", "mysql")
+    platform: Optional[str] = None  # Platform label (e.g., "Linux", "PostgreSQL")
     access_paths: List[AccessPath] = []
 
 
