@@ -16,6 +16,7 @@ via ``GET /policies/{policyId}``.
 The response format is ``{ "results": [...], "nextToken": "...", "total": N }``.
 """
 
+import asyncio
 import logging
 from typing import Any, Dict, List, Optional
 
@@ -49,6 +50,7 @@ class CyberArkSIAPolicyCollector(CyberArkBaseCollector):
             return []
 
         all_policies = await self._fetch_all_policies()
+        all_policies = await self._enrich_with_details(all_policies)
         results = [self._normalise_policy(p) for p in all_policies]
         # Filter out any that failed to parse (returned None)
         results = [r for r in results if r is not None]
@@ -80,6 +82,44 @@ class CyberArkSIAPolicyCollector(CyberArkBaseCollector):
             logger.exception("Failed to collect SIA policies")
 
         return all_policies
+
+    async def _fetch_policy_detail(self, policy_id: str) -> Optional[Dict[str, Any]]:
+        """Fetch full policy detail including targets via GET /policies/{policyId}."""
+        url = f"{self.uap_base_url}/policies/{policy_id}"
+        try:
+            return await self._api_get(url)
+        except Exception:
+            logger.warning(
+                "SIA: failed to fetch detail for policy %s",
+                policy_id,
+                exc_info=True,
+            )
+            return None
+
+    async def _enrich_with_details(
+        self, policies: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
+        """Enrich list-endpoint policies with target data from the detail endpoint.
+
+        Uses bounded concurrency to avoid overwhelming the UAP API.
+        """
+        semaphore = asyncio.Semaphore(5)
+
+        async def _fetch_one(policy: Dict[str, Any]) -> Dict[str, Any]:
+            policy_id = policy.get("metadata", {}).get("policyId", "")
+            if not policy_id:
+                return policy
+            async with semaphore:
+                detail = await self._fetch_policy_detail(policy_id)
+            if detail:
+                policy["targets"] = detail.get("targets", {})
+                policy["delegationClassification"] = detail.get(
+                    "delegationClassification", ""
+                )
+            return policy
+
+        enriched = await asyncio.gather(*[_fetch_one(p) for p in policies])
+        return list(enriched)
 
     # ------------------------------------------------------------------
     # Normalise
@@ -117,7 +157,7 @@ class CyberArkSIAPolicyCollector(CyberArkBaseCollector):
             "policy_type": policy_type,
             "description": metadata.get("description"),
             "status": status,
-            "target_criteria": {},  # detail fetch not implemented yet
+            "target_criteria": self._extract_target_criteria(raw),
             "principals": principals,
         }
 
@@ -149,3 +189,56 @@ class CyberArkSIAPolicyCollector(CyberArkBaseCollector):
             elif isinstance(p, str):
                 principals.append({"principal_name": p, "principal_type": "user"})
         return principals
+
+    @staticmethod
+    def _extract_target_criteria(raw: Dict[str, Any]) -> Dict[str, Any]:
+        """Extract target criteria from the enriched policy dict.
+
+        Converts the API ``targets.AWS`` structure into the internal format
+        consumed by :meth:`AccessMappingService._match_sia_criteria_to_targets`.
+
+        API format::
+
+            {"targets": {"AWS": {"vpcIds": [...], "tags": [{"key": ..., "value": [...]}], ...}}}
+
+        Internal format::
+
+            {"vpc_ids": [...], "tags": {"key": [values]}, "match_all": True/False, ...}
+        """
+        targets = raw.get("targets", {})
+        aws_targets = targets.get("AWS", {})
+
+        if not aws_targets:
+            return {}
+
+        vpc_ids = aws_targets.get("vpcIds", []) or []
+        regions = aws_targets.get("regions", []) or []
+        account_ids = aws_targets.get("accountIds", []) or []
+        raw_tags = aws_targets.get("tags", []) or []
+
+        # Convert tags from [{key, value: [...]}] to {key: [values]}
+        tags: Dict[str, List[str]] = {}
+        for tag_entry in raw_tags:
+            if not isinstance(tag_entry, dict):
+                continue
+            key = tag_entry.get("key", "")
+            values = tag_entry.get("value", [])
+            if key and values:
+                tags[key] = values if isinstance(values, list) else [values]
+
+        criteria: Dict[str, Any] = {}
+
+        if vpc_ids:
+            criteria["vpc_ids"] = vpc_ids
+        if tags:
+            criteria["tags"] = tags
+        if regions:
+            criteria["regions"] = regions
+        if account_ids:
+            criteria["account_ids"] = account_ids
+
+        # All target arrays empty → policy applies to all targets
+        if not criteria:
+            criteria["match_all"] = True
+
+        return criteria
