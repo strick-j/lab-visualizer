@@ -1,6 +1,6 @@
 import { memo } from "react";
 import { NodeProps, Handle, Position } from "reactflow";
-import { Lock } from "lucide-react";
+import { Vault } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface SafeNodeData {
@@ -14,7 +14,7 @@ function SafeNodeComponent({ data }: NodeProps<SafeNodeData>) {
   return (
     <div
       className={cn(
-        "w-[170px] rounded-lg border-2 p-2.5 shadow-sm",
+        "w-[280px] rounded-lg border-2 p-2.5 shadow-sm",
         "border-amber-500 bg-white dark:bg-gray-900",
       )}
     >
@@ -22,7 +22,7 @@ function SafeNodeComponent({ data }: NodeProps<SafeNodeData>) {
 
       <div className="flex items-start gap-2">
         <div className="p-1.5 rounded bg-amber-100 dark:bg-amber-900/50 shrink-0">
-          <Lock className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+          <Vault className="h-4 w-4 text-amber-600 dark:text-amber-400" />
         </div>
         <div className="flex-1 min-w-0">
           <span className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate block">

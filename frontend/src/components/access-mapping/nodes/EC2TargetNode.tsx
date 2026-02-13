@@ -32,7 +32,7 @@ function EC2TargetNodeComponent({ data }: NodeProps<EC2TargetNodeData>) {
   return (
     <div
       className={cn(
-        "w-[170px] rounded-lg border-2 p-2.5 shadow-sm",
+        "w-[280px] rounded-lg border-2 p-2.5 shadow-sm",
         statusColors[status] || statusColors.unknown,
       )}
     >

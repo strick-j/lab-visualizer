@@ -10,6 +10,7 @@ interface AccessMappingFilterBarProps {
   filters: AccessMappingFilters;
   onChange: (filters: AccessMappingFilters) => void;
   users: string[];
+  isAdmin: boolean;
 }
 
 export type { AccessMappingFilters };
@@ -18,6 +19,7 @@ export function AccessMappingFilterBar({
   filters,
   onChange,
   users,
+  isAdmin,
 }: AccessMappingFilterBarProps) {
   const hasFilters =
     filters.search || filters.accessType || filters.selectedUser;
@@ -40,19 +42,23 @@ export function AccessMappingFilterBar({
         />
       </div>
 
-      {/* User selector */}
-      <select
-        value={filters.selectedUser}
-        onChange={(e) => onChange({ ...filters, selectedUser: e.target.value })}
-        className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300"
-      >
-        <option value="">All Users</option>
-        {users.map((user) => (
-          <option key={user} value={user}>
-            {user}
-          </option>
-        ))}
-      </select>
+      {/* User selector (admin only) */}
+      {isAdmin && (
+        <select
+          value={filters.selectedUser}
+          onChange={(e) =>
+            onChange({ ...filters, selectedUser: e.target.value })
+          }
+          className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300"
+        >
+          <option value="">All Users</option>
+          {users.map((user) => (
+            <option key={user} value={user}>
+              {user}
+            </option>
+          ))}
+        </select>
+      )}
 
       {/* Access type selector */}
       <select
