@@ -35,9 +35,17 @@ export function SIAPolicyDetailPanel({
   const renderCriteria = (criteria: Record<string, unknown>) => {
     return Object.entries(criteria).map(([key, value]) => {
       if (!value || (Array.isArray(value) && value.length === 0)) return null;
-      const displayValue = Array.isArray(value)
-        ? value.join(", ")
-        : String(value);
+      let displayValue: string;
+      if (Array.isArray(value)) {
+        displayValue = value.join(", ");
+      } else if (typeof value === "object" && value !== null) {
+        // Nested objects like tags: {"env": ["dev"], "os": ["linux", "unix"]}
+        displayValue = Object.entries(value as Record<string, unknown>)
+          .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(", ") : v}`)
+          .join("; ");
+      } else {
+        displayValue = String(value);
+      }
       return <DetailRow key={key} label={key} value={displayValue} />;
     });
   };
