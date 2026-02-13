@@ -8,6 +8,10 @@ import {
   CheckCircle,
   Network,
   Container,
+  Shield,
+  Lock,
+  UserCog,
+  ShieldCheck,
 } from "lucide-react";
 import {
   Card,
@@ -18,7 +22,7 @@ import {
   StatusBadge,
   Select,
 } from "@/components/common";
-import { ResourceSummaryCard } from "@/components/dashboard";
+import { ResourceSummaryCard, SummaryStatCard } from "@/components/dashboard";
 import {
   useStatusSummary,
   useEC2Instances,
@@ -30,6 +34,10 @@ import {
   useInternetGateways,
   useNATGateways,
   useElasticIPs,
+  useCyberArkSafes,
+  useCyberArkRoles,
+  useCyberArkSIAPolicies,
+  useCyberArkDrift,
 } from "@/hooks";
 import { formatRelativeTime, getResourceName } from "@/lib/utils";
 import type {
@@ -63,6 +71,12 @@ export function DashboardPage() {
   const { data: igwData } = useInternetGateways(filters);
   const { data: natData } = useNATGateways(filters);
   const { data: eipData } = useElasticIPs(filters);
+
+  // CyberArk data
+  const { data: cyberArkSafesData } = useCyberArkSafes();
+  const { data: cyberArkRolesData } = useCyberArkRoles();
+  const { data: cyberArkPoliciesData } = useCyberArkSIAPolicies();
+  const { data: cyberArkDrift } = useCyberArkDrift();
 
   if (summaryLoading) {
     return <PageLoading />;
@@ -107,10 +121,10 @@ export function DashboardPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-            Dashboard
+            Home
           </h1>
           <p className="text-gray-500 dark:text-gray-400">
-            Overview of your AWS infrastructure
+            Overview of your infrastructure
           </p>
         </div>
         <div className="w-40">
@@ -248,6 +262,72 @@ export function DashboardPage() {
           </div>
         </div>
       )}
+
+      {/* CyberArk Identity Security Summary */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="flex items-center gap-2 text-lg font-semibold text-gray-900 dark:text-gray-100">
+            <Shield className="h-5 w-5 text-purple-600" />
+            CyberArk Identity Security
+          </h2>
+          <Link
+            to="/cyberark-dashboard"
+            className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+          >
+            View CyberArk Dashboard →
+          </Link>
+        </div>
+        <div className="grid gap-4 grid-cols-1 md:grid-cols-4">
+          <SummaryStatCard
+            title="Safes"
+            icon={<Lock className="h-5 w-5 text-amber-600" />}
+            value={cyberArkSafesData?.meta.total ?? 0}
+            href="/cyberark"
+            linkText="View safes"
+          />
+          <SummaryStatCard
+            title="Roles"
+            icon={<UserCog className="h-5 w-5 text-indigo-600" />}
+            value={cyberArkRolesData?.meta.total ?? 0}
+            href="/cyberark"
+            linkText="View roles"
+          />
+          <SummaryStatCard
+            title="SIA Policies"
+            icon={<ShieldCheck className="h-5 w-5 text-green-600" />}
+            value={cyberArkPoliciesData?.meta.total ?? 0}
+            href="/cyberark"
+            linkText="View policies"
+          />
+          <Card>
+            <CardContent>
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-100 dark:bg-gray-700">
+                  <Shield className="h-5 w-5 text-purple-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                    Drift
+                  </p>
+                  {cyberArkDrift?.drift_detected ? (
+                    <div className="flex items-center gap-1 text-amber-600 dark:text-amber-400">
+                      <AlertTriangle className="h-4 w-4" />
+                      <span className="text-lg font-bold">
+                        {cyberArkDrift.items.length}
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1 text-green-600 dark:text-green-400">
+                      <CheckCircle className="h-4 w-4" />
+                      <span className="text-lg font-bold">None</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
 
       {/* Recent Resources */}
       <div className="grid gap-6 lg:grid-cols-2 xl:grid-cols-4">
