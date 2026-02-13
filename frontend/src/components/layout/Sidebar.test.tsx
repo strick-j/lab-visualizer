@@ -6,21 +6,13 @@ describe("Sidebar", () => {
   it("renders navigation links", () => {
     render(<Sidebar />);
 
-    expect(screen.getByText("Home")).toBeInTheDocument();
+    expect(screen.getByText("Dashboard")).toBeInTheDocument();
     expect(screen.getByText("Topology")).toBeInTheDocument();
     expect(screen.getByText("EC2 Instances")).toBeInTheDocument();
     expect(screen.getByText("RDS Databases")).toBeInTheDocument();
     expect(screen.getByText("ECS Containers")).toBeInTheDocument();
     expect(screen.getByText("VPC Networking")).toBeInTheDocument();
     expect(screen.getByText("Terraform")).toBeInTheDocument();
-  });
-
-  it("renders section headers", () => {
-    render(<Sidebar />);
-
-    expect(screen.getByText("AWS")).toBeInTheDocument();
-    expect(screen.getByText("CyberArk")).toBeInTheDocument();
-    expect(screen.getByText("IaC")).toBeInTheDocument();
   });
 
   it("renders settings link", () => {
@@ -41,7 +33,10 @@ describe("Sidebar", () => {
   it("links have correct hrefs", () => {
     render(<Sidebar />);
 
-    expect(screen.getByText("Home").closest("a")).toHaveAttribute("href", "/");
+    expect(screen.getByText("Dashboard").closest("a")).toHaveAttribute(
+      "href",
+      "/",
+    );
     expect(screen.getByText("Topology").closest("a")).toHaveAttribute(
       "href",
       "/topology",

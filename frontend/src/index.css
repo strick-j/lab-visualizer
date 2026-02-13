@@ -6,8 +6,6 @@
 @layer base {
   :root {
     --header-height: 4rem;
-    --sidebar-width: 16rem;
-    --sidebar-width-collapsed: 4rem;
   }
 
   body {

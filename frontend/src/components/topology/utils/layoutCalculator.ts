@@ -6,10 +6,6 @@
  * - Layer 1: VPC (z-index 0)
  * - Layer 2: Subnet (z-index 1)
  * - Layer 3: Resources - EC2, RDS, Gateways (z-index 2)
- *
- * Supports collapsible VPC and Subnet containers. When collapsed,
- * child nodes are marked hidden and the parent is resized to show
- * only its header and a summary badge.
  */
 
 import type { Node, Edge } from "reactflow";
@@ -68,11 +64,6 @@ const config = {
     vpcGap: 50,
   },
   resourcesPerRow: 2,
-  // Collapsed dimensions
-  collapsedSubnetHeight: 60,
-  collapsedSubnetWidth: 280,
-  collapsedVpcHeight: 80,
-  collapsedVpcMinWidth: 350,
 };
 
 interface LayoutResult {
@@ -86,57 +77,9 @@ interface SubnetDimensions {
 }
 
 /**
- * Count resources across all subnets in a VPC
- */
-function countVPCResources(vpc: TopologyVPC) {
-  let ec2Count = 0;
-  let rdsCount = 0;
-  let ecsCount = 0;
-  let natCount = 0;
-
-  for (const subnet of vpc.subnets) {
-    ec2Count += subnet.ec2_instances.length;
-    rdsCount += subnet.rds_instances.length;
-    ecsCount += subnet.ecs_containers?.length || 0;
-    if (subnet.nat_gateway) natCount++;
-  }
-
-  return {
-    subnetCount: vpc.subnets.length,
-    ec2Count,
-    rdsCount,
-    ecsCount,
-    natCount,
-    igwCount: vpc.internet_gateway ? 1 : 0,
-  };
-}
-
-/**
- * Count resources within a subnet
- */
-function countSubnetResources(subnet: TopologySubnet) {
-  return {
-    ec2Count: subnet.ec2_instances.length,
-    rdsCount: subnet.rds_instances.length,
-    ecsCount: subnet.ecs_containers?.length || 0,
-    natCount: subnet.nat_gateway ? 1 : 0,
-  };
-}
-
-/**
  * Calculate the required dimensions for a subnet based on its resources
  */
-function calculateSubnetDimensions(
-  subnet: TopologySubnet,
-  collapsed: boolean,
-): SubnetDimensions {
-  if (collapsed) {
-    return {
-      width: config.collapsedSubnetWidth,
-      height: config.collapsedSubnetHeight,
-    };
-  }
-
+function calculateSubnetDimensions(subnet: TopologySubnet): SubnetDimensions {
   const resourceCount =
     subnet.ec2_instances.length +
     subnet.rds_instances.length +
@@ -170,10 +113,7 @@ function calculateSubnetDimensions(
 /**
  * Calculate the layout for a row of subnets
  */
-function calculateSubnetRowDimensions(
-  subnets: TopologySubnet[],
-  collapsedNodeIds: Set<string>,
-): {
+function calculateSubnetRowDimensions(subnets: TopologySubnet[]): {
   width: number;
   height: number;
   subnetWidths: number[];
@@ -187,8 +127,7 @@ function calculateSubnetRowDimensions(
   const subnetWidths: number[] = [];
 
   for (const subnet of subnets) {
-    const isCollapsed = collapsedNodeIds.has(`subnet-${subnet.id}`);
-    const dims = calculateSubnetDimensions(subnet, isCollapsed);
+    const dims = calculateSubnetDimensions(subnet);
     subnetWidths.push(dims.width);
     totalWidth += dims.width;
     maxHeight = Math.max(maxHeight, dims.height);
@@ -199,18 +138,14 @@ function calculateSubnetRowDimensions(
   return { width: totalWidth, height: maxHeight, subnetWidths };
 }
 
-export function calculateTopologyLayout(
-  data: TopologyResponse,
-  collapsedNodeIds?: Set<string>,
-): LayoutResult {
+export function calculateTopologyLayout(data: TopologyResponse): LayoutResult {
   const nodes: Node<TopologyNodeData>[] = [];
   const edges: Edge[] = [];
-  const collapsed = collapsedNodeIds ?? new Set<string>();
 
   let vpcX = 0;
 
   for (const vpc of data.vpcs) {
-    const vpcLayout = layoutVPC(vpc, vpcX, collapsed);
+    const vpcLayout = layoutVPC(vpc, vpcX);
     nodes.push(...vpcLayout.nodes);
     edges.push(...vpcLayout.edges);
 
@@ -223,125 +158,23 @@ export function calculateTopologyLayout(
 function layoutVPC(
   vpc: TopologyVPC,
   startX: number,
-  collapsedNodeIds: Set<string>,
 ): LayoutResult & { width: number; height: number } {
   const nodes: Node<TopologyNodeData>[] = [];
   const edges: Edge[] = [];
 
   const vpcNodeId = `vpc-${vpc.id}`;
-  const vpcCollapsed = collapsedNodeIds.has(vpcNodeId);
-  const childSummary = countVPCResources(vpc);
 
-  if (vpcCollapsed) {
-    // Collapsed VPC: only header + summary badge
-    const vpcWidth = config.collapsedVpcMinWidth;
-    const vpcHeight = config.collapsedVpcHeight;
-
-    nodes.push({
-      id: vpcNodeId,
-      type: "vpc",
-      position: { x: startX, y: 0 },
-      zIndex: Z_INDEX.VPC,
-      data: {
-        type: "vpc",
-        label: vpc.name || "VPC",
-        displayStatus: vpc.display_status,
-        tfManaged: vpc.tf_managed,
-        tfResourceAddress: vpc.tf_resource_address || undefined,
-        vpcId: vpc.id,
-        cidrBlock: vpc.cidr_block,
-        minWidth: vpcWidth,
-        minHeight: vpcHeight,
-        collapsed: true,
-        childSummary,
-      } as VPCNodeData,
-      style: {
-        width: vpcWidth,
-        height: vpcHeight,
-      },
-    });
-
-    // Emit hidden children so they exist in the DOM for transitions
-    if (vpc.internet_gateway) {
-      nodes.push({
-        id: `igw-${vpc.internet_gateway.id}`,
-        type: "internet-gateway",
-        position: { x: 0, y: 0 },
-        parentNode: vpcNodeId,
-        extent: "parent",
-        zIndex: Z_INDEX.GATEWAY,
-        hidden: true,
-        data: {
-          type: "internet-gateway",
-          label: vpc.internet_gateway.name || "Internet Gateway",
-          displayStatus: vpc.internet_gateway.display_status,
-          tfManaged: vpc.internet_gateway.tf_managed,
-          tfResourceAddress:
-            vpc.internet_gateway.tf_resource_address || undefined,
-          igwId: vpc.internet_gateway.id,
-        } as InternetGatewayNodeData,
-      });
-    }
-
-    // Emit hidden subnets and their resources
-    for (const subnet of vpc.subnets) {
-      const subnetNodeId = `subnet-${subnet.id}`;
-      nodes.push({
-        id: subnetNodeId,
-        type: "subnet",
-        position: { x: 0, y: 0 },
-        parentNode: vpcNodeId,
-        extent: "parent",
-        zIndex: Z_INDEX.SUBNET,
-        hidden: true,
-        data: {
-          type: "subnet",
-          label: subnet.name || "Subnet",
-          displayStatus: subnet.display_status,
-          tfManaged: subnet.tf_managed,
-          subnetId: subnet.id,
-          cidrBlock: subnet.cidr_block,
-          subnetType: subnet.subnet_type,
-          availabilityZone: subnet.availability_zone,
-        } as SubnetNodeData,
-        style: { width: 0, height: 0 },
-      });
-
-      // Hidden resources within hidden subnets
-      const resources = collectResources(subnet);
-      for (const resource of resources) {
-        const resourceNode = createResourceNode(
-          resource,
-          subnetNodeId,
-          0,
-          0,
-          true,
-        );
-        if (resourceNode) nodes.push(resourceNode);
-      }
-    }
-
-    return { nodes, edges, width: vpcWidth, height: vpcHeight };
-  }
-
-  // Expanded VPC - normal layout with possible collapsed subnets
+  // Separate subnets by type
   const publicSubnets = vpc.subnets.filter((s) => s.subnet_type === "public");
   const privateSubnets = vpc.subnets.filter((s) => s.subnet_type === "private");
   const unknownSubnets = vpc.subnets.filter((s) => s.subnet_type === "unknown");
 
-  const publicDims = calculateSubnetRowDimensions(
-    publicSubnets,
-    collapsedNodeIds,
-  );
-  const privateDims = calculateSubnetRowDimensions(
-    privateSubnets,
-    collapsedNodeIds,
-  );
-  const unknownDims = calculateSubnetRowDimensions(
-    unknownSubnets,
-    collapsedNodeIds,
-  );
+  // Calculate dimensions for each row
+  const publicDims = calculateSubnetRowDimensions(publicSubnets);
+  const privateDims = calculateSubnetRowDimensions(privateSubnets);
+  const unknownDims = calculateSubnetRowDimensions(unknownSubnets);
 
+  // Calculate total VPC dimensions
   const contentWidth = Math.max(
     publicDims.width,
     privateDims.width,
@@ -350,24 +183,30 @@ function layoutVPC(
   );
   const vpcWidth = contentWidth + config.vpcPadding * 2;
 
+  // Calculate heights
   let contentHeight = 0;
 
+  // IGW height
   if (vpc.internet_gateway) {
     contentHeight += config.nodeHeight.gateway + config.spacing.igwToSubnetGap;
   }
 
+  // Public subnets row
   if (publicSubnets.length > 0) {
     contentHeight += publicDims.height + config.spacing.rowGap;
   }
 
+  // Private subnets row
   if (privateSubnets.length > 0) {
     contentHeight += privateDims.height + config.spacing.rowGap;
   }
 
+  // Unknown subnets row
   if (unknownSubnets.length > 0) {
     contentHeight += unknownDims.height + config.spacing.rowGap;
   }
 
+  // Remove last row gap and add padding
   if (contentHeight > 0) {
     contentHeight -= config.spacing.rowGap;
   }
@@ -375,6 +214,7 @@ function layoutVPC(
   const vpcHeight =
     config.vpcHeaderHeight + contentHeight + config.vpcPadding * 2;
 
+  // Create VPC node (Layer 1 - bottom)
   nodes.push({
     id: vpcNodeId,
     type: "vpc",
@@ -390,8 +230,6 @@ function layoutVPC(
       cidrBlock: vpc.cidr_block,
       minWidth: vpcWidth,
       minHeight: vpcHeight,
-      collapsed: false,
-      childSummary,
     } as VPCNodeData,
     style: {
       width: vpcWidth,
@@ -399,8 +237,10 @@ function layoutVPC(
     },
   });
 
+  // Track Y position relative to VPC content area
   let relativeY = config.vpcHeaderHeight + config.vpcPadding;
 
+  // Internet Gateway at top (child of VPC)
   if (vpc.internet_gateway) {
     nodes.push({
       id: `igw-${vpc.internet_gateway.id}`,
@@ -422,180 +262,76 @@ function layoutVPC(
     relativeY += config.nodeHeight.gateway + config.spacing.igwToSubnetGap;
   }
 
-  // Layout subnet rows
-  const layoutSubnetRow = (
-    subnets: TopologySubnet[],
-    dims: { width: number; height: number; subnetWidths: number[] },
-  ) => {
-    if (subnets.length === 0) return;
-    const rowStartX = config.vpcPadding + (contentWidth - dims.width) / 2;
+  // Layout public subnets (children of VPC)
+  if (publicSubnets.length > 0) {
+    const rowStartX = config.vpcPadding + (contentWidth - publicDims.width) / 2;
     let subnetX = rowStartX;
 
-    subnets.forEach((subnet, idx) => {
-      const isCollapsed = collapsedNodeIds.has(`subnet-${subnet.id}`);
-      const subnetDims = calculateSubnetDimensions(subnet, isCollapsed);
+    publicSubnets.forEach((subnet, idx) => {
+      const subnetDims = calculateSubnetDimensions(subnet);
       const subnetLayout = layoutSubnet(
         subnet,
         subnetX,
         relativeY,
         subnetDims,
-        dims.height,
+        publicDims.height,
         vpcNodeId,
-        collapsedNodeIds,
       );
       nodes.push(...subnetLayout.nodes);
       edges.push(...subnetLayout.edges);
-      subnetX += dims.subnetWidths[idx] + config.spacing.horizontal;
+      subnetX += publicDims.subnetWidths[idx] + config.spacing.horizontal;
     });
 
-    relativeY += dims.height + config.spacing.rowGap;
-  };
+    relativeY += publicDims.height + config.spacing.rowGap;
+  }
 
-  layoutSubnetRow(publicSubnets, publicDims);
-  layoutSubnetRow(privateSubnets, privateDims);
-  layoutSubnetRow(unknownSubnets, unknownDims);
+  // Layout private subnets (children of VPC)
+  if (privateSubnets.length > 0) {
+    const rowStartX =
+      config.vpcPadding + (contentWidth - privateDims.width) / 2;
+    let subnetX = rowStartX;
+
+    privateSubnets.forEach((subnet, idx) => {
+      const subnetDims = calculateSubnetDimensions(subnet);
+      const subnetLayout = layoutSubnet(
+        subnet,
+        subnetX,
+        relativeY,
+        subnetDims,
+        privateDims.height,
+        vpcNodeId,
+      );
+      nodes.push(...subnetLayout.nodes);
+      edges.push(...subnetLayout.edges);
+      subnetX += privateDims.subnetWidths[idx] + config.spacing.horizontal;
+    });
+
+    relativeY += privateDims.height + config.spacing.rowGap;
+  }
+
+  // Layout unknown subnets (children of VPC)
+  if (unknownSubnets.length > 0) {
+    const rowStartX =
+      config.vpcPadding + (contentWidth - unknownDims.width) / 2;
+    let subnetX = rowStartX;
+
+    unknownSubnets.forEach((subnet, idx) => {
+      const subnetDims = calculateSubnetDimensions(subnet);
+      const subnetLayout = layoutSubnet(
+        subnet,
+        subnetX,
+        relativeY,
+        subnetDims,
+        unknownDims.height,
+        vpcNodeId,
+      );
+      nodes.push(...subnetLayout.nodes);
+      edges.push(...subnetLayout.edges);
+      subnetX += unknownDims.subnetWidths[idx] + config.spacing.horizontal;
+    });
+  }
 
   return { nodes, edges, width: vpcWidth, height: vpcHeight };
-}
-
-/**
- * Collect all resources for a subnet into a uniform list
- */
-function collectResources(subnet: TopologySubnet): ResourceItem[] {
-  const resources: ResourceItem[] = [];
-
-  if (subnet.nat_gateway) {
-    resources.push({ type: "nat", data: subnet.nat_gateway });
-  }
-
-  subnet.ec2_instances.forEach((ec2) => {
-    resources.push({ type: "ec2", data: ec2 });
-  });
-
-  subnet.rds_instances.forEach((rds) => {
-    resources.push({ type: "rds", data: rds });
-  });
-
-  if (subnet.ecs_containers) {
-    subnet.ecs_containers.forEach((ecs) => {
-      resources.push({ type: "ecs", data: ecs });
-    });
-  }
-
-  return resources;
-}
-
-/**
- * Create a single resource node
- */
-function createResourceNode(
-  resource: ResourceItem,
-  subnetNodeId: string,
-  x: number,
-  y: number,
-  hidden: boolean,
-): Node<TopologyNodeData> | null {
-  if (resource.type === "ec2") {
-    const ec2 = resource.data;
-    return {
-      id: `ec2-${ec2.id}`,
-      type: "ec2",
-      position: { x, y },
-      parentNode: subnetNodeId,
-      extent: "parent",
-      zIndex: Z_INDEX.RESOURCE,
-      hidden,
-      data: {
-        type: "ec2",
-        label: ec2.name || ec2.id,
-        displayStatus: ec2.display_status,
-        tfManaged: ec2.tf_managed,
-        tfResourceAddress: ec2.tf_resource_address || undefined,
-        instanceId: ec2.id,
-        instanceType: ec2.instance_type,
-        privateIp: ec2.private_ip || undefined,
-        publicIp: ec2.public_ip || undefined,
-        privateDns: ec2.private_dns || undefined,
-        publicDns: ec2.public_dns || undefined,
-        state: ec2.state,
-      } as EC2NodeData,
-    };
-  } else if (resource.type === "rds") {
-    const rds = resource.data;
-    return {
-      id: `rds-${rds.id}`,
-      type: "rds",
-      position: { x, y },
-      parentNode: subnetNodeId,
-      extent: "parent",
-      zIndex: Z_INDEX.RESOURCE,
-      hidden,
-      data: {
-        type: "rds",
-        label: rds.name || rds.id,
-        displayStatus: rds.display_status,
-        tfManaged: rds.tf_managed,
-        tfResourceAddress: rds.tf_resource_address || undefined,
-        dbIdentifier: rds.id,
-        engine: rds.engine,
-        instanceClass: rds.instance_class,
-        status: rds.status,
-        endpoint: rds.endpoint || undefined,
-        port: rds.port || undefined,
-      } as RDSNodeData,
-    };
-  } else if (resource.type === "ecs") {
-    const ecs = resource.data;
-    return {
-      id: `ecs-${ecs.id}`,
-      type: "ecs-container",
-      position: { x, y },
-      parentNode: subnetNodeId,
-      extent: "parent",
-      zIndex: Z_INDEX.RESOURCE,
-      hidden,
-      data: {
-        type: "ecs-container",
-        label: ecs.name || ecs.id,
-        displayStatus: ecs.display_status,
-        tfManaged: ecs.tf_managed,
-        tfResourceAddress: ecs.tf_resource_address || undefined,
-        taskId: ecs.id,
-        clusterName: ecs.cluster_name,
-        launchType: ecs.launch_type,
-        cpu: ecs.cpu,
-        memory: ecs.memory,
-        status: ecs.status,
-        image: ecs.image || undefined,
-        imageTag: ecs.image_tag || undefined,
-        containerPort: ecs.container_port || undefined,
-        privateIp: ecs.private_ip || undefined,
-        managedBy: ecs.managed_by || "unmanaged",
-      } as ECSContainerNodeData,
-    };
-  } else if (resource.type === "nat") {
-    const nat = resource.data;
-    return {
-      id: `nat-${nat.id}`,
-      type: "nat-gateway",
-      position: { x, y },
-      parentNode: subnetNodeId,
-      extent: "parent",
-      zIndex: Z_INDEX.RESOURCE,
-      hidden,
-      data: {
-        type: "nat-gateway",
-        label: nat.name || "NAT Gateway",
-        displayStatus: nat.display_status,
-        tfManaged: nat.tf_managed,
-        tfResourceAddress: nat.tf_resource_address || undefined,
-        natGatewayId: nat.id,
-        publicIp: nat.primary_public_ip || undefined,
-      } as NATGatewayNodeData,
-    };
-  }
-
-  return null;
 }
 
 function layoutSubnet(
@@ -605,15 +341,12 @@ function layoutSubnet(
   dims: SubnetDimensions,
   rowHeight: number,
   vpcNodeId: string,
-  collapsedNodeIds: Set<string>,
 ): LayoutResult {
   const nodes: Node<TopologyNodeData>[] = [];
   const edges: Edge[] = [];
 
   const subnetNodeId = `subnet-${subnet.id}`;
-  const subnetCollapsed = collapsedNodeIds.has(subnetNodeId);
-  const subnetHeight = subnetCollapsed ? dims.height : rowHeight;
-  const childSummary = countSubnetResources(subnet);
+  const subnetHeight = rowHeight;
 
   // Create subnet node (Layer 2 - child of VPC)
   nodes.push({
@@ -635,8 +368,6 @@ function layoutSubnet(
       availabilityZone: subnet.availability_zone,
       minWidth: dims.width,
       minHeight: subnetHeight,
-      collapsed: subnetCollapsed,
-      childSummary,
     } as SubnetNodeData,
     style: {
       width: dims.width,
@@ -645,9 +376,33 @@ function layoutSubnet(
   });
 
   // Collect all resources
-  const resources = collectResources(subnet);
+  const resources: ResourceItem[] = [];
+
+  // Add NAT Gateway first if present
+  if (subnet.nat_gateway) {
+    resources.push({ type: "nat", data: subnet.nat_gateway });
+  }
+
+  // Add EC2 instances
+  subnet.ec2_instances.forEach((ec2) => {
+    resources.push({ type: "ec2", data: ec2 });
+  });
+
+  // Add RDS instances
+  subnet.rds_instances.forEach((rds) => {
+    resources.push({ type: "rds", data: rds });
+  });
+
+  // Add ECS containers
+  if (subnet.ecs_containers) {
+    subnet.ecs_containers.forEach((ecs) => {
+      resources.push({ type: "ecs", data: ecs });
+    });
+  }
 
   // Layout resources inside subnet (Layer 3 - children of subnet)
+  // Positions are relative to the subnet node
+  // Add subnetPadding to both X and Y for proper spacing from container edges
   const resourceStartX = config.subnetPadding;
   const resourceStartY = config.subnetHeaderHeight + config.subnetPadding;
 
@@ -662,30 +417,110 @@ function layoutSubnet(
       resourceStartY +
       row * (config.nodeHeight.resource + config.spacing.vertical);
 
-    const resourceNode = createResourceNode(
-      resource,
-      subnetNodeId,
-      x,
-      y,
-      subnetCollapsed,
-    );
-    if (resourceNode) nodes.push(resourceNode);
+    if (resource.type === "ec2") {
+      const ec2 = resource.data;
+      nodes.push({
+        id: `ec2-${ec2.id}`,
+        type: "ec2",
+        position: { x, y },
+        parentNode: subnetNodeId,
+        extent: "parent",
+        zIndex: Z_INDEX.RESOURCE,
+        data: {
+          type: "ec2",
+          label: ec2.name || ec2.id,
+          displayStatus: ec2.display_status,
+          tfManaged: ec2.tf_managed,
+          tfResourceAddress: ec2.tf_resource_address || undefined,
+          instanceId: ec2.id,
+          instanceType: ec2.instance_type,
+          privateIp: ec2.private_ip || undefined,
+          publicIp: ec2.public_ip || undefined,
+          privateDns: ec2.private_dns || undefined,
+          publicDns: ec2.public_dns || undefined,
+          state: ec2.state,
+        } as EC2NodeData,
+      });
+    } else if (resource.type === "rds") {
+      const rds = resource.data;
+      nodes.push({
+        id: `rds-${rds.id}`,
+        type: "rds",
+        position: { x, y },
+        parentNode: subnetNodeId,
+        extent: "parent",
+        zIndex: Z_INDEX.RESOURCE,
+        data: {
+          type: "rds",
+          label: rds.name || rds.id,
+          displayStatus: rds.display_status,
+          tfManaged: rds.tf_managed,
+          tfResourceAddress: rds.tf_resource_address || undefined,
+          dbIdentifier: rds.id,
+          engine: rds.engine,
+          instanceClass: rds.instance_class,
+          status: rds.status,
+          endpoint: rds.endpoint || undefined,
+          port: rds.port || undefined,
+        } as RDSNodeData,
+      });
+    } else if (resource.type === "ecs") {
+      const ecs = resource.data;
+      nodes.push({
+        id: `ecs-${ecs.id}`,
+        type: "ecs-container",
+        position: { x, y },
+        parentNode: subnetNodeId,
+        extent: "parent",
+        zIndex: Z_INDEX.RESOURCE,
+        data: {
+          type: "ecs-container",
+          label: ecs.name || ecs.id,
+          displayStatus: ecs.display_status,
+          tfManaged: ecs.tf_managed,
+          tfResourceAddress: ecs.tf_resource_address || undefined,
+          taskId: ecs.id,
+          clusterName: ecs.cluster_name,
+          launchType: ecs.launch_type,
+          cpu: ecs.cpu,
+          memory: ecs.memory,
+          status: ecs.status,
+          image: ecs.image || undefined,
+          imageTag: ecs.image_tag || undefined,
+          containerPort: ecs.container_port || undefined,
+          privateIp: ecs.private_ip || undefined,
+          managedBy: ecs.managed_by || "unmanaged",
+        } as ECSContainerNodeData,
+      });
+    } else if (resource.type === "nat") {
+      const nat = resource.data;
+      nodes.push({
+        id: `nat-${nat.id}`,
+        type: "nat-gateway",
+        position: { x, y },
+        parentNode: subnetNodeId,
+        extent: "parent",
+        zIndex: Z_INDEX.RESOURCE,
+        data: {
+          type: "nat-gateway",
+          label: nat.name || "NAT Gateway",
+          displayStatus: nat.display_status,
+          tfManaged: nat.tf_managed,
+          tfResourceAddress: nat.tf_resource_address || undefined,
+          natGatewayId: nat.id,
+          publicIp: nat.primary_public_ip || undefined,
+        } as NATGatewayNodeData,
+      });
+    }
   });
 
   return { nodes, edges };
 }
 
-export function createEdges(
-  data: TopologyResponse,
-  collapsedNodeIds?: Set<string>,
-): Edge[] {
+export function createEdges(data: TopologyResponse): Edge[] {
   const edges: Edge[] = [];
-  const collapsed = collapsedNodeIds ?? new Set<string>();
 
   for (const vpc of data.vpcs) {
-    // Skip all edges for collapsed VPCs (children are hidden)
-    if (collapsed.has(`vpc-${vpc.id}`)) continue;
-
     // Create edges for IGW -> public subnets
     if (vpc.internet_gateway) {
       const publicSubnets = vpc.subnets.filter(
@@ -713,9 +548,6 @@ export function createEdges(
     );
 
     for (const publicSubnet of publicSubnetsWithNat) {
-      // Skip NAT edges if the subnet containing the NAT is collapsed (NAT is hidden)
-      if (collapsed.has(`subnet-${publicSubnet.id}`)) continue;
-
       if (publicSubnet.nat_gateway) {
         for (const privateSubnet of privateSubnets) {
           edges.push({

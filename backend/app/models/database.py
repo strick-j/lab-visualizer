@@ -13,7 +13,7 @@ module-level ``__getattr__`` hook (PEP 562).
 import logging
 from typing import AsyncGenerator
 
-from sqlalchemy import event, text
+from sqlalchemy import event
 from sqlalchemy.engine import Engine
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
@@ -135,17 +135,6 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 async def init_db() -> None:
     """Initialize the database and create all tables."""
     from app.models.auth import AuthSettings, Session, User
-    from app.models.cyberark import (  # noqa: F401
-        CyberArkAccount,
-        CyberArkRole,
-        CyberArkRoleMember,
-        CyberArkSafe,
-        CyberArkSafeMember,
-        CyberArkSettings,
-        CyberArkSIAPolicy,
-        CyberArkSIAPolicyPrincipal,
-        CyberArkUser,
-    )
     from app.models.resources import (
         EC2Instance,
         RDSInstance,
@@ -157,39 +146,4 @@ async def init_db() -> None:
 
     async with get_engine().begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-
-    # Add new columns to existing cyberark_settings table (if missing)
-    scim_columns = [
-        ("tenant_name", "VARCHAR(255)"),
-        ("uap_base_url", "VARCHAR(500)"),
-        ("scim_enabled", "BOOLEAN DEFAULT 0"),
-        ("scim_app_id", "VARCHAR(255)"),
-        ("scim_oauth2_url", "VARCHAR(500)"),
-        ("scim_scope", "VARCHAR(500)"),
-        ("scim_client_id", "VARCHAR(255)"),
-        ("scim_client_secret", "VARCHAR(500)"),
-    ]
-    async with get_engine().begin() as conn:
-        for col_name, col_type in scim_columns:
-            try:
-                await conn.execute(
-                    text(
-                        f"ALTER TABLE cyberark_settings ADD COLUMN {col_name} {col_type}"
-                    )
-                )
-                logger.info("Added column %s to cyberark_settings", col_name)
-            except Exception:
-                pass  # Column already exists
-
-    # Fix any NULL values in NOT-NULL integer columns (from earlier bugs)
-    async with get_engine().begin() as conn:
-        for stmt in [
-            "UPDATE cyberark_safes SET number_of_members = 0 WHERE number_of_members IS NULL",
-            "UPDATE cyberark_safes SET number_of_accounts = 0 WHERE number_of_accounts IS NULL",
-        ]:
-            try:
-                await conn.execute(text(stmt))
-            except Exception:
-                pass  # Table may not exist yet
-
     logger.info("Database tables created successfully")
