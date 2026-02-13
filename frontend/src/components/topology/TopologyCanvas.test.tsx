@@ -45,10 +45,14 @@ vi.mock("reactflow", () => ({
   ),
   Background: () => <div data-testid="react-flow-background" />,
   Controls: () => <div data-testid="react-flow-controls" />,
+  ReactFlowProvider: ({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  ),
   useNodesState: (initialNodes: MockNode[]) => [initialNodes, vi.fn(), vi.fn()],
   useEdgesState: (
     initialEdges: { id: string; source: string; target: string }[],
   ) => [initialEdges, vi.fn(), vi.fn()],
+  useReactFlow: () => ({ fitView: vi.fn() }),
   BackgroundVariant: { Dots: "dots" },
 }));
 
@@ -156,8 +160,7 @@ describe("TopologyCanvas", () => {
 
   it("renders within a container div", () => {
     const { container } = render(<TopologyCanvas data={mockTopologyData} />);
-    const wrapperDiv = container.firstChild as HTMLElement;
-    expect(wrapperDiv.className).toContain("w-full");
-    expect(wrapperDiv.className).toContain("h-full");
+    const wrapperDiv = container.querySelector(".w-full.h-full");
+    expect(wrapperDiv).toBeInTheDocument();
   });
 });
