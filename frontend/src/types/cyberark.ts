@@ -194,6 +194,26 @@ export interface AccessMappingTargetList {
 }
 
 // =============================================================================
+// Access Mapping Node Data (Collapsible)
+// =============================================================================
+
+export interface AccessNodeChildSummary {
+  roleCount?: number;
+  safeCount?: number;
+  policyCount?: number;
+  accountCount?: number;
+  targetCount?: number;
+  standingCount?: number;
+  jitCount?: number;
+}
+
+export interface CollapsibleNodeData {
+  collapsed?: boolean;
+  onToggleCollapse?: () => void;
+  childSummary?: AccessNodeChildSummary;
+}
+
+// =============================================================================
 // CyberArk User Types (SCIM)
 // =============================================================================
 
