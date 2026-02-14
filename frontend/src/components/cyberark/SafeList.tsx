@@ -152,17 +152,13 @@ export function SafeList() {
             placeholder="All resources"
             options={terraformOptions}
             value={
-              filters.tf_managed === undefined
-                ? ""
-                : String(filters.tf_managed)
+              filters.tf_managed === undefined ? "" : String(filters.tf_managed)
             }
             onChange={(e) =>
               setFilters({
                 ...filters,
                 tf_managed:
-                  e.target.value === ""
-                    ? undefined
-                    : e.target.value === "true",
+                  e.target.value === "" ? undefined : e.target.value === "true",
               })
             }
           />

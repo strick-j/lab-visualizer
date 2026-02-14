@@ -137,16 +137,12 @@ export function UserList() {
           <Select
             placeholder="All statuses"
             options={statusOptions}
-            value={
-              filters.active === undefined ? "" : String(filters.active)
-            }
+            value={filters.active === undefined ? "" : String(filters.active)}
             onChange={(e) =>
               setFilters({
                 ...filters,
                 active:
-                  e.target.value === ""
-                    ? undefined
-                    : e.target.value === "true",
+                  e.target.value === "" ? undefined : e.target.value === "true",
               })
             }
           />
