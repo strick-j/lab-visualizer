@@ -138,16 +138,24 @@ class Settings(BaseSettings):
 
     # Configurable TF resource type names (idsec provider)
     cyberark_tf_safe_type: str = Field(
-        default="idsec_safe",
+        default="idsec_pcloud_safe",
         description="Terraform resource type for CyberArk Safe",
     )
+    cyberark_tf_safe_member_type: str = Field(
+        default="idsec_pcloud_safe_member",
+        description="Terraform resource type for CyberArk Safe Member",
+    )
     cyberark_tf_account_type: str = Field(
-        default="idsec_privileged_account",
+        default="idsec_pcloud_account",
         description="Terraform resource type for CyberArk Account",
     )
     cyberark_tf_role_type: str = Field(
-        default="idsec_role",
+        default="idsec_identity_role",
         description="Terraform resource type for CyberArk Role",
+    )
+    cyberark_tf_user_type: str = Field(
+        default="idsec_identity_user",
+        description="Terraform resource type for CyberArk User",
     )
     cyberark_tf_sia_vm_policy_type: str = Field(
         default="idsec_sia_vm_policy",

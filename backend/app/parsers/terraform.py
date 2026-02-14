@@ -7,9 +7,9 @@ and track which resources are managed by Terraform.
 
 import json
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import boto3
 from botocore.exceptions import ClientError
@@ -43,6 +43,8 @@ class TerraformStateFile:
     resource_count: int
     status: str
     resources: List[TerraformResource]
+    all_resource_types: Dict[str, int] = field(default_factory=dict)
+    skipped_resource_count: int = 0
 
 
 class TerraformStateParser:
@@ -74,8 +76,10 @@ class TerraformStateParser:
         """
         types = dict(cls.SUPPORTED_RESOURCE_TYPES)
         types[settings.cyberark_tf_safe_type] = "cyberark_safe"
+        types[settings.cyberark_tf_safe_member_type] = "cyberark_safe_member"
         types[settings.cyberark_tf_account_type] = "cyberark_account"
         types[settings.cyberark_tf_role_type] = "cyberark_role"
+        types[settings.cyberark_tf_user_type] = "cyberark_user"
         types[settings.cyberark_tf_sia_vm_policy_type] = "cyberark_sia_vm_policy"
         types[settings.cyberark_tf_sia_db_policy_type] = "cyberark_sia_db_policy"
         return types
@@ -125,7 +129,9 @@ class TerraformStateParser:
             state_data = json.loads(state_content)
 
             # Parse resources
-            resources = self._extract_resources(state_data, key)
+            resources, found_types, skipped_count = self._extract_resources(
+                state_data, key
+            )
 
             return TerraformStateFile(
                 name=name or key,
@@ -136,6 +142,8 @@ class TerraformStateParser:
                 resource_count=len(resources),
                 status="synced",
                 resources=resources,
+                all_resource_types=found_types,
+                skipped_resource_count=skipped_count,
             )
 
         except ClientError as e:
@@ -178,7 +186,7 @@ class TerraformStateParser:
 
     def _extract_resources(
         self, state_data: Dict[str, Any], state_source: str
-    ) -> List[TerraformResource]:
+    ) -> Tuple[List[TerraformResource], Dict[str, int], int]:
         """
         Extract resources from Terraform state data.
 
@@ -189,14 +197,13 @@ class TerraformStateParser:
             state_source: Key of the source state file
 
         Returns:
-            List of extracted TerraformResource objects
+            Tuple of (resources, all_found_type_counts, skipped_count)
         """
-        resources = []
         version = state_data.get("version", 0)
 
         if version >= 4:
             # Terraform 0.12+ format
-            resources = self._extract_v4_resources(state_data, state_source)
+            return self._extract_v4_resources(state_data, state_source)
         else:
             logger.warning(
                 "Unsupported Terraform state version: %s. "
@@ -204,11 +211,11 @@ class TerraformStateParser:
                 version,
             )
 
-        return resources
+        return [], {}, 0
 
     def _extract_v4_resources(
         self, state_data: Dict[str, Any], state_source: str
-    ) -> List[TerraformResource]:
+    ) -> Tuple[List[TerraformResource], Dict[str, int], int]:
         """
         Extract resources from Terraform state version 4 format.
 
@@ -217,20 +224,38 @@ class TerraformStateParser:
             state_source: Key of the source state file
 
         Returns:
-            List of extracted TerraformResource objects
+            Tuple of (resources, all_found_type_counts, skipped_count)
         """
-        resources = []
+        resources: List[TerraformResource] = []
+        all_types = self.get_all_supported_types()
+        found_types: Dict[str, int] = {}
+        skipped_type_count = 0
+        skipped_id_count = 0
 
         for resource_block in state_data.get("resources", []):
             resource_type = resource_block.get("type", "")
+            mode = resource_block.get("mode", "managed")
+            instance_count = len(resource_block.get("instances", []))
 
-            # Skip resources we don't care about
-            all_types = self.get_all_supported_types()
-            if resource_type not in all_types:
+            # Track all managed resource types we encounter
+            if mode == "managed" and resource_type:
+                found_types[resource_type] = (
+                    found_types.get(resource_type, 0) + instance_count
+                )
+
+            # Skip data sources
+            if mode != "managed":
                 continue
 
-            mode = resource_block.get("mode", "managed")
-            if mode != "managed":
+            # Skip unsupported resource types
+            if resource_type not in all_types:
+                logger.debug(
+                    "Skipping unsupported resource type '%s' " "(%d instances) in %s",
+                    resource_type,
+                    instance_count,
+                    state_source,
+                )
+                skipped_type_count += instance_count
                 continue
 
             resource_name = resource_block.get("name", "")
@@ -269,8 +294,32 @@ class TerraformStateParser:
                             attributes=attributes,
                         )
                     )
+                else:
+                    skipped_id_count += 1
+                    logger.warning(
+                        "Failed to extract resource ID for %s at %s — "
+                        "available attributes: %s",
+                        resource_type,
+                        address,
+                        list(attributes.keys())[:10],
+                    )
 
-        return resources
+        total_skipped = skipped_type_count + skipped_id_count
+        if found_types:
+            recognized = len(resources)
+            logger.info(
+                "Parsed %s: %d recognized, %d skipped "
+                "(%d unsupported type, %d missing ID). "
+                "Types found: %s",
+                state_source,
+                recognized,
+                total_skipped,
+                skipped_type_count,
+                skipped_id_count,
+                dict(found_types),
+            )
+
+        return resources, found_types, total_skipped
 
     def _extract_resource_id(
         self, resource_type: str, attributes: Dict[str, Any]
@@ -300,8 +349,10 @@ class TerraformStateParser:
 
         # Add CyberArk resource ID mappings (configurable type names)
         id_mappings[settings.cyberark_tf_safe_type] = "safe_name"
+        id_mappings[settings.cyberark_tf_safe_member_type] = "member_name"
         id_mappings[settings.cyberark_tf_account_type] = "id"
-        id_mappings[settings.cyberark_tf_role_type] = "name"
+        id_mappings[settings.cyberark_tf_role_type] = "role_name"
+        id_mappings[settings.cyberark_tf_user_type] = "username"
         id_mappings[settings.cyberark_tf_sia_vm_policy_type] = "name"
         id_mappings[settings.cyberark_tf_sia_db_policy_type] = "name"
 
@@ -558,8 +609,10 @@ class TerraformStateAggregator:
             "ecs_service": [],
             "ecs_task_definition": [],
             "cyberark_safe": [],
+            "cyberark_safe_member": [],
             "cyberark_account": [],
             "cyberark_role": [],
+            "cyberark_user": [],
             "cyberark_sia_vm_policy": [],
             "cyberark_sia_db_policy": [],
         }
