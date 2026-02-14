@@ -425,7 +425,9 @@ class AccessMappingService:
                 except (json.JSONDecodeError, TypeError):
                     pass
 
-            matched_targets = await self._match_sia_criteria_to_targets(criteria)
+            matched_targets = await self._match_sia_criteria_to_targets(
+                criteria, policy.policy_type
+            )
             logger.debug(
                 "JIT: policy %s (%s) criteria_keys=%s matched %d targets",
                 policy.policy_id,
@@ -552,7 +554,9 @@ class AccessMappingService:
 
         return None
 
-    async def _match_sia_criteria_to_targets(self, criteria: Dict[str, Any]) -> List[
+    async def _match_sia_criteria_to_targets(
+        self, criteria: Dict[str, Any], policy_type: str = ""
+    ) -> List[
         Tuple[
             str,
             str,
@@ -565,13 +569,22 @@ class AccessMappingService:
             Optional[str],
         ]
     ]:
-        """Match SIA policy criteria to EC2/RDS instances."""
+        """Match SIA policy criteria to EC2/RDS instances.
+
+        ``policy_type`` controls which resource types are eligible:
+        * ``"vm"`` → EC2 only
+        * ``"database"`` → RDS only
+        * anything else → both
+        """
         if not criteria:
             return []
 
+        match_ec2 = policy_type != "database"
+        match_rds = policy_type != "vm"
+
         # Unrestricted policies with all target arrays empty match ALL targets
         if criteria.get("match_all"):
-            return await self._all_targets()
+            return await self._all_targets(match_ec2, match_rds)
 
         matched: List[
             Tuple[
@@ -594,8 +607,8 @@ class AccessMappingService:
         fqdn_patterns = criteria.get("fqdn_patterns", [])
         ip_ranges = criteria.get("ip_ranges", [])
 
-        # Match EC2 instances
-        for ec2 in await self._get_ec2_instances():
+        # Match EC2 instances (skip for database policies)
+        for ec2 in await self._get_ec2_instances() if match_ec2 else []:
             key = f"ec2:{ec2.instance_id}"
             if key in seen:
                 continue
@@ -626,8 +639,8 @@ class AccessMappingService:
                     )
                 )
 
-        # Match RDS instances
-        for rds in await self._get_rds_instances():
+        # Match RDS instances (skip for VM policies)
+        for rds in await self._get_rds_instances() if match_rds else []:
             key = f"rds:{rds.db_instance_identifier}"
             if key in seen:
                 continue
@@ -662,6 +675,8 @@ class AccessMappingService:
 
     async def _all_targets(
         self,
+        match_ec2: bool = True,
+        match_rds: bool = True,
     ) -> List[
         Tuple[
             str,
@@ -689,34 +704,36 @@ class AccessMappingService:
                 Optional[str],
             ]
         ] = []
-        for ec2 in await self._get_ec2_instances():
-            results.append(
-                (
-                    "ec2",
-                    ec2.instance_id,
-                    ec2.name,
-                    ec2.private_ip,
-                    ec2.vpc_id,
-                    ec2.display_status,
-                    ec2.instance_type,
-                    None,
-                    None,
+        if match_ec2:
+            for ec2 in await self._get_ec2_instances():
+                results.append(
+                    (
+                        "ec2",
+                        ec2.instance_id,
+                        ec2.name,
+                        ec2.private_ip,
+                        ec2.vpc_id,
+                        ec2.display_status,
+                        ec2.instance_type,
+                        None,
+                        None,
+                    )
                 )
-            )
-        for rds in await self._get_rds_instances():
-            results.append(
-                (
-                    "rds",
-                    rds.db_instance_identifier,
-                    rds.name,
-                    rds.endpoint,
-                    rds.vpc_id,
-                    rds.display_status,
-                    rds.db_instance_class,
-                    rds.engine,
-                    rds.engine,
+        if match_rds:
+            for rds in await self._get_rds_instances():
+                results.append(
+                    (
+                        "rds",
+                        rds.db_instance_identifier,
+                        rds.name,
+                        rds.endpoint,
+                        rds.vpc_id,
+                        rds.display_status,
+                        rds.db_instance_class,
+                        rds.engine,
+                        rds.engine,
+                    )
                 )
-            )
         return results
 
     @staticmethod
