@@ -295,6 +295,8 @@ export interface TerraformStateInfo {
   last_modified: string | null;
   resource_count: number;
   status: string;
+  all_resource_types?: Record<string, number> | null;
+  skipped_resource_count?: number;
 }
 
 export interface TerraformStatesResponse {

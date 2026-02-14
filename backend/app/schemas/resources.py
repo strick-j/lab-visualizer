@@ -456,6 +456,8 @@ class TerraformStateInfo(BaseSchema):
     last_modified: Optional[datetime] = None
     resource_count: int = 0
     status: str = "unknown"
+    all_resource_types: Optional[Dict[str, int]] = None
+    skipped_resource_count: int = 0
 
 
 class TerraformStatesResponse(BaseSchema):

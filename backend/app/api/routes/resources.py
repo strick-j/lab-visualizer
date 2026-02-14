@@ -1105,6 +1105,21 @@ async def _sync_terraform_state(db: AsyncSession) -> int:
                     policy.tf_resource_address = tf_resource.resource_address
                     count += 1
 
+        # Log counts for safe members and users (counted but not
+        # persisted to DB since those models lack tf_managed columns)
+        tf_safe_members = tf_resources.get("cyberark_safe_member", [])
+        if tf_safe_members:
+            logger.info(
+                "TF sync: %d CyberArk safe members from Terraform (count only)",
+                len(tf_safe_members),
+            )
+        tf_users = tf_resources.get("cyberark_user", [])
+        if tf_users:
+            logger.info(
+                "TF sync: %d CyberArk users from Terraform (count only)",
+                len(tf_users),
+            )
+
         await db.flush()
         return count
 
