@@ -7,6 +7,7 @@ import ReactFlow, {
   ReactFlowProvider,
   BackgroundVariant,
   type NodeTypes,
+  type Node,
 } from "reactflow";
 import "reactflow/dist/style.css";
 
@@ -31,6 +32,13 @@ const COLLAPSIBLE_TYPES = new Set([
   "access-sia-policy",
 ]);
 
+// Node types that support click-to-open detail panel
+const CLICKABLE_TYPES = new Set([
+  "access-ec2-target",
+  "access-rds-target",
+  "access-account",
+]);
+
 // Register custom node types
 const nodeTypes: NodeTypes = {
   "access-user": UserNode,
@@ -48,9 +56,18 @@ interface AccessMappingCanvasProps {
     accessType?: string;
     selectedUser?: string;
   };
+  onNodeClick?: (
+    nodeId: string,
+    nodeType: string,
+    nodeData: Record<string, unknown>,
+  ) => void;
 }
 
-function AccessMappingCanvasInner({ data, filters }: AccessMappingCanvasProps) {
+function AccessMappingCanvasInner({
+  data,
+  filters,
+  onNodeClick,
+}: AccessMappingCanvasProps) {
   const reactFlow = useReactFlow();
   const [collapsedNodes, setCollapsedNodes] = useState<Set<string>>(new Set());
   const prevCollapsedRef = useRef<Set<string>>(collapsedNodes);
@@ -142,6 +159,15 @@ function AccessMappingCanvasInner({ data, filters }: AccessMappingCanvasProps) {
     }
   }, [collapsedNodes, reactFlow]);
 
+  const handleNodeClick = useCallback(
+    (_event: React.MouseEvent, node: Node) => {
+      if (onNodeClick && node.type && CLICKABLE_TYPES.has(node.type)) {
+        onNodeClick(node.id, node.type, node.data as Record<string, unknown>);
+      }
+    },
+    [onNodeClick],
+  );
+
   const hasNodes = data.users.length > 0;
 
   return (
@@ -151,6 +177,7 @@ function AccessMappingCanvasInner({ data, filters }: AccessMappingCanvasProps) {
         edges={edges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
+        onNodeClick={handleNodeClick}
         nodeTypes={nodeTypes}
         fitView
         fitViewOptions={{
@@ -203,3 +230,5 @@ export function AccessMappingCanvas(props: AccessMappingCanvasProps) {
     </ReactFlowProvider>
   );
 }
+
+export type { AccessMappingCanvasProps };

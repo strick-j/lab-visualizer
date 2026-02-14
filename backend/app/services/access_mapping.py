@@ -19,9 +19,11 @@ from app.models.cyberark import (
     CyberArkAccount,
     CyberArkRole,
     CyberArkRoleMember,
+    CyberArkSafe,
     CyberArkSafeMember,
     CyberArkSIAPolicy,
     CyberArkSIAPolicyPrincipal,
+    CyberArkUser,
 )
 from app.models.resources import EC2Instance, RDSInstance
 from app.schemas.cyberark import (
@@ -123,15 +125,21 @@ class AccessMappingService:
 
         return sorted(users)
 
-    async def _get_user_roles(self, user_name: str) -> Dict[str, str]:
+    async def _get_user_roles(
+        self, user_name: str
+    ) -> Dict[str, Tuple[str, bool]]:
         """Get all roles the user is a member of.
 
-        Returns a dict mapping role_id to role_name (display name).
+        Returns a dict mapping role_id to (role_name, tf_managed).
         The role_name is what appears in safe member lists and SIA
         policy principal lists.
         """
         result = await self.db.execute(
-            select(CyberArkRoleMember.role_id, CyberArkRole.role_name)
+            select(
+                CyberArkRoleMember.role_id,
+                CyberArkRole.role_name,
+                CyberArkRole.tf_managed,
+            )
             .join(
                 CyberArkRole,
                 CyberArkRoleMember.role_id == CyberArkRole.role_id,
@@ -139,6 +147,30 @@ class AccessMappingService:
             .where(
                 CyberArkRoleMember.member_name == user_name,
                 CyberArkRoleMember.member_type == "user",
+            )
+        )
+        return {row[0]: (row[1], row[2]) for row in result.all()}
+
+    async def _get_user_tf_managed(self, user_name: str) -> bool:
+        """Check if a CyberArk user is terraform-managed."""
+        result = await self.db.execute(
+            select(CyberArkUser.tf_managed).where(
+                CyberArkUser.user_name == user_name,
+                CyberArkUser.is_deleted == False,  # noqa: E712
+            )
+        )
+        row = result.first()
+        return bool(row[0]) if row else False
+
+    async def _get_safes_tf_managed(
+        self, safe_names: Set[str]
+    ) -> Dict[str, bool]:
+        """Get tf_managed status for a set of safes."""
+        if not safe_names:
+            return {}
+        result = await self.db.execute(
+            select(CyberArkSafe.safe_name, CyberArkSafe.tf_managed).where(
+                CyberArkSafe.safe_name.in_(safe_names)
             )
         )
         return {row[0]: row[1] for row in result.all()}
@@ -175,7 +207,8 @@ class AccessMappingService:
         relationship_paths: List[AccessPath] = []
 
         role_map = await self._get_user_roles(user_name)
-        role_names = set(role_map.values())
+        role_names = {name for name, _tf in role_map.values()}
+        user_tf_managed = await self._get_user_tf_managed(user_name)
 
         # Find safes where user is a direct member
         direct_safes_result = await self.db.execute(
@@ -218,9 +251,15 @@ class AccessMappingService:
             accounts = list(accounts_result.scalars().all())
 
         safes_with_accounts: Set[str] = set()
+        safe_tf_map = await self._get_safes_tf_managed(all_safe_names)
 
         for account in accounts:
             safes_with_accounts.add(account.safe_name)
+
+            # Build user step context
+            user_context: Dict[str, Any] = {}
+            if user_tf_managed:
+                user_context["tf_managed"] = True
 
             # Build access path steps
             steps = [
@@ -228,18 +267,34 @@ class AccessMappingService:
                     entity_type="user",
                     entity_id=user_name,
                     entity_name=user_name,
+                    context=user_context if user_context else None,
                 )
             ]
 
             if account.safe_name in role_safes:
                 role_name = role_safes[account.safe_name]
+                # Look up role tf_managed from role_map
+                role_tf = False
+                for _rid, (rname, rtf) in role_map.items():
+                    if rname == role_name:
+                        role_tf = rtf
+                        break
+                role_context: Dict[str, Any] = {}
+                if role_tf:
+                    role_context["tf_managed"] = True
                 steps.append(
                     AccessPathStep(
                         entity_type="role",
                         entity_id=role_name,
                         entity_name=role_name,
+                        context=role_context if role_context else None,
                     )
                 )
+
+            # Build safe context
+            safe_context: Dict[str, Any] = {}
+            if safe_tf_map.get(account.safe_name):
+                safe_context["tf_managed"] = True
 
             # Build account context with available metadata
             account_context: Dict[str, Any] = {}
@@ -251,6 +306,16 @@ class AccessMappingService:
                 account_context["secret_type"] = account.secret_type
             if account.address:
                 account_context["address"] = account.address
+            account_context["account_id"] = account.account_id
+            account_context["safe_name"] = account.safe_name
+            if account.tf_managed:
+                account_context["tf_managed"] = True
+            if account.tf_state_source:
+                account_context["tf_state_source"] = account.tf_state_source
+            if account.tf_resource_address:
+                account_context["tf_resource_address"] = (
+                    account.tf_resource_address
+                )
 
             steps.extend(
                 [
@@ -258,6 +323,7 @@ class AccessMappingService:
                         entity_type="safe",
                         entity_id=account.safe_name,
                         entity_name=account.safe_name,
+                        context=safe_context if safe_context else None,
                     ),
                     AccessPathStep(
                         entity_type="account",
@@ -284,6 +350,7 @@ class AccessMappingService:
                     inst_type,
                     engine,
                     platform,
+                    target_tf_managed,
                 ) = target
                 target_results.append(
                     TargetAccessInfo(
@@ -296,6 +363,7 @@ class AccessMappingService:
                         instance_type=inst_type,
                         engine=engine,
                         platform=platform,
+                        tf_managed=target_tf_managed,
                         access_paths=[AccessPath(access_type="standing", steps=steps)],
                     )
                 )
@@ -307,45 +375,70 @@ class AccessMappingService:
 
         # For safes with no accounts, show user→(role→)safe relationship
         for safe_name in all_safe_names - safes_with_accounts:
+            user_ctx: Dict[str, Any] = {}
+            if user_tf_managed:
+                user_ctx["tf_managed"] = True
             steps = [
                 AccessPathStep(
                     entity_type="user",
                     entity_id=user_name,
                     entity_name=user_name,
+                    context=user_ctx if user_ctx else None,
                 )
             ]
             if safe_name in role_safes:
                 role_name = role_safes[safe_name]
+                role_tf = False
+                for _rid, (rname, rtf) in role_map.items():
+                    if rname == role_name:
+                        role_tf = rtf
+                        break
+                r_ctx: Dict[str, Any] = {}
+                if role_tf:
+                    r_ctx["tf_managed"] = True
                 steps.append(
                     AccessPathStep(
                         entity_type="role",
                         entity_id=role_name,
                         entity_name=role_name,
+                        context=r_ctx if r_ctx else None,
                     )
                 )
+            s_ctx: Dict[str, Any] = {}
+            if safe_tf_map.get(safe_name):
+                s_ctx["tf_managed"] = True
             steps.append(
                 AccessPathStep(
                     entity_type="safe",
                     entity_id=safe_name,
                     entity_name=safe_name,
+                    context=s_ctx if s_ctx else None,
                 )
             )
             relationship_paths.append(AccessPath(access_type="standing", steps=steps))
 
         # For roles that have no safe membership at all, show user→role
         roles_in_safes = set(role_safes.values())
-        for _role_id, role_name in role_map.items():
+        for _role_id, (role_name, role_tf) in role_map.items():
             if role_name not in roles_in_safes:
+                u_ctx: Dict[str, Any] = {}
+                if user_tf_managed:
+                    u_ctx["tf_managed"] = True
+                r_ctx2: Dict[str, Any] = {}
+                if role_tf:
+                    r_ctx2["tf_managed"] = True
                 steps = [
                     AccessPathStep(
                         entity_type="user",
                         entity_id=user_name,
                         entity_name=user_name,
+                        context=u_ctx if u_ctx else None,
                     ),
                     AccessPathStep(
                         entity_type="role",
                         entity_id=role_name,
                         entity_name=role_name,
+                        context=r_ctx2 if r_ctx2 else None,
                     ),
                 ]
                 relationship_paths.append(
@@ -358,7 +451,8 @@ class AccessMappingService:
         """Compute JIT access: User -> (Role) -> SIA Policy -> Target."""
         results: List[TargetAccessInfo] = []
         role_map = await self._get_user_roles(user_name)
-        role_names = set(role_map.values())
+        role_names = {name for name, _tf in role_map.values()}
+        user_tf_managed = await self._get_user_tf_managed(user_name)
 
         # Find policies where user is a direct principal
         direct_policies_result = await self.db.execute(
@@ -446,29 +540,48 @@ class AccessMappingService:
                 inst_type,
                 engine,
                 platform,
+                target_tf_managed,
             ) in matched_targets:
+                u_ctx: Dict[str, Any] = {}
+                if user_tf_managed:
+                    u_ctx["tf_managed"] = True
                 steps = [
                     AccessPathStep(
                         entity_type="user",
                         entity_id=user_name,
                         entity_name=user_name,
+                        context=u_ctx if u_ctx else None,
                     )
                 ]
 
                 if policy.policy_id in role_policies:
+                    r_name = role_policies[policy.policy_id]
+                    r_tf = False
+                    for _rid, (rname, rtf) in role_map.items():
+                        if rname == r_name:
+                            r_tf = rtf
+                            break
+                    r_ctx: Dict[str, Any] = {}
+                    if r_tf:
+                        r_ctx["tf_managed"] = True
                     steps.append(
                         AccessPathStep(
                             entity_type="role",
-                            entity_id=role_policies[policy.policy_id],
-                            entity_name=role_policies[policy.policy_id],
+                            entity_id=r_name,
+                            entity_name=r_name,
+                            context=r_ctx if r_ctx else None,
                         )
                     )
 
+                p_ctx: Dict[str, Any] = {}
+                if policy.tf_managed:
+                    p_ctx["tf_managed"] = True
                 steps.append(
                     AccessPathStep(
                         entity_type="sia_policy",
                         entity_id=policy.policy_id,
                         entity_name=policy.policy_name,
+                        context=p_ctx if p_ctx else None,
                     )
                 )
 
@@ -483,6 +596,7 @@ class AccessMappingService:
                         instance_type=inst_type,
                         engine=engine,
                         platform=platform,
+                        tf_managed=target_tf_managed,
                         access_paths=[AccessPath(access_type="jit", steps=steps)],
                     )
                 )
@@ -500,12 +614,13 @@ class AccessMappingService:
             Optional[str],
             Optional[str],
             Optional[str],
+            bool,
         ]
     ]:
         """Match account address to EC2/RDS target.
 
         Returns (target_type, target_id, target_name, address, vpc_id, status,
-                 instance_type, engine, platform)
+                 instance_type, engine, platform, tf_managed)
         """
         if not address:
             return None
@@ -535,6 +650,7 @@ class AccessMappingService:
                     ec2.instance_type,
                     None,
                     None,
+                    ec2.tf_managed,
                 )
 
         # Check RDS instances
@@ -550,6 +666,7 @@ class AccessMappingService:
                     rds.db_instance_class,
                     rds.engine,
                     rds.engine,
+                    rds.tf_managed,
                 )
 
         return None
@@ -567,6 +684,7 @@ class AccessMappingService:
             Optional[str],
             Optional[str],
             Optional[str],
+            bool,
         ]
     ]:
         """Match SIA policy criteria to EC2/RDS instances.
@@ -597,6 +715,7 @@ class AccessMappingService:
                 Optional[str],
                 Optional[str],
                 Optional[str],
+                bool,
             ]
         ] = []
         seen: Set[str] = set()
@@ -636,6 +755,7 @@ class AccessMappingService:
                         ec2.instance_type,
                         None,
                         None,
+                        ec2.tf_managed,
                     )
                 )
 
@@ -668,6 +788,7 @@ class AccessMappingService:
                         rds.db_instance_class,
                         rds.engine,
                         rds.engine,
+                        rds.tf_managed,
                     )
                 )
 
@@ -688,6 +809,7 @@ class AccessMappingService:
             Optional[str],
             Optional[str],
             Optional[str],
+            bool,
         ]
     ]:
         """Return all EC2/RDS instances (for unrestricted match-all policies)."""
@@ -702,6 +824,7 @@ class AccessMappingService:
                 Optional[str],
                 Optional[str],
                 Optional[str],
+                bool,
             ]
         ] = []
         if match_ec2:
@@ -717,6 +840,7 @@ class AccessMappingService:
                         ec2.instance_type,
                         None,
                         None,
+                        ec2.tf_managed,
                     )
                 )
         if match_rds:
@@ -732,6 +856,7 @@ class AccessMappingService:
                         rds.db_instance_class,
                         rds.engine,
                         rds.engine,
+                        rds.tf_managed,
                     )
                 )
         return results

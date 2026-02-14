@@ -294,6 +294,13 @@ class CyberArkUser(Base):
     email: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     active: Mapped[bool] = mapped_column(Boolean, default=True)
 
+    # Terraform tracking
+    tf_managed: Mapped[bool] = mapped_column(Boolean, default=False)
+    tf_state_source: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    tf_resource_address: Mapped[Optional[str]] = mapped_column(
+        String(500), nullable=True
+    )
+
     # Deletion tracking
     is_deleted: Mapped[bool] = mapped_column(Boolean, default=False)
     deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)

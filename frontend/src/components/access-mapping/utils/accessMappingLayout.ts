@@ -69,22 +69,41 @@ function entityNodeData(
 ): Record<string, unknown> {
   switch (entityType) {
     case "role":
-      return { label: entityName, roleName: entityName };
+      return {
+        label: entityName,
+        roleName: entityName,
+        tfManaged: context?.tf_managed ?? false,
+      };
     case "safe":
-      return { label: entityName, safeName: entityName };
+      return {
+        label: entityName,
+        safeName: entityName,
+        tfManaged: context?.tf_managed ?? false,
+      };
     case "account": {
       const data: Record<string, unknown> = {
         label: entityName,
         accountName: entityName,
+        tfManaged: context?.tf_managed ?? false,
       };
       if (context?.platform_id) data.platformId = context.platform_id;
       if (context?.username) data.username = context.username;
       if (context?.secret_type) data.secretType = context.secret_type;
       if (context?.address) data.address = context.address;
+      if (context?.account_id) data.accountId = context.account_id;
+      if (context?.safe_name) data.safeName = context.safe_name;
+      if (context?.tf_state_source)
+        data.tfStateSource = context.tf_state_source;
+      if (context?.tf_resource_address)
+        data.tfResourceAddress = context.tf_resource_address;
       return data;
     }
     case "sia_policy":
-      return { label: entityName, policyName: entityName };
+      return {
+        label: entityName,
+        policyName: entityName,
+        tfManaged: context?.tf_managed ?? false,
+      };
     default:
       return { label: entityName };
   }
@@ -378,11 +397,28 @@ export function calculateAccessMappingLayout(
     const userId = `user-${userMapping.user_name}`;
     if (!seenUsers.has(userMapping.user_name)) {
       seenUsers.add(userMapping.user_name);
+      // Extract user tf_managed from the first path's user step context
+      let userTfManaged = false;
+      const allPaths = [
+        ...(userMapping.targets?.flatMap((t) => t.access_paths) || []),
+        ...(userMapping.access_paths || []),
+      ];
+      for (const p of allPaths) {
+        const userStep = p.steps?.find((s) => s.entity_type === "user");
+        if (userStep?.context?.tf_managed) {
+          userTfManaged = true;
+          break;
+        }
+      }
       nodes.push({
         id: userId,
         type: "access-user",
         position: { x: START_X, y: colY[0] },
-        data: { label: userMapping.user_name, userName: userMapping.user_name },
+        data: {
+          label: userMapping.user_name,
+          userName: userMapping.user_name,
+          tfManaged: userTfManaged,
+        },
       });
       colY[0] += ROW_SPACING;
     }
@@ -405,6 +441,7 @@ export function calculateAccessMappingLayout(
                 displayStatus: target.display_status,
                 instanceType: target.instance_type,
                 vpcId: target.vpc_id,
+                tfManaged: target.tf_managed ?? false,
               }
             : {
                 label: target.target_name || target.target_id,
@@ -414,6 +451,7 @@ export function calculateAccessMappingLayout(
                 instanceClass: target.instance_type,
                 engine: target.engine,
                 vpcId: target.vpc_id,
+                tfManaged: target.tf_managed ?? false,
               };
         nodes.push({
           id: targetId,

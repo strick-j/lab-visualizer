@@ -195,6 +195,7 @@ class TargetAccessInfo(BaseSchema):
     instance_type: Optional[str] = None  # EC2 instance type or RDS instance class
     engine: Optional[str] = None  # RDS engine (e.g., "postgres", "mysql")
     platform: Optional[str] = None  # Platform label (e.g., "Linux", "PostgreSQL")
+    tf_managed: bool = False
     access_paths: List[AccessPath] = []
 
 
@@ -251,6 +252,9 @@ class CyberArkUserResponse(BaseSchema):
     display_name: Optional[str] = None
     email: Optional[str] = None
     active: bool = True
+    tf_managed: bool = False
+    tf_state_source: Optional[str] = None
+    tf_resource_address: Optional[str] = None
     is_deleted: bool = False
     updated_at: datetime
 

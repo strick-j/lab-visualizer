@@ -7,6 +7,7 @@ import type { CollapsibleNodeData } from "@/types";
 interface UserNodeData extends CollapsibleNodeData {
   label: string;
   userName: string;
+  tfManaged?: boolean;
 }
 
 function UserNodeComponent({ data }: NodeProps<UserNodeData>) {
@@ -75,6 +76,14 @@ function UserNodeComponent({ data }: NodeProps<UserNodeData>) {
               {data.childSummary.policyCount !== 1 ? "ies" : "y"}
             </span>
           )}
+        </div>
+      )}
+
+      {!data.collapsed && data.tfManaged && (
+        <div className="mt-1.5 flex justify-end">
+          <span className="px-1 py-0.5 text-[10px] font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300 rounded">
+            TF
+          </span>
         </div>
       )}
 

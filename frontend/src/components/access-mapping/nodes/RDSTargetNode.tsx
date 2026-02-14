@@ -11,6 +11,7 @@ interface RDSTargetNodeData {
   instanceClass?: string;
   engine?: string;
   vpcId?: string;
+  tfManaged?: boolean;
 }
 
 const statusColors: Record<string, string> = {
@@ -68,7 +69,7 @@ function RDSTargetNodeComponent({ data }: NodeProps<RDSTargetNodeData>) {
         </div>
       </div>
 
-      {(data.engine || data.instanceClass || data.vpcId) && (
+      {(data.engine || data.instanceClass || data.vpcId || data.tfManaged) && (
         <div className="mt-1.5 flex flex-wrap gap-1">
           {data.engine && (
             <span className="px-1.5 py-0.5 text-[10px] font-medium bg-blue-50 text-blue-600 dark:bg-blue-900/40 dark:text-blue-300 rounded">
@@ -83,6 +84,11 @@ function RDSTargetNodeComponent({ data }: NodeProps<RDSTargetNodeData>) {
           {data.vpcId && (
             <span className="px-1.5 py-0.5 text-[10px] font-mono bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400 rounded">
               {data.vpcId}
+            </span>
+          )}
+          {data.tfManaged && (
+            <span className="px-1 py-0.5 text-[10px] font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300 rounded">
+              TF
             </span>
           )}
         </div>
