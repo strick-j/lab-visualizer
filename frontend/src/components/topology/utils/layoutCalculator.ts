@@ -69,9 +69,9 @@ const config = {
   },
   resourcesPerRow: 2,
   // Collapsed dimensions
-  collapsedSubnetHeight: 60,
+  collapsedSubnetHeight: 80,
   collapsedSubnetWidth: 280,
-  collapsedVpcHeight: 80,
+  collapsedVpcHeight: 120,
   collapsedVpcMinWidth: 350,
 };
 
