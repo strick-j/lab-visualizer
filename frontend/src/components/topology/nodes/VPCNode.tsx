@@ -16,7 +16,8 @@ function VPCNodeComponent({ data, selected }: NodeProps<VPCNodeData>) {
   return (
     <div
       className={cn(
-        "w-full h-full rounded-lg border-2 border-dashed p-4 transition-all duration-300 ease-in-out",
+        "w-full rounded-lg border-2 border-dashed p-4 transition-all duration-300 ease-in-out",
+        !data.collapsed && "h-full",
         statusColors[data.displayStatus],
       )}
     >

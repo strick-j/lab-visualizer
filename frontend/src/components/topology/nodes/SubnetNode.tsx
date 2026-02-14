@@ -33,7 +33,8 @@ function SubnetNodeComponent({ data, selected }: NodeProps<SubnetNodeData>) {
   return (
     <div
       className={cn(
-        "w-full h-full rounded-lg border-2 p-3 transition-all duration-300 ease-in-out",
+        "w-full rounded-lg border-2 p-3 transition-all duration-300 ease-in-out",
+        !data.collapsed && "h-full",
         subnetTypeStyles[data.subnetType],
       )}
     >
