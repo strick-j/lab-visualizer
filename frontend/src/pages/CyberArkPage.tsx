@@ -3,6 +3,7 @@ import { Shield } from "lucide-react";
 import { CyberArkTabNavigation } from "@/components/cyberark/CyberArkTabNavigation";
 import { SafeList } from "@/components/cyberark/SafeList";
 import { RoleList } from "@/components/cyberark/RoleList";
+import { UserList } from "@/components/cyberark/UserList";
 import { SIAPolicyList } from "@/components/cyberark/SIAPolicyList";
 import type { CyberArkResourceType } from "@/types";
 
@@ -21,7 +22,7 @@ export function CyberArkPage() {
             CyberArk Resources
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            Identity roles, Privilege Cloud safes, and SIA policies
+            Identity users and roles, Privilege Cloud safes, and SIA policies
           </p>
         </div>
       </div>
@@ -33,6 +34,7 @@ export function CyberArkPage() {
       <div>
         {activeTab === "safes" && <SafeList />}
         {activeTab === "roles" && <RoleList />}
+        {activeTab === "users" && <UserList />}
         {activeTab === "sia-policies" && <SIAPolicyList />}
       </div>
     </div>

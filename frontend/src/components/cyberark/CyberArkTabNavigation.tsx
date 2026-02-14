@@ -1,4 +1,4 @@
-import { Lock, ShieldCheck, Zap } from "lucide-react";
+import { Lock, ShieldCheck, Users, Zap } from "lucide-react";
 import type { CyberArkResourceType } from "@/types";
 
 interface Tab {
@@ -10,6 +10,7 @@ interface Tab {
 const tabs: Tab[] = [
   { key: "safes", label: "Safes", icon: Lock },
   { key: "roles", label: "Roles", icon: ShieldCheck },
+  { key: "users", label: "Users", icon: Users },
   { key: "sia-policies", label: "SIA Policies", icon: Zap },
 ];
 

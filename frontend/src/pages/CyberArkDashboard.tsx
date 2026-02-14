@@ -84,7 +84,7 @@ export function CyberArkDashboardPage() {
           icon={<Users className="h-5 w-5 text-blue-600" />}
           value={totalUsers}
           subtitle={`${activeUsers} active`}
-          href="/cyberark-users"
+          href="/cyberark"
           linkText="View users"
           loading={usersLoading}
         />

@@ -11,5 +11,4 @@ export { AuthCallbackPage } from "./AuthCallbackPage";
 export { SetupPage } from "./SetupPage";
 export { CyberArkPage } from "./CyberArkPage";
 export { CyberArkDashboardPage } from "./CyberArkDashboard";
-export { CyberArkUsersPage } from "./CyberArkUsersPage";
 export { AccessMappingPage } from "./AccessMappingPage";
