@@ -10,6 +10,11 @@ interface AccountNodeData {
   platformId?: string;
   username?: string;
   secretType?: string;
+  accountId?: string;
+  safeName?: string;
+  tfManaged?: boolean;
+  tfStateSource?: string;
+  tfResourceAddress?: string;
 }
 
 function AccountNodeComponent({ data }: NodeProps<AccountNodeData>) {
@@ -43,7 +48,7 @@ function AccountNodeComponent({ data }: NodeProps<AccountNodeData>) {
         </div>
       </div>
 
-      {(data.platformId || data.secretType) && (
+      {(data.platformId || data.secretType || data.tfManaged) && (
         <div className="mt-1.5 flex flex-wrap gap-1">
           {data.platformId && (
             <span className="px-1.5 py-0.5 text-[10px] font-medium bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded">
@@ -53,6 +58,11 @@ function AccountNodeComponent({ data }: NodeProps<AccountNodeData>) {
           {data.secretType && (
             <span className="px-1.5 py-0.5 text-[10px] font-medium bg-blue-50 text-blue-600 dark:bg-blue-900/40 dark:text-blue-300 rounded">
               {data.secretType}
+            </span>
+          )}
+          {data.tfManaged && (
+            <span className="px-1 py-0.5 text-[10px] font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300 rounded">
+              TF
             </span>
           )}
         </div>

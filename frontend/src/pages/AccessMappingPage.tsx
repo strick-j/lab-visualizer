@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { AlertCircle, RefreshCw, Map } from "lucide-react";
 import {
   useAccessMapping,
@@ -7,6 +7,7 @@ import {
 } from "@/hooks";
 import { useAuth } from "@/contexts/AuthContext";
 import { AccessMappingCanvas } from "@/components/access-mapping/AccessMappingCanvas";
+import { AccessMappingDetailPanel } from "@/components/access-mapping/AccessMappingDetailPanel";
 import {
   AccessMappingFilterBar,
   type AccessMappingFilters,
@@ -20,9 +21,26 @@ const EMPTY_FILTERS: AccessMappingFilters = {
   selectedUser: "",
 };
 
+interface SelectedNode {
+  nodeType: string;
+  nodeData: Record<string, unknown>;
+}
+
 export function AccessMappingPage() {
   const { user: authUser } = useAuth();
   const [filters, setFilters] = useState<AccessMappingFilters>(EMPTY_FILTERS);
+  const [selectedNode, setSelectedNode] = useState<SelectedNode | null>(null);
+
+  const handleNodeClick = useCallback(
+    (_nodeId: string, nodeType: string, nodeData: Record<string, unknown>) => {
+      setSelectedNode({ nodeType, nodeData });
+    },
+    [],
+  );
+
+  const handleClosePanel = useCallback(() => {
+    setSelectedNode(null);
+  }, []);
 
   // Fetch data - pass user filter to API if selected
   const apiParams = filters.selectedUser
@@ -108,7 +126,11 @@ export function AccessMappingPage() {
   return (
     <div className="flex h-[calc(100vh-var(--header-height))] flex-col overflow-hidden">
       <div className="relative flex-1 bg-gray-50 dark:bg-gray-900">
-        <AccessMappingCanvas data={data} filters={canvasFilters} />
+        <AccessMappingCanvas
+          data={data}
+          filters={canvasFilters}
+          onNodeClick={handleNodeClick}
+        />
         <AccessMappingFilterBar
           filters={filters}
           onChange={setFilters}
@@ -123,6 +145,12 @@ export function AccessMappingPage() {
             total_jit_paths: data.total_jit_paths,
           }}
         />
+        {selectedNode && (
+          <AccessMappingDetailPanel
+            selectedNode={selectedNode}
+            onClose={handleClosePanel}
+          />
+        )}
       </div>
     </div>
   );

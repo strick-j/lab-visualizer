@@ -1105,19 +1105,34 @@ async def _sync_terraform_state(db: AsyncSession) -> int:
                     policy.tf_resource_address = tf_resource.resource_address
                     count += 1
 
-        # Log counts for safe members and users (counted but not
-        # persisted to DB since those models lack tf_managed columns)
+        # Update CyberArk Users
+        tf_users = tf_resources.get("cyberark_user", [])
+        logger.info("TF sync: %d CyberArk users from Terraform", len(tf_users))
+        for tf_resource in tf_users:
+            result = await db.execute(
+                select(CyberArkUser).where(
+                    CyberArkUser.user_name == tf_resource.resource_id
+                )
+            )
+            user = result.scalar_one_or_none()
+            if user:
+                user.tf_managed = True
+                user.tf_state_source = tf_resource.state_source
+                user.tf_resource_address = tf_resource.resource_address
+                count += 1
+            else:
+                logger.debug(
+                    "TF sync: user '%s' in TF but not in DB",
+                    tf_resource.resource_id,
+                )
+
+        # Log counts for safe members (counted but not persisted
+        # to DB since that model lacks tf_managed columns)
         tf_safe_members = tf_resources.get("cyberark_safe_member", [])
         if tf_safe_members:
             logger.info(
                 "TF sync: %d CyberArk safe members from Terraform (count only)",
                 len(tf_safe_members),
-            )
-        tf_users = tf_resources.get("cyberark_user", [])
-        if tf_users:
-            logger.info(
-                "TF sync: %d CyberArk users from Terraform (count only)",
-                len(tf_users),
             )
 
         await db.flush()

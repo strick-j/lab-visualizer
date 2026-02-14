@@ -10,6 +10,7 @@ interface EC2TargetNodeData {
   displayStatus?: string;
   instanceType?: string;
   vpcId?: string;
+  tfManaged?: boolean;
 }
 
 const statusColors: Record<string, string> = {
@@ -67,7 +68,7 @@ function EC2TargetNodeComponent({ data }: NodeProps<EC2TargetNodeData>) {
         </div>
       </div>
 
-      {(data.instanceType || data.vpcId) && (
+      {(data.instanceType || data.vpcId || data.tfManaged) && (
         <div className="mt-1.5 flex flex-wrap gap-1">
           {data.instanceType && (
             <span className="px-1.5 py-0.5 text-[10px] font-medium bg-orange-50 text-orange-600 dark:bg-orange-900/40 dark:text-orange-300 rounded">
@@ -77,6 +78,11 @@ function EC2TargetNodeComponent({ data }: NodeProps<EC2TargetNodeData>) {
           {data.vpcId && (
             <span className="px-1.5 py-0.5 text-[10px] font-mono bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400 rounded">
               {data.vpcId}
+            </span>
+          )}
+          {data.tfManaged && (
+            <span className="px-1 py-0.5 text-[10px] font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300 rounded">
+              TF
             </span>
           )}
         </div>

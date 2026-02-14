@@ -167,6 +167,7 @@ export interface TargetAccessInfo {
   instance_type: string | null;
   engine: string | null;
   platform: string | null;
+  tf_managed?: boolean;
   access_paths: AccessPath[];
 }
 
@@ -230,6 +231,9 @@ export interface CyberArkIdentityUser {
   display_name: string | null;
   email: string | null;
   active: boolean;
+  tf_managed: boolean;
+  tf_state_source: string | null;
+  tf_resource_address: string | null;
   is_deleted: boolean;
   updated_at: string;
 }
