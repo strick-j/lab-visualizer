@@ -1,26 +1,70 @@
-import { useState } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
+import { X } from "lucide-react";
 import {
   PageLoading,
   TerraformBadge,
   EmptyState,
   SearchInput,
+  Select,
+  Button,
 } from "@/components/common";
 import { ResourceTable } from "@/components/resources";
 import { SIAPolicyDetailPanel } from "./SIAPolicyDetailPanel";
 import { useCyberArkSIAPolicies } from "@/hooks";
-import type { CyberArkSIAPolicy } from "@/types";
+import type { CyberArkSIAPolicy, CyberArkFilters } from "@/types";
+
+const typeOptions = [
+  { value: "vm", label: "VM" },
+  { value: "database", label: "Database" },
+];
+
+const statusOptions = [
+  { value: "active", label: "Active" },
+  { value: "inactive", label: "Inactive" },
+];
+
+const terraformOptions = [
+  { value: "true", label: "Managed" },
+  { value: "false", label: "Unmanaged" },
+];
 
 export function SIAPolicyList() {
   const [searchParams, setSearchParams] = useSearchParams();
   const selectedId = searchParams.get("selected");
-  const [search, setSearch] = useState("");
-  const [policyType, setPolicyType] = useState("");
+  const [filters, setFilters] = useState<CyberArkFilters>({});
+  const [searchValue, setSearchValue] = useState("");
 
-  const filters = {
-    ...(search ? { search } : {}),
-    ...(policyType ? { policy_type: policyType } : {}),
-  };
+  const filtersRef = useRef(filters);
+  const setFiltersRef = useRef(setFilters);
+
+  useEffect(() => {
+    filtersRef.current = filters;
+    setFiltersRef.current = setFilters;
+  }, [filters]);
+
+  // Debounce search input
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const current = filtersRef.current;
+      if (searchValue !== (current.search || "")) {
+        setFiltersRef.current({
+          ...current,
+          search: searchValue || undefined,
+        });
+      }
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [searchValue]);
+
+  const syncSearch = useCallback((s: string | undefined) => {
+    setSearchValue(s || "");
+  }, []);
+
+  useEffect(() => {
+    syncSearch(filters.search);
+  }, [filters.search, syncSearch]);
+
   const hasFilters = Object.keys(filters).length > 0;
   const { data, isLoading, error } = useCyberArkSIAPolicies(
     hasFilters ? filters : undefined,
@@ -32,6 +76,11 @@ export function SIAPolicyList() {
 
   const handleCloseDetail = () => {
     setSearchParams({});
+  };
+
+  const clearFilters = () => {
+    setSearchValue("");
+    setFilters({});
   };
 
   const columns = [
@@ -118,24 +167,67 @@ export function SIAPolicyList() {
         </p>
       </div>
 
-      <div className="flex items-center gap-4">
-        <div className="flex-1">
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="w-64">
           <SearchInput
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            onClear={() => setSearch("")}
+            value={searchValue}
+            onChange={(e) => setSearchValue(e.target.value)}
+            onClear={() => setSearchValue("")}
             placeholder="Search policies..."
           />
         </div>
-        <select
-          value={policyType}
-          onChange={(e) => setPolicyType(e.target.value)}
-          className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300"
-        >
-          <option value="">All Types</option>
-          <option value="vm">VM</option>
-          <option value="database">Database</option>
-        </select>
+        <div className="w-40">
+          <Select
+            placeholder="All types"
+            options={typeOptions}
+            value={filters.policy_type || ""}
+            onChange={(e) =>
+              setFilters({
+                ...filters,
+                policy_type: e.target.value || undefined,
+              })
+            }
+          />
+        </div>
+        <div className="w-40">
+          <Select
+            placeholder="All statuses"
+            options={statusOptions}
+            value={filters.status || ""}
+            onChange={(e) =>
+              setFilters({
+                ...filters,
+                status: e.target.value || undefined,
+              })
+            }
+          />
+        </div>
+        <div className="w-40">
+          <Select
+            placeholder="All resources"
+            options={terraformOptions}
+            value={
+              filters.tf_managed === undefined
+                ? ""
+                : String(filters.tf_managed)
+            }
+            onChange={(e) =>
+              setFilters({
+                ...filters,
+                tf_managed:
+                  e.target.value === ""
+                    ? undefined
+                    : e.target.value === "true",
+              })
+            }
+          />
+        </div>
+        {hasFilters && (
+          <Button variant="ghost" size="sm" onClick={clearFilters}>
+            <X className="h-4 w-4" />
+            Clear filters
+          </Button>
+        )}
       </div>
 
       {data?.data.length === 0 ? (

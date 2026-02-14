@@ -1,11 +1,63 @@
-import { useState } from "react";
-import { Users } from "lucide-react";
-import { PageLoading, SearchInput, StatusBadge } from "@/components/common";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { Users, X } from "lucide-react";
+import {
+  PageLoading,
+  SearchInput,
+  StatusBadge,
+  Select,
+  Button,
+} from "@/components/common";
 import { useCyberArkUsers } from "@/hooks";
+import type { CyberArkFilters } from "@/types";
+
+const statusOptions = [
+  { value: "true", label: "Active" },
+  { value: "false", label: "Inactive" },
+];
 
 export function CyberArkUsersPage() {
-  const [search, setSearch] = useState("");
-  const { data, isLoading } = useCyberArkUsers(search ? { search } : undefined);
+  const [filters, setFilters] = useState<CyberArkFilters>({});
+  const [searchValue, setSearchValue] = useState("");
+
+  const filtersRef = useRef(filters);
+  const setFiltersRef = useRef(setFilters);
+
+  useEffect(() => {
+    filtersRef.current = filters;
+    setFiltersRef.current = setFilters;
+  }, [filters]);
+
+  // Debounce search input
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const current = filtersRef.current;
+      if (searchValue !== (current.search || "")) {
+        setFiltersRef.current({
+          ...current,
+          search: searchValue || undefined,
+        });
+      }
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [searchValue]);
+
+  const syncSearch = useCallback((s: string | undefined) => {
+    setSearchValue(s || "");
+  }, []);
+
+  useEffect(() => {
+    syncSearch(filters.search);
+  }, [filters.search, syncSearch]);
+
+  const hasFilters = Object.keys(filters).length > 0;
+  const { data, isLoading } = useCyberArkUsers(
+    hasFilters ? filters : undefined,
+  );
+
+  const clearFilters = () => {
+    setSearchValue("");
+    setFilters({});
+  };
 
   if (isLoading && !data) {
     return <PageLoading />;
@@ -30,14 +82,40 @@ export function CyberArkUsersPage() {
         </div>
       </div>
 
-      {/* Search */}
-      <div className="max-w-md">
-        <SearchInput
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          onClear={() => setSearch("")}
-          placeholder="Search users..."
-        />
+      {/* Filters */}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="w-64">
+          <SearchInput
+            value={searchValue}
+            onChange={(e) => setSearchValue(e.target.value)}
+            onClear={() => setSearchValue("")}
+            placeholder="Search users..."
+          />
+        </div>
+        <div className="w-40">
+          <Select
+            placeholder="All statuses"
+            options={statusOptions}
+            value={
+              filters.active === undefined ? "" : String(filters.active)
+            }
+            onChange={(e) =>
+              setFilters({
+                ...filters,
+                active:
+                  e.target.value === ""
+                    ? undefined
+                    : e.target.value === "true",
+              })
+            }
+          />
+        </div>
+        {hasFilters && (
+          <Button variant="ghost" size="sm" onClick={clearFilters}>
+            <X className="h-4 w-4" />
+            Clear filters
+          </Button>
+        )}
       </div>
 
       {/* Users Table */}
@@ -66,7 +144,9 @@ export function CyberArkUsersPage() {
                   colSpan={4}
                   className="px-4 py-8 text-center text-gray-500 dark:text-gray-400"
                 >
-                  {search ? "No users match your search" : "No users found"}
+                  {hasFilters
+                    ? "No users match your current filters"
+                    : "No users found"}
                 </td>
               </tr>
             ) : (
