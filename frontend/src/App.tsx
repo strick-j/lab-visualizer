@@ -15,7 +15,6 @@ import {
   SetupPage,
   CyberArkPage,
   CyberArkDashboardPage,
-  CyberArkUsersPage,
   AccessMappingPage,
 } from "@/pages";
 import { ThemeProvider } from "@/contexts/ThemeContext";
@@ -68,10 +67,6 @@ function App() {
                     element={<CyberArkDashboardPage />}
                   />
                   <Route path="cyberark" element={<CyberArkPage />} />
-                  <Route
-                    path="cyberark-users"
-                    element={<CyberArkUsersPage />}
-                  />
                   <Route
                     path="access-mapping"
                     element={<AccessMappingPage />}

@@ -15,7 +15,6 @@ import {
   ChevronsLeft,
   ChevronsRight,
   Lock,
-  Users,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -59,7 +58,6 @@ const navigationSections: NavSection[] = [
     items: [
       { name: "Dashboard", href: "/cyberark-dashboard", icon: LayoutDashboard },
       { name: "Resources", href: "/cyberark", icon: Lock },
-      { name: "Users", href: "/cyberark-users", icon: Users },
       { name: "Access Mapping", href: "/access-mapping", icon: Map },
     ],
   },

@@ -19,9 +19,6 @@ vi.mock("@/pages", () => ({
   CyberArkDashboardPage: () => (
     <div data-testid="cyberark-dashboard-page">CyberArk Dashboard Content</div>
   ),
-  CyberArkUsersPage: () => (
-    <div data-testid="cyberark-users-page">CyberArk Users Content</div>
-  ),
   AccessMappingPage: () => (
     <div data-testid="access-mapping-page">Access Mapping Content</div>
   ),

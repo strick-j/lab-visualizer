@@ -112,7 +112,7 @@ export interface CyberArkSIAPolicyDetail extends CyberArkSIAPolicy {
 // CyberArk Page Types
 // =============================================================================
 
-export type CyberArkResourceType = "safes" | "roles" | "sia-policies";
+export type CyberArkResourceType = "safes" | "roles" | "sia-policies" | "users";
 
 export interface CyberArkFilters {
   search?: string;
