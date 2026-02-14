@@ -645,6 +645,7 @@ export async function getCyberArkSIAPolicies(
   if (filters?.tf_managed !== undefined)
     params.append("tf_managed", String(filters.tf_managed));
   if (filters?.policy_type) params.append("policy_type", filters.policy_type);
+  if (filters?.status) params.append("status", filters.status);
 
   const response = await api.get("/cyberark/sia-policies", { params });
   return response.data;
@@ -669,6 +670,8 @@ export async function getCyberArkUsers(
 ): Promise<CyberArkUserListResponse> {
   const params = new URLSearchParams();
   if (filters?.search) params.append("search", filters.search);
+  if (filters?.active !== undefined)
+    params.append("active", String(filters.active));
 
   const response = await api.get("/cyberark/users", { params });
   return response.data;

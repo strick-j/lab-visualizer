@@ -118,6 +118,8 @@ export interface CyberArkFilters {
   search?: string;
   tf_managed?: boolean;
   policy_type?: string;
+  active?: boolean;
+  status?: string;
 }
 
 // =============================================================================

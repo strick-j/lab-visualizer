@@ -183,6 +183,7 @@ async def list_sia_policies(
     search: Optional[str] = Query(None),
     policy_type: Optional[str] = Query(None),
     tf_managed: Optional[bool] = Query(None),
+    status: Optional[str] = Query(None),
     db: AsyncSession = Depends(get_db),
     _user=Depends(get_current_user),
 ):
@@ -196,6 +197,8 @@ async def list_sia_policies(
         query = query.where(CyberArkSIAPolicy.policy_type == policy_type)
     if tf_managed is not None:
         query = query.where(CyberArkSIAPolicy.tf_managed == tf_managed)
+    if status:
+        query = query.where(CyberArkSIAPolicy.status == status)
     query = query.order_by(CyberArkSIAPolicy.policy_name)
 
     result = await db.execute(query)
@@ -264,6 +267,7 @@ async def get_sia_policy(
 @router.get("/users", response_model=ListResponse[CyberArkUserResponse])
 async def list_users(
     search: Optional[str] = Query(None),
+    active: Optional[bool] = Query(None),
     db: AsyncSession = Depends(get_db),
     _user=Depends(get_current_user),
 ):
@@ -274,6 +278,8 @@ async def list_users(
             CyberArkUser.user_name.icontains(search)
             | CyberArkUser.display_name.icontains(search)
         )
+    if active is not None:
+        query = query.where(CyberArkUser.active == active)
     query = query.order_by(CyberArkUser.user_name)
 
     result = await db.execute(query)

@@ -66,10 +66,6 @@ export function SafeDetailPanel({ safeName, onClose }: SafeDetailPanelProps) {
                   value={safe.description || "-"}
                 />
                 <DetailRow
-                  label="Managing CPM"
-                  value={safe.managing_cpm || "-"}
-                />
-                <DetailRow
                   label="Members"
                   value={String(safe.number_of_members)}
                 />
