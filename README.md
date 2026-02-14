@@ -1,6 +1,6 @@
 # AWS Lab Infrastructure Visualizer
 
-A web application that provides visual representation of AWS infrastructure state, aggregating data from AWS APIs and Terraform state files to give real-time insights into your cloud resources.
+A web application that provides visual representation of AWS infrastructure and CyberArk privileged access state, aggregating data from AWS APIs, CyberArk APIs, and Terraform state files to give real-time insights into your cloud resources and access controls.
 
 ![Python](https://img.shields.io/badge/python-3.11+-blue.svg)
 ![React](https://img.shields.io/badge/react-18.2-61dafb.svg)
@@ -10,14 +10,27 @@ A web application that provides visual representation of AWS infrastructure stat
 
 ## Features
 
+### AWS Infrastructure
 - **Real-time Infrastructure View**: Monitor EC2 instances, RDS databases, ECS containers, VPCs, Subnets, Internet Gateways, NAT Gateways, and Elastic IPs
 - **Interactive Topology Visualization**: Visual network topology with React Flow showing VPC → Subnet → Resource relationships (including ECS containers), with filtering controls
-- **Terraform Integration**: Aggregate multiple Terraform state files from S3 backend to identify managed resources, with admin UI for managing buckets and paths
 - **Status Visualization**: Color-coded status indicators (running, stopped, pending, error)
-- **Configuration Drift Detection**: Compare live AWS state against Terraform state to identify drift
+
+### CyberArk Integration
+- **Privilege Cloud**: Collect and display safes, privileged accounts, and safe memberships
+- **Identity (SCIM)**: Sync users and roles from CyberArk Identity via SCIM API
+- **Secure Infrastructure Access (SIA)**: Collect VM and database access policies with target criteria matching
+- **Access Mapping Visualization**: Interactive React Flow graph showing user-to-target access paths through standing access (User → Role → Safe → Account → Target) and JIT access (User → SIA Policy → Target)
+- **CyberArk Dashboard**: Dedicated resource views for safes, roles, and SIA policies
+- **Tenant Discovery**: Automatic URL discovery from CyberArk subdomain name
+
+### Infrastructure as Code
+- **Terraform Integration**: Aggregate multiple Terraform state files from S3 backend to identify managed resources (AWS and CyberArk), with admin UI for managing buckets and paths
+- **Configuration Drift Detection**: Compare live AWS and CyberArk state against Terraform state to identify unmanaged and orphaned resources
+
+### Platform
 - **Authentication**: Local username/password login and SSO via OIDC identity providers with token-based sessions
 - **User Management**: Admin panel for managing users, roles, and account status
-- **Settings Management**: Admin UI for configuring OIDC providers and Terraform state buckets
+- **Settings Management**: Admin UI for configuring OIDC providers, Terraform state buckets, and CyberArk integration
 - **Dark/Light Theme**: Toggle between themes for comfortable viewing
 
 ## Architecture
@@ -26,13 +39,14 @@ A web application that provides visual representation of AWS infrastructure stat
 ┌─────────────────────────────────────────────────────────────────────┐
 │                    Frontend (React + TypeScript)                    │
 │  ┌─────────────┐  ┌──────────────┐  ┌─────────────────────────────┐ │
-│  │   Pages     │  │  Components  │  │  Topology Visualization     │ │
-│  │  VPCPage    │  │  common/     │  │  (React Flow)               │ │
-│  │  ECSList    │  │  dashboard/  │  │  VPC → Subnet → EC2/RDS/ECS │ │
-│  │  Settings   │  │  vpc/        │  └─────────────────────────────┘ │
-│  │  Login      │  │  topology/   │                                  │
+│  │   Pages     │  │  Components  │  │  Visualizations (React Flow)│ │
+│  │  VPCPage    │  │  common/     │  │  Infrastructure Topology    │ │
+│  │  ECSList    │  │  dashboard/  │  │  VPC → Subnet → EC2/RDS/ECS│ │
+│  │  CyberArk   │  │  vpc/        │  │  Access Mapping            │ │
+│  │  AccessMap  │  │  topology/   │  │  User → Role → Safe → Tgt  │ │
+│  │  Settings   │  │  cyberark/   │  └─────────────────────────────┘ │
+│  │  Login      │  │  access-map/ │                                  │
 │  └─────────────┘  │  settings/   │                                  │
-│                   │  resources/  │                                  │
 │                   │  layout/     │                                  │
 │                   └──────────────┘                                  │
 └───────────────────────────┬─────────────────────────────────────────┘
@@ -42,11 +56,11 @@ A web application that provides visual representation of AWS infrastructure stat
 │                       FastAPI Backend                               │
 │  ┌──────────────┐  ┌──────────────┐  ┌────────────────────────────┐ │
 │  │  API Routes  │  │   Services   │  │      Collectors            │ │
-│  │  /api/*      │→ │   Business   │→ │  EC2, RDS, ECS, VPC        │ │
+│  │  /api/*      │→ │   Business   │→ │  AWS: EC2, RDS, ECS, VPC   │ │
 │  │              │  │   Logic      │  │  Subnet, IGW, NAT GW, EIP  │ │
-│  └──────────────┘  └──────────────┘  └──────────┬─────────────────┘ │
-│                                                 │                   │
-│  ┌──────────────┐  ┌──────────────┐             │                   │
+│  └──────────────┘  └──────────────┘  │  CyberArk: Safes, Accounts │ │
+│                                      │  Roles, Users, SIA Policies │ │
+│  ┌──────────────┐  ┌──────────────┐  └──────────┬─────────────────┘ │
 │  │   Parsers    │  │   Models     │             │                   │
 │  │  Terraform   │  │  SQLAlchemy  │             │                   │
 │  │  State       │  │  Database    │             │                   │
@@ -54,10 +68,12 @@ A web application that provides visual representation of AWS infrastructure stat
 └─────────┼───────────────────────────────────────┼───────────────────┘
           │                                       │
           ▼                                       ▼
-┌──────────────────┐                   ┌───────────────────────────┐
-│  Terraform State │                   │        AWS APIs           │
-│  (S3 Backend)    │                   │  EC2, RDS, ECS, VPC, etc. │
-└──────────────────┘                   └───────────────────────────┘
+┌──────────────────┐       ┌───────────────────────────────────────┐
+│  Terraform State │       │           External APIs               │
+│  (S3 Backend)    │       │  AWS: EC2, RDS, ECS, VPC, etc.        │
+└──────────────────┘       │  CyberArk: Privilege Cloud, Identity  │
+                           │           SIA (UAP), SCIM             │
+                           └───────────────────────────────────────┘
 ```
 
 ## Quick Start
@@ -141,6 +157,11 @@ npm run dev
 | `FRONTEND_URL` | Frontend URL for SSO callback redirects | - |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | Access token TTL in minutes | `30` |
 | `REFRESH_TOKEN_EXPIRE_DAYS` | Refresh token TTL in days | `7` |
+| `CYBERARK_ENABLED` | Enable CyberArk integration | `false` |
+| `CYBERARK_BASE_URL` | Privilege Cloud URL | - |
+| `CYBERARK_IDENTITY_URL` | CyberArk Identity tenant URL | - |
+| `CYBERARK_CLIENT_ID` | CyberArk OAuth2 client ID | - |
+| `CYBERARK_CLIENT_SECRET` | CyberArk OAuth2 client secret | - |
 
 ### Terraform State Configuration
 
@@ -177,7 +198,7 @@ lab-visualizer/
 │   │   │       ├── info.py      # App version/build info
 │   │   │       ├── auth.py      # Authentication (local + OIDC)
 │   │   │       ├── users.py     # User management
-│   │   │       ├── settings.py  # Admin settings (OIDC, TF buckets)
+│   │   │       ├── settings.py  # Admin settings (OIDC, TF, CyberArk)
 │   │   │       ├── ec2.py       # EC2 instances
 │   │   │       ├── rds.py       # RDS instances
 │   │   │       ├── ecs.py       # ECS containers
@@ -188,12 +209,32 @@ lab-visualizer/
 │   │   │       ├── eip.py       # Elastic IPs
 │   │   │       ├── topology.py  # Topology data
 │   │   │       ├── terraform.py # Terraform state
+│   │   │       ├── cyberark.py  # CyberArk resources (safes, roles, SIA)
+│   │   │       ├── access_mapping.py # Access mapping visualization
 │   │   │       └── resources.py # Generic resources
-│   │   ├── collectors/          # AWS data collectors (EC2, RDS, ECS, VPC, etc.)
+│   │   ├── collectors/          # Data collectors
+│   │   │   ├── ec2.py, rds.py, ecs.py, vpc.py, ...  # AWS collectors
+│   │   │   ├── cyberark_base.py     # CyberArk OAuth2 base collector
+│   │   │   ├── cyberark_scim.py     # SCIM API base collector
+│   │   │   ├── cyberark_safes.py    # Privilege Cloud safes
+│   │   │   ├── cyberark_accounts.py # Privileged accounts
+│   │   │   ├── cyberark_roles.py    # Identity roles (SCIM)
+│   │   │   ├── cyberark_users.py    # Identity users (SCIM)
+│   │   │   └── cyberark_sia.py      # SIA access policies
 │   │   ├── parsers/             # Terraform state parser
-│   │   ├── models/              # SQLAlchemy models (resources + auth)
-│   │   ├── schemas/             # Pydantic schemas (resources, auth, settings)
-│   │   └── services/            # Business logic (auth, settings)
+│   │   ├── models/              # SQLAlchemy models
+│   │   │   ├── resources.py     # AWS resources + TF buckets
+│   │   │   ├── auth.py          # Users, sessions, auth settings
+│   │   │   └── cyberark.py      # CyberArk resources + settings
+│   │   ├── schemas/             # Pydantic schemas
+│   │   │   ├── resources.py     # AWS resource schemas
+│   │   │   ├── auth.py          # Auth schemas
+│   │   │   ├── settings.py      # Settings schemas
+│   │   │   └── cyberark.py      # CyberArk + access mapping schemas
+│   │   └── services/            # Business logic
+│   │       ├── auth.py          # Authentication service
+│   │       ├── settings.py      # Settings service
+│   │       └── access_mapping.py # Access path computation
 │   ├── scripts/                 # DB management scripts
 │   ├── tests/                   # Backend tests
 │   └── requirements.txt
@@ -205,14 +246,16 @@ lab-visualizer/
 │   │   │   ├── layout/          # Layout (Header, Sidebar)
 │   │   │   ├── dashboard/       # Dashboard widgets
 │   │   │   ├── resources/       # Resource tables
-│   │   │   ├── topology/        # React Flow visualization + filtering
+│   │   │   ├── topology/        # Infrastructure topology (React Flow)
 │   │   │   ├── vpc/             # VPC-specific components
+│   │   │   ├── cyberark/        # CyberArk resource views (safes, roles, SIA)
+│   │   │   ├── access-mapping/  # Access mapping visualization (React Flow)
 │   │   │   ├── settings/        # Settings management UI
 │   │   │   └── ProtectedRoute.tsx
-│   │   ├── pages/               # Page components (VPC, ECS, Login, Setup, Settings)
+│   │   ├── pages/               # Page components (VPC, ECS, CyberArk, AccessMapping, Login, Setup, Settings)
 │   │   ├── hooks/               # Custom React hooks
 │   │   ├── api/                 # API client
-│   │   ├── types/               # TypeScript types (resources, topology, auth)
+│   │   ├── types/               # TypeScript types (resources, topology, auth, cyberark)
 │   │   └── contexts/            # React contexts (Theme, Auth)
 │   ├── eslint.config.js         # ESLint 9 flat config
 │   └── package.json
@@ -303,6 +346,21 @@ Access interactive API documentation at:
 | `PATCH` | `/api/users/{id}/status` | Enable/disable user (admin only) |
 | `PATCH` | `/api/users/{id}/role` | Update user role (admin only) |
 
+**CyberArk Resources (auth required):**
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/cyberark/safes` | List Privilege Cloud safes |
+| `GET` | `/api/cyberark/safes/{safe_name}` | Safe details with members and accounts |
+| `GET` | `/api/cyberark/roles` | List CyberArk Identity roles |
+| `GET` | `/api/cyberark/roles/{role_id}` | Role details with members |
+| `GET` | `/api/cyberark/sia-policies` | List SIA access policies |
+| `GET` | `/api/cyberark/sia-policies/{policy_id}` | SIA policy details with principals |
+| `GET` | `/api/cyberark/drift` | Detect CyberArk configuration drift |
+| `GET` | `/api/access-mapping` | Compute user-to-target access paths |
+| `GET` | `/api/access-mapping/users` | List users for access mapping |
+| `GET` | `/api/access-mapping/targets` | List targets for access mapping |
+
 **Settings (admin only):**
 
 | Method | Endpoint | Description |
@@ -320,6 +378,14 @@ Access interactive API documentation at:
 | `DELETE` | `/api/settings/terraform/paths/{id}` | Remove state path |
 | `POST` | `/api/settings/terraform/buckets/test` | Test S3 bucket access |
 | `POST` | `/api/settings/terraform/buckets/list-objects` | Browse S3 bucket objects |
+| `GET` | `/api/settings/cyberark` | Get CyberArk integration settings |
+| `PUT` | `/api/settings/cyberark` | Update CyberArk settings |
+| `POST` | `/api/settings/cyberark/test` | Test CyberArk API connection |
+| `POST` | `/api/settings/cyberark/discover` | Discover tenant URLs from subdomain |
+| `GET` | `/api/settings/cyberark/status` | CyberArk sync diagnostic status |
+| `GET` | `/api/settings/cyberark/scim` | Get SCIM integration settings |
+| `PUT` | `/api/settings/cyberark/scim` | Update SCIM settings |
+| `POST` | `/api/settings/cyberark/scim/test` | Test SCIM OAuth2 connection |
 
 ## Development
 
@@ -498,6 +564,7 @@ The application task role is managed by the standalone `iam` module (`infrastruc
 - **Framework**: FastAPI 0.128
 - **Server**: Uvicorn (ASGI)
 - **AWS SDK**: Boto3
+- **HTTP Client**: httpx (CyberArk API calls)
 - **Database**: SQLAlchemy + aiosqlite
 - **Validation**: Pydantic v2
 - **Auth**: Authlib (OIDC)
@@ -507,13 +574,17 @@ The application task role is managed by the standalone `iam` module (`infrastruc
 - **Build**: Vite 6.2
 - **Styling**: TailwindCSS 3.4
 - **State**: TanStack Query 5.17
-- **Visualization**: React Flow 11.11
+- **Visualization**: React Flow 11.11 (topology + access mapping)
 - **Testing**: Vitest 3.0 + Testing Library
 
 ### Infrastructure
 - **IaC**: Terraform 1.6+
 - **Container**: Docker + Docker Compose
 - **Target**: AWS ECS Fargate
+
+### Integrations
+- **AWS**: EC2, RDS, ECS, VPC, Subnets, IGW, NAT GW, EIP, S3
+- **CyberArk**: Privilege Cloud, Identity (SCIM), Secure Infrastructure Access (SIA)
 
 ## Contributing
 
