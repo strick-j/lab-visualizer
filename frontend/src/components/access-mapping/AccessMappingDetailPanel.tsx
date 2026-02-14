@@ -58,18 +58,18 @@ function AccountDetailPanel({
                 label="Account Name"
                 value={data.accountName as string}
               />
-              {data.accountId && (
+              {data.accountId ? (
                 <DetailRow
                   label="Account ID"
                   value={data.accountId as string}
                 />
-              )}
-              {data.username && (
+              ) : null}
+              {data.username ? (
                 <DetailRow label="Username" value={data.username as string} />
-              )}
-              {data.safeName && (
+              ) : null}
+              {data.safeName ? (
                 <DetailRow label="Safe" value={data.safeName as string} />
-              )}
+              ) : null}
             </div>
           </section>
 
@@ -78,21 +78,21 @@ function AccountDetailPanel({
               Connection
             </h4>
             <div className="divide-y divide-gray-100 rounded-lg border border-gray-200 bg-gray-50 px-3 dark:divide-gray-700 dark:border-gray-700 dark:bg-gray-700">
-              {data.address && (
+              {data.address ? (
                 <DetailRow label="Address" value={data.address as string} />
-              )}
-              {data.platformId && (
+              ) : null}
+              {data.platformId ? (
                 <DetailRow
                   label="Platform ID"
                   value={data.platformId as string}
                 />
-              )}
-              {data.secretType && (
+              ) : null}
+              {data.secretType ? (
                 <DetailRow
                   label="Secret Type"
                   value={data.secretType as string}
                 />
-              )}
+              ) : null}
             </div>
           </section>
 
