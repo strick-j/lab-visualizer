@@ -44,7 +44,6 @@ vi.mock("reactflow", () => ({
     </div>
   ),
   Background: () => <div data-testid="react-flow-background" />,
-  Controls: () => <div data-testid="react-flow-controls" />,
   ReactFlowProvider: ({ children }: { children: React.ReactNode }) => (
     <div>{children}</div>
   ),
@@ -54,6 +53,11 @@ vi.mock("reactflow", () => ({
   ) => [initialEdges, vi.fn(), vi.fn()],
   useReactFlow: () => ({ fitView: vi.fn() }),
   BackgroundVariant: { Dots: "dots" },
+}));
+
+// Mock ZoomControls
+vi.mock("@/components/common/ZoomControls", () => ({
+  ZoomControls: () => <div data-testid="zoom-controls" />,
 }));
 
 // Mock the layout calculator
@@ -132,9 +136,9 @@ describe("TopologyCanvas", () => {
     expect(screen.getByTestId("react-flow-background")).toBeInTheDocument();
   });
 
-  it("renders ReactFlow controls", () => {
+  it("renders zoom controls", () => {
     render(<TopologyCanvas data={mockTopologyData} />);
-    expect(screen.getByTestId("react-flow-controls")).toBeInTheDocument();
+    expect(screen.getByTestId("zoom-controls")).toBeInTheDocument();
   });
 
   it("calls onNodeClick when node is clicked", () => {

@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ReactFlow, {
   Background,
-  Controls,
   useNodesState,
   useEdgesState,
   useReactFlow,
@@ -11,6 +10,7 @@ import ReactFlow, {
 } from "reactflow";
 import "reactflow/dist/style.css";
 
+import { ZoomControls } from "@/components/common/ZoomControls";
 import {
   UserNode,
   RoleNode,
@@ -172,13 +172,7 @@ function AccessMappingCanvasInner({ data, filters }: AccessMappingCanvasProps) {
           size={1}
           className="bg-gray-50 dark:bg-gray-900"
         />
-        <Controls
-          showInteractive={false}
-          showFitView={true}
-          showZoom={true}
-          position="bottom-right"
-          className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg [&>button]:border-gray-200 [&>button]:dark:border-gray-700"
-        />
+        <ZoomControls />
       </ReactFlow>
 
       {/* Collapse/Expand All controls */}
