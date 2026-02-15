@@ -33,8 +33,11 @@ class EC2Collector(BaseCollector):
 
             for page in paginator.paginate():
                 for reservation in page.get("Reservations", []):
+                    owner_id = reservation.get("OwnerId")
                     for instance in reservation.get("Instances", []):
-                        instance_data = self._parse_instance(instance)
+                        instance_data = self._parse_instance(
+                            instance, owner_id=owner_id
+                        )
                         if instance_data:
                             instances.append(instance_data)
 
@@ -47,7 +50,9 @@ class EC2Collector(BaseCollector):
 
         return instances
 
-    def _parse_instance(self, instance: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    def _parse_instance(
+        self, instance: Dict[str, Any], owner_id: Optional[str] = None
+    ) -> Optional[Dict[str, Any]]:
         """
         Parse an EC2 instance response into a normalized dictionary.
 
@@ -83,6 +88,7 @@ class EC2Collector(BaseCollector):
                     instance.get("Platform"),
                     instance.get("PlatformDetails"),
                 ),
+                "owner_account_id": owner_id,
                 "region": self.region,
                 # Additional metadata
                 "image_id": instance.get("ImageId"),
@@ -130,8 +136,9 @@ class EC2Collector(BaseCollector):
             response = ec2.describe_instances(InstanceIds=[instance_id])
 
             for reservation in response.get("Reservations", []):
+                owner_id = reservation.get("OwnerId")
                 for instance in reservation.get("Instances", []):
-                    return self._parse_instance(instance)
+                    return self._parse_instance(instance, owner_id=owner_id)
 
         except ClientError as e:
             error_code = e.response.get("Error", {}).get("Code")

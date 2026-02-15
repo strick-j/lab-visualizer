@@ -307,6 +307,7 @@ async def _sync_ec2_instances(db: AsyncSession, instances: list, region_id: int)
             existing.launch_time = instance_data.get("launch_time")
             existing.tags = json.dumps(instance_data.get("tags", {}))
             existing.platform = instance_data.get("platform", "linux")
+            existing.owner_account_id = instance_data.get("owner_account_id")
             existing.is_deleted = False
             existing.deleted_at = None
         else:
@@ -327,6 +328,7 @@ async def _sync_ec2_instances(db: AsyncSession, instances: list, region_id: int)
                 launch_time=instance_data.get("launch_time"),
                 tags=json.dumps(instance_data.get("tags", {})),
                 platform=instance_data.get("platform", "linux"),
+                owner_account_id=instance_data.get("owner_account_id"),
                 is_deleted=False,
             )
             db.add(new_instance)
@@ -392,6 +394,7 @@ async def _sync_rds_instances(db: AsyncSession, instances: list, region_id: int)
             existing.vpc_id = instance_data.get("vpc_id")
             existing.availability_zone = instance_data.get("availability_zone")
             existing.multi_az = instance_data.get("multi_az", False)
+            existing.owner_account_id = instance_data.get("owner_account_id")
             existing.tags = json.dumps(instance_data.get("tags", {}))
             existing.is_deleted = False
             existing.deleted_at = None
@@ -411,6 +414,7 @@ async def _sync_rds_instances(db: AsyncSession, instances: list, region_id: int)
                 vpc_id=instance_data.get("vpc_id"),
                 availability_zone=instance_data.get("availability_zone"),
                 multi_az=instance_data.get("multi_az", False),
+                owner_account_id=instance_data.get("owner_account_id"),
                 tags=json.dumps(instance_data.get("tags", {})),
                 is_deleted=False,
             )

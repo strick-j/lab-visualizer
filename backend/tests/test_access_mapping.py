@@ -629,3 +629,160 @@ class TestTargetMatchesCriteria:
             )
             is True
         )
+
+    # ------------------------------------------------------------------
+    # Case-insensitive tag value matching
+    # ------------------------------------------------------------------
+
+    def test_tag_value_case_insensitive_match(self):
+        """Tag value 'Terraform' should match policy value 'terraform'."""
+        tags = {"ManagedBy": "Terraform"}
+        assert (
+            AccessMappingService._target_matches_criteria(
+                target_vpc_id=None,
+                target_subnet_id=None,
+                target_tags_json=json.dumps(tags),
+                target_ip=None,
+                target_fqdn=None,
+                vpc_ids=set(),
+                subnet_ids=set(),
+                tag_filters={"ManagedBy": ["terraform"]},
+                fqdn_patterns=[],
+                ip_ranges=[],
+            )
+            is True
+        )
+
+    def test_tag_value_case_insensitive_uppercase_policy(self):
+        """Tag value 'ubuntu' should match policy value 'Ubuntu'."""
+        tags = {"OS": "ubuntu"}
+        assert (
+            AccessMappingService._target_matches_criteria(
+                target_vpc_id=None,
+                target_subnet_id=None,
+                target_tags_json=json.dumps(tags),
+                target_ip=None,
+                target_fqdn=None,
+                vpc_ids=set(),
+                subnet_ids=set(),
+                tag_filters={"OS": ["Ubuntu"]},
+                fqdn_patterns=[],
+                ip_ranges=[],
+            )
+            is True
+        )
+
+    def test_tag_value_case_insensitive_or_within_values(self):
+        """Target 'RHEL' should match policy values ['AL2023','Fedora','rhel']."""
+        tags = {"OS": "RHEL"}
+        assert (
+            AccessMappingService._target_matches_criteria(
+                target_vpc_id=None,
+                target_subnet_id=None,
+                target_tags_json=json.dumps(tags),
+                target_ip=None,
+                target_fqdn=None,
+                vpc_ids=set(),
+                subnet_ids=set(),
+                tag_filters={"OS": ["AL2023", "Fedora", "rhel"]},
+                fqdn_patterns=[],
+                ip_ranges=[],
+            )
+            is True
+        )
+
+    def test_tag_value_case_insensitive_still_rejects_mismatch(self):
+        """Non-matching value should still fail regardless of case."""
+        tags = {"OS": "Windows"}
+        assert (
+            AccessMappingService._target_matches_criteria(
+                target_vpc_id=None,
+                target_subnet_id=None,
+                target_tags_json=json.dumps(tags),
+                target_ip=None,
+                target_fqdn=None,
+                vpc_ids=set(),
+                subnet_ids=set(),
+                tag_filters={"OS": ["Ubuntu", "RHEL"]},
+                fqdn_patterns=[],
+                ip_ranges=[],
+            )
+            is False
+        )
+
+    def test_tag_value_case_insensitive_multiple_keys(self):
+        """Multiple tag keys with case-insensitive values should AND correctly."""
+        tags = {
+            "Environment": "Dev",
+            "ManagedBy": "Terraform",
+            "Project": "papaya",
+            "OS": "Ubuntu",
+        }
+        assert (
+            AccessMappingService._target_matches_criteria(
+                target_vpc_id=None,
+                target_subnet_id=None,
+                target_tags_json=json.dumps(tags),
+                target_ip=None,
+                target_fqdn=None,
+                vpc_ids=set(),
+                subnet_ids=set(),
+                tag_filters={
+                    "Environment": ["dev"],
+                    "ManagedBy": ["terraform"],
+                    "Project": ["Papaya"],
+                    "OS": ["Ubuntu"],
+                },
+                fqdn_patterns=[],
+                ip_ranges=[],
+            )
+            is True
+        )
+
+    def test_tag_value_scalar_case_insensitive(self):
+        """Scalar (non-list) tag filter value should also be case-insensitive."""
+        tags = {"Env": "PRODUCTION"}
+        assert (
+            AccessMappingService._target_matches_criteria(
+                target_vpc_id=None,
+                target_subnet_id=None,
+                target_tags_json=json.dumps(tags),
+                target_ip=None,
+                target_fqdn=None,
+                vpc_ids=set(),
+                subnet_ids=set(),
+                tag_filters={"Env": "production"},
+                fqdn_patterns=[],
+                ip_ranges=[],
+            )
+            is True
+        )
+
+    def test_tag_extra_tags_on_target_dont_prevent_match(self):
+        """Target with extra tags beyond what policy specifies should still match."""
+        tags = {
+            "Environment": "Dev",
+            "ManagedBy": "Terraform",
+            "Project": "Papaya",
+            "OS": "Ubuntu",
+            "Name": "my-instance",
+            "ExtraTag": "some-value",
+        }
+        assert (
+            AccessMappingService._target_matches_criteria(
+                target_vpc_id=None,
+                target_subnet_id=None,
+                target_tags_json=json.dumps(tags),
+                target_ip=None,
+                target_fqdn=None,
+                vpc_ids=set(),
+                subnet_ids=set(),
+                tag_filters={
+                    "Environment": ["dev"],
+                    "ManagedBy": ["terraform"],
+                },
+                fqdn_patterns=[],
+                ip_ranges=[],
+            )
+            is True
+        )

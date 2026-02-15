@@ -153,6 +153,9 @@ class EC2Instance(Base):
     # Platform (AWS returns "windows" for Windows instances; absent for Linux)
     platform: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
 
+    # Owner account (Reservation.OwnerId from DescribeInstances)
+    owner_account_id: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+
     # Metadata
     launch_time: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     tags: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON string
@@ -224,6 +227,9 @@ class RDSInstance(Base):
     vpc_id: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
     availability_zone: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     multi_az: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    # Owner account (extracted from DBInstanceArn)
+    owner_account_id: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
 
     # Metadata
     tags: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON string

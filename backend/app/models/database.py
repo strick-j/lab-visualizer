@@ -191,6 +191,19 @@ async def init_db() -> None:
         except Exception:
             pass  # Column already exists
 
+    # Add owner_account_id column to ec2_instances and rds_instances (if missing)
+    async with get_engine().begin() as conn:
+        for tbl in ("ec2_instances", "rds_instances"):
+            try:
+                await conn.execute(
+                    text(
+                        f"ALTER TABLE {tbl} " "ADD COLUMN owner_account_id VARCHAR(20)"
+                    )
+                )
+                logger.info("Added column owner_account_id to %s", tbl)
+            except Exception:
+                pass  # Column already exists
+
     # Fix any NULL values in NOT-NULL integer columns (from earlier bugs)
     async with get_engine().begin() as conn:
         for stmt in [
