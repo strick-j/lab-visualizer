@@ -57,14 +57,6 @@ function EC2TargetNodeComponent({ data }: NodeProps<EC2TargetNodeData>) {
               {data.label || "EC2"}
             </span>
           </div>
-          <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
-            {data.instanceId}
-          </div>
-          {data.privateIp && (
-            <div className="text-xs text-gray-400 dark:text-gray-500 font-mono truncate">
-              {data.privateIp}
-            </div>
-          )}
         </div>
       </div>
 
