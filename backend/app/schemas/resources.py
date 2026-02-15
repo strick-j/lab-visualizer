@@ -361,6 +361,57 @@ class ElasticIPDetail(ElasticIPResponse):
 
 
 # =============================================================================
+# S3 Bucket Schemas
+# =============================================================================
+
+
+class S3BucketBase(BaseSchema):
+    """Base S3 bucket schema."""
+
+    bucket_name: str
+    name: Optional[str] = None
+    creation_date: Optional[datetime] = None
+
+
+class S3BucketResponse(S3BucketBase):
+    """S3 bucket response schema."""
+
+    id: int
+    display_status: DisplayStatus
+
+    # Versioning
+    versioning_enabled: bool = False
+    mfa_delete: bool = False
+
+    # Encryption
+    encryption_algorithm: Optional[str] = None
+    kms_key_id: Optional[str] = None
+    bucket_key_enabled: bool = False
+
+    # Public access block
+    block_public_acls: bool = False
+    block_public_policy: bool = False
+    ignore_public_acls: bool = False
+    restrict_public_buckets: bool = False
+
+    tags: Optional[Dict[str, Any]] = None
+    tf_managed: bool = False
+    tf_state_source: Optional[str] = None
+    tf_resource_address: Optional[str] = None
+    region_name: Optional[str] = Field(None, description="AWS region name")
+    is_deleted: bool = False
+    deleted_at: Optional[datetime] = None
+    updated_at: datetime
+
+
+class S3BucketDetail(S3BucketResponse):
+    """Detailed S3 bucket response with all fields."""
+
+    policy: Optional[str] = None
+    created_at: datetime
+
+
+# =============================================================================
 # ECS Container Schemas
 # =============================================================================
 

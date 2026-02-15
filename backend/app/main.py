@@ -24,6 +24,7 @@ from app.api.routes import (
     nat_gateway,
     rds,
     resources,
+    s3,
 )
 from app.api.routes import settings as settings_routes
 from app.api.routes import subnet, terraform, topology, users, vpc
@@ -129,6 +130,9 @@ app.include_router(
 )
 app.include_router(
     eip.router, prefix="/api", tags=["Elastic IPs"], dependencies=auth_dependency
+)
+app.include_router(
+    s3.router, prefix="/api", tags=["S3 Buckets"], dependencies=auth_dependency
 )
 app.include_router(
     ecs.router, prefix="/api", tags=["ECS Containers"], dependencies=auth_dependency
