@@ -62,6 +62,7 @@ class TerraformStateParser:
         "aws_ecs_cluster": "ecs_cluster",
         "aws_ecs_service": "ecs_service",
         "aws_ecs_task_definition": "ecs_task_definition",
+        "random_password": "random_password",
     }
 
     @classmethod
@@ -351,7 +352,7 @@ class TerraformStateParser:
         # Add CyberArk resource ID mappings (configurable type names)
         id_mappings[settings.cyberark_tf_safe_type] = "safe_name"
         id_mappings[settings.cyberark_tf_safe_member_type] = "member_name"
-        id_mappings[settings.cyberark_tf_account_type] = "id"
+        id_mappings[settings.cyberark_tf_account_type] = "account_id"
         id_mappings[settings.cyberark_tf_role_type] = "role_name"
         id_mappings[settings.cyberark_tf_user_type] = "username"
         id_mappings[settings.cyberark_tf_role_member_type] = "member_name"
@@ -630,6 +631,7 @@ class TerraformStateAggregator:
             "cyberark_role_member": [],
             "cyberark_sia_vm_policy": [],
             "cyberark_sia_db_policy": [],
+            "random_password": [],
         }
 
         bucket_entries = await self._get_all_bucket_configs()
