@@ -133,9 +133,7 @@ class CyberArkBaseCollector(ABC):
             auth_header[-6:] if len(auth_header) > 21 else "",
         )
         async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.post(
-                url, headers=headers, json=json_body or {}
-            )
+            response = await client.post(url, headers=headers, json=json_body or {})
             if response.status_code != 200:
                 logger.error(
                     "CyberArk API POST %s returned HTTP %s — "

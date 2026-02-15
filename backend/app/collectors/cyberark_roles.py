@@ -20,13 +20,9 @@ class CyberArkRoleCollector(CyberArkScimBaseCollector):
 
         try:
             groups = await self._scim_get_paginated(url)
-            logger.info(
-                "CyberArk roles: SCIM returned %d groups", len(groups)
-            )
+            logger.info("CyberArk roles: SCIM returned %d groups", len(groups))
         except Exception:
-            logger.exception(
-                "Failed to collect CyberArk roles from %s", url
-            )
+            logger.exception("Failed to collect CyberArk roles from %s", url)
             return []
 
         results = []

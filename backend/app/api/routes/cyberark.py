@@ -90,9 +90,7 @@ async def get_safe(
 
     # Load members
     members_result = await db.execute(
-        select(CyberArkSafeMember).where(
-            CyberArkSafeMember.safe_name == safe_name
-        )
+        select(CyberArkSafeMember).where(CyberArkSafeMember.safe_name == safe_name)
     )
     members = members_result.scalars().all()
 
@@ -107,9 +105,7 @@ async def get_safe(
 
     safe_dict = {
         **{c.key: getattr(safe, c.key) for c in safe.__table__.columns},
-        "members": [
-            CyberArkSafeMemberResponse.model_validate(m) for m in members
-        ],
+        "members": [CyberArkSafeMemberResponse.model_validate(m) for m in members],
         "accounts": [CyberArkAccountBrief.model_validate(a) for a in accounts],
     }
     return CyberArkSafeDetail(**safe_dict)
@@ -166,9 +162,7 @@ async def get_role(
 
     role_dict = {
         **{c.key: getattr(role, c.key) for c in role.__table__.columns},
-        "members": [
-            CyberArkRoleMemberResponse.model_validate(m) for m in members
-        ],
+        "members": [CyberArkRoleMemberResponse.model_validate(m) for m in members],
     }
     return CyberArkRoleDetail(**role_dict)
 
@@ -208,9 +202,7 @@ async def list_sia_policies(
     for p in policies:
         pdict = {c.key: getattr(p, c.key) for c in p.__table__.columns}
         # Parse target_criteria from JSON string
-        if pdict.get("target_criteria") and isinstance(
-            pdict["target_criteria"], str
-        ):
+        if pdict.get("target_criteria") and isinstance(pdict["target_criteria"], str):
             try:
                 pdict["target_criteria"] = json.loads(pdict["target_criteria"])
             except json.JSONDecodeError:
@@ -220,9 +212,7 @@ async def list_sia_policies(
     return ListResponse(data=data, meta=MetaInfo(total=len(data)))
 
 
-@router.get(
-    "/sia-policies/{policy_id}", response_model=CyberArkSIAPolicyDetail
-)
+@router.get("/sia-policies/{policy_id}", response_model=CyberArkSIAPolicyDetail)
 async def get_sia_policy(
     policy_id: str,
     db: AsyncSession = Depends(get_db),
@@ -230,9 +220,7 @@ async def get_sia_policy(
 ):
     """Get SIA policy details with principals."""
     result = await db.execute(
-        select(CyberArkSIAPolicy).where(
-            CyberArkSIAPolicy.policy_id == policy_id
-        )
+        select(CyberArkSIAPolicy).where(CyberArkSIAPolicy.policy_id == policy_id)
     )
     policy = result.scalar_one_or_none()
     if not policy:
@@ -364,9 +352,7 @@ async def detect_cyberark_drift(
                 resource_type="cyberark_role",
                 resource_id=role_name,
                 drift_type="orphaned",
-                details=(
-                    f"Role '{role_name}' in Terraform but not found in CyberArk"
-                ),
+                details=(f"Role '{role_name}' in Terraform but not found in CyberArk"),
             )
         )
 

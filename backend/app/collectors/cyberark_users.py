@@ -20,13 +20,9 @@ class CyberArkUserCollector(CyberArkScimBaseCollector):
 
         try:
             users = await self._scim_get_paginated(url)
-            logger.info(
-                "CyberArk users: SCIM returned %d users", len(users)
-            )
+            logger.info("CyberArk users: SCIM returned %d users", len(users))
         except Exception:
-            logger.exception(
-                "Failed to collect CyberArk users from %s", url
-            )
+            logger.exception("Failed to collect CyberArk users from %s", url)
             return []
 
         results = []
