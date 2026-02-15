@@ -150,6 +150,9 @@ class EC2Instance(Base):
     subnet_id: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
     availability_zone: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
 
+    # Platform (AWS returns "windows" for Windows instances; absent for Linux)
+    platform: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
+
     # Metadata
     launch_time: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     tags: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON string

@@ -306,6 +306,7 @@ async def _sync_ec2_instances(db: AsyncSession, instances: list, region_id: int)
             existing.availability_zone = instance_data.get("availability_zone")
             existing.launch_time = instance_data.get("launch_time")
             existing.tags = json.dumps(instance_data.get("tags", {}))
+            existing.platform = instance_data.get("platform", "linux")
             existing.is_deleted = False
             existing.deleted_at = None
         else:
@@ -325,6 +326,7 @@ async def _sync_ec2_instances(db: AsyncSession, instances: list, region_id: int)
                 availability_zone=instance_data.get("availability_zone"),
                 launch_time=instance_data.get("launch_time"),
                 tags=json.dumps(instance_data.get("tags", {})),
+                platform=instance_data.get("platform", "linux"),
                 is_deleted=False,
             )
             db.add(new_instance)

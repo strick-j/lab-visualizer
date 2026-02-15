@@ -79,6 +79,10 @@ class EC2Collector(BaseCollector):
                 ),
                 "launch_time": instance.get("LaunchTime"),
                 "tags": tags_dict,
+                "platform": self._normalize_platform(
+                    instance.get("Platform"),
+                    instance.get("PlatformDetails"),
+                ),
                 "region": self.region,
                 # Additional metadata
                 "image_id": instance.get("ImageId"),
@@ -94,6 +98,22 @@ class EC2Collector(BaseCollector):
         except Exception as e:
             logger.warning(f"Error parsing EC2 instance: {e}")
             return None
+
+    @staticmethod
+    def _normalize_platform(
+        platform: Optional[str], platform_details: Optional[str]
+    ) -> str:
+        """Normalize EC2 platform to 'windows' or 'linux'.
+
+        AWS sets Platform to "windows" for Windows instances and omits
+        the field entirely for Linux/UNIX instances.  PlatformDetails
+        provides more granularity but we only need the OS family.
+        """
+        if platform and platform.lower() == "windows":
+            return "windows"
+        if platform_details and "windows" in platform_details.lower():
+            return "windows"
+        return "linux"
 
     async def collect_instance(self, instance_id: str) -> Optional[Dict[str, Any]]:
         """

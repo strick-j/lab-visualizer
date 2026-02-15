@@ -32,6 +32,43 @@ _CATEGORY_MAP: Dict[str, str] = {
 }
 
 
+def _has_connect_profile(profile_data: Any) -> bool:
+    """Check if a connection profile is meaningfully configured.
+
+    A profile is 'present' if it is a non-null dict with at least one
+    non-null value.  For example::
+
+        {"localEphemeralUser": {...}, "domainEphemeralUser": null}
+
+    has a non-null value (``localEphemeralUser``), so it counts.  But::
+
+        {"localEphemeralUser": null, "domainEphemeralUser": null}
+
+    does NOT count because every value is ``None``.
+    """
+    if not profile_data or not isinstance(profile_data, dict):
+        return False
+    return any(v is not None for v in profile_data.values())
+
+
+def _extract_allowed_platforms(behavior: Dict[str, Any]) -> List[str]:
+    """Determine allowed target platforms from the policy behaviour section.
+
+    The ``behavior.connectAs`` dict contains ``ssh`` and/or ``rdp`` profiles.
+    If only SSH is configured the policy targets Linux; if only RDP it targets
+    Windows.  When both (or neither) are present no platform restriction
+    applies.
+    """
+    connect_as = behavior.get("connectAs", {}) or {}
+    has_ssh = _has_connect_profile(connect_as.get("ssh"))
+    has_rdp = _has_connect_profile(connect_as.get("rdp"))
+    if has_ssh and not has_rdp:
+        return ["linux"]
+    if has_rdp and not has_ssh:
+        return ["windows"]
+    return []
+
+
 class CyberArkSIAPolicyCollector(CyberArkBaseCollector):
     """Collects SIA policies from CyberArk UAP service."""
 
@@ -116,6 +153,7 @@ class CyberArkSIAPolicyCollector(CyberArkBaseCollector):
                 policy["delegationClassification"] = detail.get(
                     "delegationClassification", ""
                 )
+                policy["behavior"] = detail.get("behavior", {})
             return policy
 
         enriched = await asyncio.gather(*[_fetch_one(p) for p in policies])
@@ -240,5 +278,11 @@ class CyberArkSIAPolicyCollector(CyberArkBaseCollector):
         # All target arrays empty → policy applies to all targets
         if not criteria:
             criteria["match_all"] = True
+
+        # Determine allowed platforms from connection profiles (SSH/RDP)
+        behavior = raw.get("behavior", {}) or {}
+        allowed_platforms = _extract_allowed_platforms(behavior)
+        if allowed_platforms:
+            criteria["allowed_platforms"] = allowed_platforms
 
         return criteria

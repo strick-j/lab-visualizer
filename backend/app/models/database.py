@@ -181,6 +181,16 @@ async def init_db() -> None:
             except Exception:
                 pass  # Column already exists
 
+    # Add platform column to ec2_instances (if missing)
+    async with get_engine().begin() as conn:
+        try:
+            await conn.execute(
+                text("ALTER TABLE ec2_instances ADD COLUMN platform VARCHAR(30)")
+            )
+            logger.info("Added column platform to ec2_instances")
+        except Exception:
+            pass  # Column already exists
+
     # Fix any NULL values in NOT-NULL integer columns (from earlier bugs)
     async with get_engine().begin() as conn:
         for stmt in [

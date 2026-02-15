@@ -44,6 +44,7 @@ class AccessMappingService:
         self.db = db
         self._ec2_cache: Optional[List[EC2Instance]] = None
         self._rds_cache: Optional[List[RDSInstance]] = None
+        self._region_cache: Optional[Dict[int, str]] = None
 
     async def compute_all_mappings(self) -> AccessMappingResponse:
         """Compute the full access mapping graph."""
@@ -125,9 +126,7 @@ class AccessMappingService:
 
         return sorted(users)
 
-    async def _get_user_roles(
-        self, user_name: str
-    ) -> Dict[str, Tuple[str, bool]]:
+    async def _get_user_roles(self, user_name: str) -> Dict[str, Tuple[str, bool]]:
         """Get all roles the user is a member of.
 
         Returns a dict mapping role_id to (role_name, tf_managed).
@@ -162,9 +161,7 @@ class AccessMappingService:
         row = result.first()
         return bool(row[0]) if row else False
 
-    async def _get_safes_tf_managed(
-        self, safe_names: Set[str]
-    ) -> Dict[str, bool]:
+    async def _get_safes_tf_managed(self, safe_names: Set[str]) -> Dict[str, bool]:
         """Get tf_managed status for a set of safes."""
         if not safe_names:
             return {}
@@ -192,6 +189,15 @@ class AccessMappingService:
             )
             self._rds_cache = list(result.scalars().all())
         return self._rds_cache
+
+    async def _get_region_lookup(self) -> Dict[int, str]:
+        """Get cached mapping of region_id to region name."""
+        if self._region_cache is None:
+            from app.models.resources import Region
+
+            result = await self.db.execute(select(Region))
+            self._region_cache = {r.id: r.name for r in result.scalars().all()}
+        return self._region_cache
 
     async def _compute_standing_access(
         self, user_name: str
@@ -313,9 +319,7 @@ class AccessMappingService:
             if account.tf_state_source:
                 account_context["tf_state_source"] = account.tf_state_source
             if account.tf_resource_address:
-                account_context["tf_resource_address"] = (
-                    account.tf_resource_address
-                )
+                account_context["tf_resource_address"] = account.tf_resource_address
 
             steps.extend(
                 [
@@ -649,7 +653,7 @@ class AccessMappingService:
                     ec2.display_status,
                     ec2.instance_type,
                     None,
-                    None,
+                    getattr(ec2, "platform", None) or "linux",
                     ec2.tf_managed,
                 )
 
@@ -699,10 +703,13 @@ class AccessMappingService:
 
         match_ec2 = policy_type != "database"
         match_rds = policy_type != "vm"
+        allowed_platforms = criteria.get("allowed_platforms", [])
 
         # Unrestricted policies with all target arrays empty match ALL targets
         if criteria.get("match_all"):
-            return await self._all_targets(match_ec2, match_rds)
+            return await self._all_targets(
+                match_ec2, match_rds, allowed_platforms or None
+            )
 
         matched: List[
             Tuple[
@@ -725,6 +732,22 @@ class AccessMappingService:
         tag_filters = criteria.get("tags", {})
         fqdn_patterns = criteria.get("fqdn_patterns", [])
         ip_ranges = criteria.get("ip_ranges", [])
+        criteria_regions = set(criteria.get("regions", []))
+        criteria_account_ids = set(criteria.get("account_ids", []))
+
+        # Resolve region lookup and account ID when needed
+        region_lookup = await self._get_region_lookup() if criteria_regions else {}
+        current_account_id: Optional[str] = None
+        if criteria_account_ids:
+            from app.config import get_settings
+
+            current_account_id = get_settings().aws_account_id
+            if not current_account_id:
+                logger.warning(
+                    "SIA policy specifies account_ids %s but "
+                    "aws_account_id is not configured — no targets will match",
+                    criteria_account_ids,
+                )
 
         # Match EC2 instances (skip for database policies)
         for ec2 in await self._get_ec2_instances() if match_ec2 else []:
@@ -742,6 +765,14 @@ class AccessMappingService:
                 tag_filters,
                 fqdn_patterns,
                 ip_ranges,
+                target_region=(
+                    region_lookup.get(ec2.region_id) if criteria_regions else None
+                ),
+                criteria_regions=criteria_regions or None,
+                target_account_id=current_account_id,
+                criteria_account_ids=criteria_account_ids or None,
+                target_platform=getattr(ec2, "platform", None) or "linux",
+                allowed_platforms=allowed_platforms or None,
             ):
                 seen.add(key)
                 matched.append(
@@ -754,7 +785,7 @@ class AccessMappingService:
                         ec2.display_status,
                         ec2.instance_type,
                         None,
-                        None,
+                        getattr(ec2, "platform", None) or "linux",
                         ec2.tf_managed,
                     )
                 )
@@ -775,6 +806,12 @@ class AccessMappingService:
                 tag_filters,
                 fqdn_patterns,
                 ip_ranges,
+                target_region=(
+                    region_lookup.get(rds.region_id) if criteria_regions else None
+                ),
+                criteria_regions=criteria_regions or None,
+                target_account_id=current_account_id,
+                criteria_account_ids=criteria_account_ids or None,
             ):
                 seen.add(key)
                 matched.append(
@@ -798,6 +835,7 @@ class AccessMappingService:
         self,
         match_ec2: bool = True,
         match_rds: bool = True,
+        allowed_platforms: Optional[List[str]] = None,
     ) -> List[
         Tuple[
             str,
@@ -812,7 +850,11 @@ class AccessMappingService:
             bool,
         ]
     ]:
-        """Return all EC2/RDS instances (for unrestricted match-all policies)."""
+        """Return all EC2/RDS instances (for unrestricted match-all policies).
+
+        When *allowed_platforms* is given, EC2 instances whose platform does
+        not match are excluded.
+        """
         results: List[
             Tuple[
                 str,
@@ -829,6 +871,9 @@ class AccessMappingService:
         ] = []
         if match_ec2:
             for ec2 in await self._get_ec2_instances():
+                ec2_platform = getattr(ec2, "platform", None) or "linux"
+                if allowed_platforms and ec2_platform not in allowed_platforms:
+                    continue
                 results.append(
                     (
                         "ec2",
@@ -839,7 +884,7 @@ class AccessMappingService:
                         ec2.display_status,
                         ec2.instance_type,
                         None,
-                        None,
+                        ec2_platform,
                         ec2.tf_managed,
                     )
                 )
@@ -873,59 +918,123 @@ class AccessMappingService:
         tag_filters: Dict[str, Any],
         fqdn_patterns: List[str],
         ip_ranges: List[str],
+        *,
+        target_region: Optional[str] = None,
+        criteria_regions: Optional[Set[str]] = None,
+        target_account_id: Optional[str] = None,
+        criteria_account_ids: Optional[Set[str]] = None,
+        target_platform: Optional[str] = None,
+        allowed_platforms: Optional[List[str]] = None,
     ) -> bool:
-        """Check if a target matches any of the SIA policy criteria."""
-        # VPC match
-        if vpc_ids and target_vpc_id and target_vpc_id in vpc_ids:
-            return True
+        """Check if a target matches ALL specified SIA policy criteria.
 
-        # Subnet match
-        if subnet_ids and target_subnet_id and target_subnet_id in subnet_ids:
-            return True
+        Uses AND logic across criteria types: every specified filter must
+        match.  Within a single criterion type (e.g. multiple VPC IDs) OR
+        logic applies (target VPC must be in the set of allowed VPCs).
 
-        # Tag match
-        if tag_filters and target_tags_json:
+        For tags, AND logic applies across different tag keys (all specified
+        keys must match) while OR logic applies within a key's value list.
+        """
+        # --- Platform filter (connection profile) ---
+        if allowed_platforms:
+            if not target_platform or target_platform not in allowed_platforms:
+                return False
+
+        # --- Region filter ---
+        if criteria_regions:
+            if not target_region or target_region not in criteria_regions:
+                return False
+
+        # --- Account ID filter ---
+        if criteria_account_ids:
+            if not target_account_id or target_account_id not in criteria_account_ids:
+                return False
+
+        # --- VPC filter ---
+        if vpc_ids:
+            if not target_vpc_id or target_vpc_id not in vpc_ids:
+                return False
+
+        # --- Subnet filter ---
+        if subnet_ids:
+            if not target_subnet_id or target_subnet_id not in subnet_ids:
+                return False
+
+        # --- Tag filter (AND across keys, OR within values of each key) ---
+        if tag_filters:
+            if not target_tags_json:
+                return False
             try:
                 target_tags = (
                     json.loads(target_tags_json)
                     if isinstance(target_tags_json, str)
                     else target_tags_json
                 )
-                if isinstance(target_tags, dict):
-                    for key, values in tag_filters.items():
-                        target_val = target_tags.get(key)
-                        if target_val is not None:
-                            # Support multi-value lists (e.g. ["linux", "unix"])
-                            if isinstance(values, list):
-                                if target_val in values:
-                                    return True
-                            elif target_val == values:
-                                return True
+                if not isinstance(target_tags, dict):
+                    return False
+                for key, values in tag_filters.items():
+                    target_val = target_tags.get(key)
+                    if target_val is None:
+                        return False
+                    if isinstance(values, list):
+                        if target_val not in values:
+                            return False
+                    elif target_val != values:
+                        return False
             except (json.JSONDecodeError, TypeError):
-                pass
+                return False
 
-        # FQDN pattern match
-        if fqdn_patterns and target_fqdn:
+        # --- FQDN pattern filter ---
+        if fqdn_patterns:
+            if not target_fqdn:
+                return False
+            fqdn_matched = False
             for pattern in fqdn_patterns:
                 try:
                     if re.match(pattern, target_fqdn, re.IGNORECASE):
-                        return True
+                        fqdn_matched = True
+                        break
                 except re.error:
-                    # Treat as suffix match if not a valid regex
                     if target_fqdn.lower().endswith(pattern.lower()):
-                        return True
+                        fqdn_matched = True
+                        break
+            if not fqdn_matched:
+                return False
 
-        # IP range (CIDR) match
-        if ip_ranges and target_ip:
+        # --- IP range (CIDR) filter ---
+        if ip_ranges:
+            if not target_ip:
+                return False
+            ip_matched = False
             try:
                 target_addr = ipaddress.ip_address(target_ip)
                 for cidr in ip_ranges:
                     try:
                         if target_addr in ipaddress.ip_network(cidr, strict=False):
-                            return True
+                            ip_matched = True
+                            break
                     except ValueError:
                         pass
             except ValueError:
                 pass
+            if not ip_matched:
+                return False
 
-        return False
+        # If no criteria are specified at all, do not match
+        # (match_all policies are handled separately before this method)
+        has_any_criteria = any(
+            [
+                vpc_ids,
+                subnet_ids,
+                tag_filters,
+                fqdn_patterns,
+                ip_ranges,
+                criteria_regions,
+                criteria_account_ids,
+                allowed_platforms,
+            ]
+        )
+        if not has_any_criteria:
+            return False
+
+        return True
