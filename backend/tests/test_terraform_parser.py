@@ -88,6 +88,10 @@ class TestSupportedTypes:
         types = TerraformStateParser.get_all_supported_types()
         assert types.get("idsec_policy_db") == "cyberark_sia_db_policy"
 
+    def test_random_password_maps_correctly(self):
+        types = TerraformStateParser.get_all_supported_types()
+        assert types.get("random_password") == "random_password"
+
 
 class TestExtractV4Resources:
     """Test resource extraction from v4 state data."""
@@ -260,6 +264,63 @@ class TestExtractV4Resources:
             resources[1].resource_address
             == 'idsec_identity_role_member.user_role_mappings["Adam.Markert-Database"]'
         )
+        assert skipped == 0
+
+    def test_idsec_pcloud_account_extracted(self):
+        state = _make_state(
+            [
+                _managed_block(
+                    "idsec_pcloud_account",
+                    "default_ssh_key_mapping",
+                    [
+                        _instance(
+                            {
+                                "account_id": "29_3",
+                                "name": "papaya-provisioning-sshkey",
+                                "safe_name": "PAP-DEF-CREDS",
+                                "platform_id": "UnixSSHKeys",
+                                "username": "OS Dependency - Do Not Use",
+                            }
+                        )
+                    ],
+                )
+            ]
+        )
+        resources, found_types, skipped = self.parser._extract_v4_resources(
+            state, "accounts.tfstate"
+        )
+        assert len(resources) == 1
+        assert resources[0].resource_type == "idsec_pcloud_account"
+        assert resources[0].resource_id == "29_3"
+        assert resources[0].resource_address == "idsec_pcloud_account.default_ssh_key_mapping"
+        assert skipped == 0
+
+    def test_random_password_extracted(self):
+        state = _make_state(
+            [
+                _managed_block(
+                    "random_password",
+                    "win_local_password",
+                    [
+                        _instance(
+                            {
+                                "id": "none",
+                                "length": 32,
+                                "result": "secret",
+                                "special": True,
+                            }
+                        )
+                    ],
+                )
+            ]
+        )
+        resources, found_types, skipped = self.parser._extract_v4_resources(
+            state, "accounts.tfstate"
+        )
+        assert len(resources) == 1
+        assert resources[0].resource_type == "random_password"
+        assert resources[0].resource_id == "none"
+        assert resources[0].resource_address == "random_password.win_local_password"
         assert skipped == 0
 
     def test_idsec_policy_vm_extracted(self):
@@ -527,6 +588,79 @@ class TestExtractV4Resources:
         assert "idsec_identity_role" not in found_types
 
 
+    def test_mixed_account_state_file(self):
+        """Simulate a real CyberArk account state file with mixed resource types."""
+        state = _make_state(
+            [
+                # Data sources (should be filtered)
+                _data_block(
+                    "conjur_secret",
+                    "identity_client_id",
+                    [_instance({"name": "data/vault/secret", "value": "user@app"})],
+                ),
+                _data_block(
+                    "terraform_remote_state",
+                    "safes",
+                    [_instance({"outputs": {}})],
+                ),
+                # Managed accounts (should be extracted)
+                _managed_block(
+                    "idsec_pcloud_account",
+                    "default_ssh_key_mapping",
+                    [
+                        _instance(
+                            {
+                                "account_id": "29_3",
+                                "name": "papaya-provisioning-sshkey",
+                                "safe_name": "PAP-DEF-CREDS",
+                                "platform_id": "UnixSSHKeys",
+                            }
+                        )
+                    ],
+                ),
+                _managed_block(
+                    "idsec_pcloud_account",
+                    "default_win_local_admin",
+                    [
+                        _instance(
+                            {
+                                "account_id": "29_4",
+                                "name": "papaya-provisioning-winlocaladmin",
+                                "safe_name": "PAP-DEF-CREDS",
+                                "platform_id": "WinServerLocal",
+                            }
+                        )
+                    ],
+                ),
+                # Random password (should be extracted)
+                _managed_block(
+                    "random_password",
+                    "win_local_password",
+                    [_instance({"id": "none", "length": 32})],
+                ),
+            ]
+        )
+        resources, found_types, skipped = self.parser._extract_v4_resources(
+            state, "cyberark/accounts/terraform.tfstate"
+        )
+        # 2 accounts + 1 random_password = 3 recognized
+        assert len(resources) == 3
+        assert skipped == 0
+        account_resources = [
+            r for r in resources if r.resource_type == "idsec_pcloud_account"
+        ]
+        random_resources = [
+            r for r in resources if r.resource_type == "random_password"
+        ]
+        assert len(account_resources) == 2
+        assert len(random_resources) == 1
+        assert account_resources[0].resource_id == "29_3"
+        assert account_resources[1].resource_id == "29_4"
+        # Data sources should not appear
+        assert "conjur_secret" not in found_types
+        assert "terraform_remote_state" not in found_types
+
+
 class TestExtractResourceId:
     """Test ID extraction for each resource type."""
 
@@ -559,6 +693,22 @@ class TestExtractResourceId:
             )
             == "Admin Role"
         )
+
+    def test_cyberark_account_uses_account_id(self):
+        """Accounts use account_id, not id (which doesn't exist in idsec state)."""
+        result = self.parser._extract_resource_id(
+            "idsec_pcloud_account",
+            {"account_id": "29_3", "name": "papaya-provisioning-sshkey"},
+        )
+        assert result == "29_3"
+
+    def test_cyberark_account_returns_none_for_id_field(self):
+        """If only 'id' is present (not 'account_id'), should return None."""
+        result = self.parser._extract_resource_id(
+            "idsec_pcloud_account",
+            {"id": "wrong-field", "name": "some-account"},
+        )
+        assert result is None
 
     def test_cyberark_role_uses_role_name_not_name(self):
         """Ensure we use role_name, not name (which doesn't exist in state)."""
