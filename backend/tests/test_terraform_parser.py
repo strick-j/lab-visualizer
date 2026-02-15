@@ -75,6 +75,14 @@ class TestSupportedTypes:
         types = TerraformStateParser.get_all_supported_types()
         assert types.get("idsec_identity_user") == "cyberark_user"
 
+    def test_idsec_policy_vm_maps_correctly(self):
+        types = TerraformStateParser.get_all_supported_types()
+        assert types.get("idsec_policy_vm") == "cyberark_sia_vm_policy"
+
+    def test_idsec_policy_db_maps_correctly(self):
+        types = TerraformStateParser.get_all_supported_types()
+        assert types.get("idsec_policy_db") == "cyberark_sia_db_policy"
+
 
 class TestExtractV4Resources:
     """Test resource extraction from v4 state data."""
@@ -203,6 +211,55 @@ class TestExtractV4Resources:
         )
         assert len(resources) == 1
         assert resources[0].resource_id == "joe@example.com"
+
+    def test_idsec_policy_vm_extracted(self):
+        """SIA/UAP VM policy with nested metadata.name is extracted correctly."""
+        state = _make_state(
+            [
+                _managed_block(
+                    "idsec_policy_vm",
+                    "ubuntu_access",
+                    [
+                        _instance(
+                            {
+                                "behavior": {
+                                    "ssh_profile": {"username": "ubuntu"},
+                                    "rdp_profile": None,
+                                },
+                                "metadata": {
+                                    "name": "Papaya Ubuntu User Access",
+                                    "description": "Grants access to Ubuntu VMs",
+                                    "policy_id": "0db978b8-7434-44b6-b371-f69aff0f232b",
+                                    "status": {"status": "Active"},
+                                },
+                                "principals": [
+                                    {
+                                        "id": "cfb56a2b_1275_4267_9d1a_8ba373fdc841",
+                                        "name": "Papaya Linux Users",
+                                        "type": "ROLE",
+                                    }
+                                ],
+                                "targets": {
+                                    "aws_resource": {
+                                        "account_ids": ["475601244925"],
+                                        "regions": ["us-east-2"],
+                                        "vpc_ids": ["vpc-011861fe1033f483c"],
+                                    }
+                                },
+                            }
+                        )
+                    ],
+                )
+            ]
+        )
+        resources, found_types, skipped = self.parser._extract_v4_resources(
+            state, "sia/terraform.tfstate"
+        )
+        assert len(resources) == 1
+        assert resources[0].resource_type == "idsec_policy_vm"
+        assert resources[0].resource_id == "Papaya Ubuntu User Access"
+        assert resources[0].resource_address == "idsec_policy_vm.ubuntu_access"
+        assert skipped == 0
 
     def test_data_sources_filtered(self):
         state = _make_state(
@@ -476,6 +533,49 @@ class TestExtractResourceId:
             )
             == "joe@example.com"
         )
+
+    def test_sia_vm_policy_nested_metadata_name(self):
+        """SIA VM policy extracts name from nested metadata.name path."""
+        result = self.parser._extract_resource_id(
+            "idsec_policy_vm",
+            {
+                "metadata": {
+                    "name": "Papaya Ubuntu User Access",
+                    "policy_id": "0db978b8-7434-44b6-b371-f69aff0f232b",
+                },
+                "behavior": {"ssh_profile": {"username": "ubuntu"}},
+            },
+        )
+        assert result == "Papaya Ubuntu User Access"
+
+    def test_sia_db_policy_nested_metadata_name(self):
+        """SIA DB policy also extracts name from nested metadata.name path."""
+        result = self.parser._extract_resource_id(
+            "idsec_policy_db",
+            {
+                "metadata": {
+                    "name": "Papaya DB Access Policy",
+                    "policy_id": "abc-123",
+                },
+            },
+        )
+        assert result == "Papaya DB Access Policy"
+
+    def test_sia_vm_policy_missing_metadata_returns_none(self):
+        """Returns None when metadata key is absent."""
+        result = self.parser._extract_resource_id(
+            "idsec_policy_vm",
+            {"behavior": {"ssh_profile": {"username": "ubuntu"}}},
+        )
+        assert result is None
+
+    def test_sia_vm_policy_missing_name_in_metadata_returns_none(self):
+        """Returns None when metadata exists but name key is absent."""
+        result = self.parser._extract_resource_id(
+            "idsec_policy_vm",
+            {"metadata": {"policy_id": "abc-123"}},
+        )
+        assert result is None
 
     def test_missing_field_returns_none(self):
         assert (
