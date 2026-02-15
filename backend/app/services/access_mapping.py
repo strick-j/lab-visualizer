@@ -735,19 +735,8 @@ class AccessMappingService:
         criteria_regions = set(criteria.get("regions", []))
         criteria_account_ids = set(criteria.get("account_ids", []))
 
-        # Resolve region lookup and account ID when needed
+        # Resolve region lookup when needed
         region_lookup = await self._get_region_lookup() if criteria_regions else {}
-        current_account_id: Optional[str] = None
-        if criteria_account_ids:
-            from app.config import get_settings
-
-            current_account_id = get_settings().aws_account_id
-            if not current_account_id:
-                logger.warning(
-                    "SIA policy specifies account_ids %s but "
-                    "aws_account_id is not configured — no targets will match",
-                    criteria_account_ids,
-                )
 
         # Match EC2 instances (skip for database policies)
         for ec2 in await self._get_ec2_instances() if match_ec2 else []:
@@ -769,7 +758,11 @@ class AccessMappingService:
                     region_lookup.get(ec2.region_id) if criteria_regions else None
                 ),
                 criteria_regions=criteria_regions or None,
-                target_account_id=current_account_id,
+                target_account_id=(
+                    getattr(ec2, "owner_account_id", None)
+                    if criteria_account_ids
+                    else None
+                ),
                 criteria_account_ids=criteria_account_ids or None,
                 target_platform=getattr(ec2, "platform", None) or "linux",
                 allowed_platforms=allowed_platforms or None,
@@ -810,7 +803,11 @@ class AccessMappingService:
                     region_lookup.get(rds.region_id) if criteria_regions else None
                 ),
                 criteria_regions=criteria_regions or None,
-                target_account_id=current_account_id,
+                target_account_id=(
+                    getattr(rds, "owner_account_id", None)
+                    if criteria_account_ids
+                    else None
+                ),
                 criteria_account_ids=criteria_account_ids or None,
             ):
                 seen.add(key)
@@ -976,11 +973,22 @@ class AccessMappingService:
                     target_val = target_tags.get(key)
                     if target_val is None:
                         return False
+                    # Case-insensitive value comparison
+                    target_lower = (
+                        target_val.lower()
+                        if isinstance(target_val, str)
+                        else target_val
+                    )
                     if isinstance(values, list):
-                        if target_val not in values:
+                        values_lower = [
+                            v.lower() if isinstance(v, str) else v for v in values
+                        ]
+                        if target_lower not in values_lower:
                             return False
-                    elif target_val != values:
-                        return False
+                    else:
+                        cmp_val = values.lower() if isinstance(values, str) else values
+                        if target_lower != cmp_val:
+                            return False
             except (json.JSONDecodeError, TypeError):
                 return False
 
