@@ -75,30 +75,27 @@ def _sanitize_for_log(value: str) -> str:
     return _CONTROL_CHARS.sub("", value)
 
 
-def _validate_issuer_and_build_discovery_url(issuer_input: str) -> str:
+def _validate_url_for_ssrf(url: str) -> None:
     """
-    Validate the OIDC issuer and return a safely-constructed discovery URL.
+    Validate a URL is safe from SSRF attacks.
 
-    Parses the issuer, enforces HTTPS, rejects IP-literal hosts and
-    private/internal addresses, then reconstructs the URL from validated
-    components to prevent SSRF (breaks the taint chain).
+    Enforces HTTPS, rejects IP-literal hostnames, resolves DNS and rejects
+    private/internal addresses, and validates hostname format.
 
     Raises HTTPException if validation fails.
     """
-    stripped = issuer_input.strip().rstrip("/")
-
     try:
-        parsed = urlparse(stripped)
+        parsed = urlparse(url)
     except Exception:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid URL format for OIDC issuer",
+            detail="Invalid URL format",
         )
 
     if parsed.scheme != "https" or not parsed.hostname:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="OIDC issuer must be a valid HTTPS URL with a hostname",
+            detail="URL must use HTTPS with a valid hostname",
         )
 
     hostname = parsed.hostname
@@ -108,10 +105,20 @@ def _validate_issuer_and_build_discovery_url(issuer_input: str) -> str:
         ipaddress.ip_address(hostname)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="OIDC issuer must use a domain name, not an IP address",
+            detail="URL must use a domain name, not an IP address",
         )
     except ValueError:
         pass  # Not an IP literal — expected for domain names
+
+    # Validate hostname format: only valid domain name characters
+    if not re.fullmatch(
+        r"[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)*",
+        hostname,
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="URL hostname contains invalid characters",
+        )
 
     # Resolve the hostname and reject private / internal IPs
     try:
@@ -119,13 +126,13 @@ def _validate_issuer_and_build_discovery_url(issuer_input: str) -> str:
     except OSError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Unable to resolve OIDC issuer host",
+            detail="Unable to resolve hostname",
         )
 
     if not addr_info:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="OIDC issuer hostname did not resolve to any address",
+            detail="Hostname did not resolve to any address",
         )
 
     for _, _, _, _, sockaddr in addr_info:
@@ -139,18 +146,65 @@ def _validate_issuer_and_build_discovery_url(issuer_input: str) -> str:
         ):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="OIDC issuer host must not resolve to a private or internal IP",
+                detail="URL must not resolve to a private or internal IP address",
             )
 
-    # Reconstruct the URL from validated components (breaks taint propagation)
+
+# Regex for allowed URL path characters (RFC 3986 pchar + "/" separator)
+_SAFE_PATH_RE = re.compile(r"(/[A-Za-z0-9._~:@!$&'()*+,;=-]*)*")
+
+
+def _build_safe_url(url: str, append_path: str = "") -> str:
+    """
+    Reconstruct a URL from validated, IDNA-encoded components.
+
+    Parses the URL, encodes the hostname through IDNA (which converts
+    through bytes, breaking static-analysis taint propagation), validates
+    the path contains only safe characters, and returns a reconstructed URL.
+
+    Must be called AFTER ``_validate_url_for_ssrf`` has confirmed the URL
+    is safe.
+
+    Raises HTTPException if component sanitisation fails.
+    """
+    parsed = urlparse(url)
+    hostname = parsed.hostname or ""
+
+    # Encode hostname through IDNA to produce a sanitised ASCII value.
+    # The bytes round-trip creates a genuinely new string, breaking
+    # CodeQL's taint propagation from the original user input.
+    try:
+        safe_hostname: str = hostname.encode("idna").decode("ascii")
+    except (UnicodeError, UnicodeDecodeError):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Hostname is not a valid domain name",
+        )
+
     port_suffix = f":{parsed.port}" if parsed.port and parsed.port != 443 else ""
     base_path = parsed.path.rstrip("/") if parsed.path else ""
-    discovery_url = (
-        f"https://{hostname}{port_suffix}{base_path}"
-        "/.well-known/openid-configuration"
-    )
 
-    return discovery_url
+    # Validate path contains only safe URL characters
+    if base_path and not _SAFE_PATH_RE.fullmatch(base_path):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="URL path contains invalid characters",
+        )
+
+    safe_append = append_path.rstrip("/") if append_path else ""
+    return f"https://{safe_hostname}{port_suffix}{base_path}{safe_append}"
+
+
+def _validate_issuer_and_build_discovery_url(issuer_input: str) -> str:
+    """
+    Validate the OIDC issuer and return a safely-constructed discovery URL.
+
+    Combines SSRF validation with URL reconstruction to produce a safe
+    ``/.well-known/openid-configuration`` URL.
+    """
+    stripped = issuer_input.strip().rstrip("/")
+    _validate_url_for_ssrf(stripped)
+    return _build_safe_url(stripped, "/.well-known/openid-configuration")
 
 
 @router.get("", response_model=AuthSettingsResponse)
@@ -856,7 +910,8 @@ async def test_cyberark_connection(
 ):
     """Test CyberArk API connection by authenticating with the identity tenant. Admin only."""
     identity_url = test_data.identity_url.strip().rstrip("/")
-    token_url = f"{identity_url}/oauth2/platformtoken"
+    _validate_url_for_ssrf(identity_url)
+    token_url = _build_safe_url(identity_url, "/oauth2/platformtoken")
 
     # Resolve the client secret: prefer the one in the request, fall back to DB
     secret = test_data.client_secret
@@ -1194,6 +1249,10 @@ async def test_scim_connection(
                 success=False,
                 message="No SCIM App ID or OAuth2 URL provided",
             )
+
+    # Validate SSRF safety before making outbound request
+    _validate_url_for_ssrf(oauth2_url)
+    oauth2_url = _build_safe_url(oauth2_url)
 
     # Resolve the client secret: prefer the one in the request, fall back to DB
     scim_secret = test_data.scim_client_secret
