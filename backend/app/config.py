@@ -158,11 +158,11 @@ class Settings(BaseSettings):
         description="Terraform resource type for CyberArk User",
     )
     cyberark_tf_sia_vm_policy_type: str = Field(
-        default="idsec_sia_vm_policy",
+        default="idsec_policy_vm",
         description="Terraform resource type for SIA VM policy",
     )
     cyberark_tf_sia_db_policy_type: str = Field(
-        default="idsec_sia_db_policy",
+        default="idsec_policy_db",
         description="Terraform resource type for SIA DB policy",
     )
 

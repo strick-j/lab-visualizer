@@ -353,10 +353,22 @@ class TerraformStateParser:
         id_mappings[settings.cyberark_tf_account_type] = "id"
         id_mappings[settings.cyberark_tf_role_type] = "role_name"
         id_mappings[settings.cyberark_tf_user_type] = "username"
-        id_mappings[settings.cyberark_tf_sia_vm_policy_type] = "name"
-        id_mappings[settings.cyberark_tf_sia_db_policy_type] = "name"
+        # SIA/UAP policies store the name nested under metadata
+        id_mappings[settings.cyberark_tf_sia_vm_policy_type] = "metadata.name"
+        id_mappings[settings.cyberark_tf_sia_db_policy_type] = "metadata.name"
 
         id_field = id_mappings.get(resource_type, "id")
+
+        # Support dot-notation for nested attributes (e.g. "metadata.name")
+        if "." in id_field:
+            value: Any = attributes
+            for key in id_field.split("."):
+                if isinstance(value, dict):
+                    value = value.get(key)
+                else:
+                    return None
+            return value if isinstance(value, str) else None
+
         return attributes.get(id_field)
 
 
