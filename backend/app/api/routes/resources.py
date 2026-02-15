@@ -24,6 +24,7 @@ from app.collectors.eip import ElasticIPCollector
 from app.collectors.igw import InternetGatewayCollector
 from app.collectors.nat_gateway import NATGatewayCollector
 from app.collectors.rds import RDSCollector
+from app.collectors.s3 import S3BucketCollector
 from app.collectors.subnet import SubnetCollector
 from app.collectors.vpc import VPCCollector
 from app.config import get_settings
@@ -48,6 +49,7 @@ from app.models.resources import (
     NATGateway,
     RDSInstance,
     Region,
+    S3Bucket,
     Subnet,
     SyncStatus,
 )
@@ -219,6 +221,13 @@ async def refresh_data(
         eip_count = await _sync_elastic_ips(db, eips, region.id)
         resources_updated += eip_count
         logger.info(f"Synced {eip_count} Elastic IPs")
+
+        # Collect S3 Buckets
+        s3_collector = S3BucketCollector()
+        s3_buckets = await s3_collector.collect()
+        s3_count = await _sync_s3_buckets(db, s3_buckets, region.id)
+        resources_updated += s3_count
+        logger.info(f"Synced {s3_count} S3 buckets")
 
         # Collect ECS containers
         ecs_collector = ECSCollector()
@@ -800,6 +809,93 @@ async def _sync_elastic_ips(db: AsyncSession, eips: list, region_id: int) -> int
     return count
 
 
+async def _sync_s3_buckets(db: AsyncSession, buckets: list, region_id: int) -> int:
+    """Sync S3 buckets to database, marking deleted ones."""
+    count = 0
+
+    # Get all existing bucket names for this region
+    result = await db.execute(
+        select(S3Bucket.bucket_name).where(S3Bucket.region_id == region_id)
+    )
+    existing_names = set(row[0] for row in result.all())
+
+    # Track which buckets we see from AWS
+    seen_names = set()
+
+    for bucket_data in buckets:
+        bucket_name = bucket_data["bucket_name"]
+        seen_names.add(bucket_name)
+
+        # Check if bucket exists
+        result = await db.execute(
+            select(S3Bucket).where(S3Bucket.bucket_name == bucket_name)
+        )
+        existing = result.scalar_one_or_none()
+
+        if existing:
+            # Update existing bucket and mark as not deleted
+            existing.name = bucket_data.get("name")
+            existing.creation_date = bucket_data.get("creation_date")
+            existing.versioning_enabled = bucket_data.get("versioning_enabled", False)
+            existing.mfa_delete = bucket_data.get("mfa_delete", False)
+            existing.encryption_algorithm = bucket_data.get("encryption_algorithm")
+            existing.kms_key_id = bucket_data.get("kms_key_id")
+            existing.bucket_key_enabled = bucket_data.get("bucket_key_enabled", False)
+            existing.block_public_acls = bucket_data.get("block_public_acls", False)
+            existing.block_public_policy = bucket_data.get("block_public_policy", False)
+            existing.ignore_public_acls = bucket_data.get("ignore_public_acls", False)
+            existing.restrict_public_buckets = bucket_data.get(
+                "restrict_public_buckets", False
+            )
+            existing.policy = bucket_data.get("policy")
+            existing.tags = json.dumps(bucket_data.get("tags", {}))
+            existing.is_deleted = False
+            existing.deleted_at = None
+        else:
+            # Create new bucket
+            new_bucket = S3Bucket(
+                bucket_name=bucket_name,
+                region_id=region_id,
+                name=bucket_data.get("name"),
+                creation_date=bucket_data.get("creation_date"),
+                versioning_enabled=bucket_data.get("versioning_enabled", False),
+                mfa_delete=bucket_data.get("mfa_delete", False),
+                encryption_algorithm=bucket_data.get("encryption_algorithm"),
+                kms_key_id=bucket_data.get("kms_key_id"),
+                bucket_key_enabled=bucket_data.get("bucket_key_enabled", False),
+                block_public_acls=bucket_data.get("block_public_acls", False),
+                block_public_policy=bucket_data.get("block_public_policy", False),
+                ignore_public_acls=bucket_data.get("ignore_public_acls", False),
+                restrict_public_buckets=bucket_data.get(
+                    "restrict_public_buckets", False
+                ),
+                policy=bucket_data.get("policy"),
+                tags=json.dumps(bucket_data.get("tags", {})),
+                is_deleted=False,
+            )
+            db.add(new_bucket)
+
+        count += 1
+
+    # Mark buckets that weren't in AWS response as deleted
+    deleted_names = existing_names - seen_names
+    if deleted_names:
+        result = await db.execute(
+            select(S3Bucket).where(
+                S3Bucket.bucket_name.in_(deleted_names),
+                S3Bucket.region_id == region_id,
+            )
+        )
+        for bucket in result.scalars():
+            if not bucket.is_deleted:
+                bucket.is_deleted = True
+                bucket.deleted_at = datetime.now(timezone.utc)
+                logger.info(f"Marked S3 bucket as deleted: {bucket.bucket_name}")
+
+    await db.flush()
+    return count
+
+
 async def _sync_ecs_containers(
     db: AsyncSession, containers: list, region_id: int
 ) -> int:
@@ -998,6 +1094,34 @@ async def _sync_terraform_state(db: AsyncSession) -> int:
                 eip.tf_managed = True
                 eip.tf_state_source = tf_resource.state_source
                 eip.tf_resource_address = tf_resource.resource_address
+                count += 1
+
+        # Update S3 Buckets — consolidate aws_s3_bucket, aws_s3_bucket_policy,
+        # and aws_s3_bucket_public_access_block into a single TF-managed flag
+        s3_bucket_names: set[str] = set()
+        s3_bucket_lookup: dict = {}
+        for category in (
+            "s3_bucket",
+            "s3_bucket_policy",
+            "s3_bucket_public_access_block",
+        ):
+            for tf_resource in tf_resources.get(category, []):
+                bucket_name = tf_resource.resource_id
+                s3_bucket_names.add(bucket_name)
+                # Prefer the aws_s3_bucket resource address for the primary TF address
+                if category == "s3_bucket" or bucket_name not in s3_bucket_lookup:
+                    s3_bucket_lookup[bucket_name] = tf_resource
+
+        for bucket_name in s3_bucket_names:
+            result = await db.execute(
+                select(S3Bucket).where(S3Bucket.bucket_name == bucket_name)
+            )
+            bucket = result.scalar_one_or_none()
+            if bucket:
+                tf_res = s3_bucket_lookup[bucket_name]
+                bucket.tf_managed = True
+                bucket.tf_state_source = tf_res.state_source
+                bucket.tf_resource_address = tf_res.resource_address
                 count += 1
 
         # Update ECS containers - mark all containers in a Terraform-managed

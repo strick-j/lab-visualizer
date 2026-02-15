@@ -62,6 +62,9 @@ class TerraformStateParser:
         "aws_ecs_cluster": "ecs_cluster",
         "aws_ecs_service": "ecs_service",
         "aws_ecs_task_definition": "ecs_task_definition",
+        "aws_s3_bucket": "s3_bucket",
+        "aws_s3_bucket_policy": "s3_bucket_policy",
+        "aws_s3_bucket_public_access_block": "s3_bucket_public_access_block",
         "random_password": "random_password",
     }
 
@@ -347,6 +350,9 @@ class TerraformStateParser:
             "aws_ecs_cluster": "name",  # ECS cluster name
             "aws_ecs_service": "name",  # ECS service name
             "aws_ecs_task_definition": "family",  # Task definition family
+            "aws_s3_bucket": "bucket",  # S3 bucket name
+            "aws_s3_bucket_policy": "bucket",  # S3 bucket name
+            "aws_s3_bucket_public_access_block": "bucket",  # S3 bucket name
         }
 
         # Add CyberArk resource ID mappings (configurable type names)
@@ -623,6 +629,9 @@ class TerraformStateAggregator:
             "ecs_cluster": [],
             "ecs_service": [],
             "ecs_task_definition": [],
+            "s3_bucket": [],
+            "s3_bucket_policy": [],
+            "s3_bucket_public_access_block": [],
             "cyberark_safe": [],
             "cyberark_safe_member": [],
             "cyberark_account": [],

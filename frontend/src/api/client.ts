@@ -11,6 +11,7 @@ import type {
   InternetGateway,
   NATGateway,
   ElasticIP,
+  S3Bucket,
   StatusSummary,
   RefreshResponse,
   TerraformStatesResponse,
@@ -328,6 +329,31 @@ export async function getElasticIPs(
 
 export async function getElasticIP(allocationId: string): Promise<ElasticIP> {
   const response = await api.get(`/elastic-ips/${allocationId}`);
+  return response.data;
+}
+
+// =============================================================================
+// S3 Buckets
+// =============================================================================
+
+export async function getS3Buckets(
+  filters?: ResourceFilters,
+): Promise<ListResponse<S3Bucket>> {
+  const params = new URLSearchParams();
+  if (filters?.status) params.append("status", filters.status);
+  if (filters?.region) params.append("region", filters.region);
+  if (filters?.search) params.append("search", filters.search);
+  if (filters?.tf_managed !== undefined)
+    params.append("tf_managed", String(filters.tf_managed));
+
+  const response = await api.get("/s3-buckets", { params });
+  return response.data;
+}
+
+export async function getS3Bucket(bucketName: string): Promise<S3Bucket> {
+  const response = await api.get(
+    `/s3-buckets/${encodeURIComponent(bucketName)}`,
+  );
   return response.data;
 }
 

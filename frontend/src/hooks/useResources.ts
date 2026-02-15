@@ -20,6 +20,8 @@ import {
   getNATGateway,
   getElasticIPs,
   getElasticIP,
+  getS3Buckets,
+  getS3Bucket,
   refreshData,
   getTerraformStates,
   getDrift,
@@ -72,6 +74,8 @@ export const queryKeys = {
   natGateway: (id: string) => ["nat-gateway", id] as const,
   elasticIPs: (filters?: ResourceFilters) => ["elastic-ips", filters] as const,
   elasticIP: (id: string) => ["elastic-ip", id] as const,
+  s3Buckets: (filters?: ResourceFilters) => ["s3-buckets", filters] as const,
+  s3Bucket: (name: string) => ["s3-bucket", name] as const,
   terraformStates: ["terraform-states"] as const,
   drift: ["drift"] as const,
   topology: (filters?: { vpc_id?: string }) => ["topology", filters] as const,
@@ -289,6 +293,25 @@ export function useElasticIP(allocationId: string) {
 }
 
 // =============================================================================
+// S3 Buckets
+// =============================================================================
+
+export function useS3Buckets(filters?: ResourceFilters) {
+  return useQuery({
+    queryKey: queryKeys.s3Buckets(filters),
+    queryFn: () => getS3Buckets(filters),
+  });
+}
+
+export function useS3Bucket(bucketName: string) {
+  return useQuery({
+    queryKey: queryKeys.s3Bucket(bucketName),
+    queryFn: () => getS3Bucket(bucketName),
+    enabled: !!bucketName,
+  });
+}
+
+// =============================================================================
 // Refresh
 // =============================================================================
 
@@ -310,6 +333,7 @@ export function useRefreshData() {
       queryClient.invalidateQueries({ queryKey: ["internet-gateways"] });
       queryClient.invalidateQueries({ queryKey: ["nat-gateways"] });
       queryClient.invalidateQueries({ queryKey: ["elastic-ips"] });
+      queryClient.invalidateQueries({ queryKey: ["s3-buckets"] });
       queryClient.invalidateQueries({ queryKey: ["terraform-states"] });
       queryClient.invalidateQueries({ queryKey: ["drift"] });
       queryClient.invalidateQueries({ queryKey: ["topology"] });
