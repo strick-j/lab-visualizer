@@ -157,6 +157,10 @@ class Settings(BaseSettings):
         default="idsec_identity_user",
         description="Terraform resource type for CyberArk User",
     )
+    cyberark_tf_role_member_type: str = Field(
+        default="idsec_identity_role_member",
+        description="Terraform resource type for CyberArk Identity Role Member",
+    )
     cyberark_tf_sia_vm_policy_type: str = Field(
         default="idsec_policy_vm",
         description="Terraform resource type for SIA VM policy",

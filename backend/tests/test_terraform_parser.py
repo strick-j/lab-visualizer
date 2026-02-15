@@ -56,6 +56,7 @@ class TestSupportedTypes:
         assert "cyberark_account" in types.values()
         assert "cyberark_role" in types.values()
         assert "cyberark_user" in types.values()
+        assert "cyberark_role_member" in types.values()
         assert "cyberark_sia_vm_policy" in types.values()
         assert "cyberark_sia_db_policy" in types.values()
 
@@ -74,6 +75,10 @@ class TestSupportedTypes:
     def test_idsec_identity_user_maps_correctly(self):
         types = TerraformStateParser.get_all_supported_types()
         assert types.get("idsec_identity_user") == "cyberark_user"
+
+    def test_idsec_identity_role_member_maps_correctly(self):
+        types = TerraformStateParser.get_all_supported_types()
+        assert types.get("idsec_identity_role_member") == "cyberark_role_member"
 
     def test_idsec_policy_vm_maps_correctly(self):
         types = TerraformStateParser.get_all_supported_types()
@@ -211,6 +216,51 @@ class TestExtractV4Resources:
         )
         assert len(resources) == 1
         assert resources[0].resource_id == "joe@example.com"
+
+    def test_idsec_identity_role_member_extracted(self):
+        state = _make_state(
+            [
+                _managed_block(
+                    "idsec_identity_role_member",
+                    "user_role_mappings",
+                    [
+                        _instance(
+                            {
+                                "member_id": "95ca056e-1a83-4cad-a0f9-e69209e44204",
+                                "member_name": "adam.markert@papayadev.app",
+                                "member_type": "USER",
+                                "role_id": "713c01d4_d5f2_446f_ac9f_2dab4e2ecf6e",
+                            },
+                            index_key="Adam.Markert-Cloud",
+                        ),
+                        _instance(
+                            {
+                                "member_id": "95ca056e-1a83-4cad-a0f9-e69209e44204",
+                                "member_name": "adam.markert@papayadev.app",
+                                "member_type": "USER",
+                                "role_id": "35753468_3cbb_4ddf_9859_b0adcd4ff8eb",
+                            },
+                            index_key="Adam.Markert-Database",
+                        ),
+                    ],
+                )
+            ]
+        )
+        resources, found_types, skipped = self.parser._extract_v4_resources(
+            state, "users.tfstate"
+        )
+        assert len(resources) == 2
+        assert resources[0].resource_type == "idsec_identity_role_member"
+        assert resources[0].resource_id == "adam.markert@papayadev.app"
+        assert (
+            resources[0].resource_address
+            == 'idsec_identity_role_member.user_role_mappings["Adam.Markert-Cloud"]'
+        )
+        assert (
+            resources[1].resource_address
+            == 'idsec_identity_role_member.user_role_mappings["Adam.Markert-Database"]'
+        )
+        assert skipped == 0
 
     def test_idsec_policy_vm_extracted(self):
         """SIA/UAP VM policy with nested metadata.name is extracted correctly."""
@@ -530,6 +580,15 @@ class TestExtractResourceId:
         assert (
             self.parser._extract_resource_id(
                 "idsec_identity_user", {"username": "joe@example.com", "user_id": "123"}
+            )
+            == "joe@example.com"
+        )
+
+    def test_cyberark_role_member_name(self):
+        assert (
+            self.parser._extract_resource_id(
+                "idsec_identity_role_member",
+                {"member_id": "abc-123", "member_name": "joe@example.com", "role_id": "role-1"},
             )
             == "joe@example.com"
         )

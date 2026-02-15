@@ -80,6 +80,7 @@ class TerraformStateParser:
         types[settings.cyberark_tf_account_type] = "cyberark_account"
         types[settings.cyberark_tf_role_type] = "cyberark_role"
         types[settings.cyberark_tf_user_type] = "cyberark_user"
+        types[settings.cyberark_tf_role_member_type] = "cyberark_role_member"
         types[settings.cyberark_tf_sia_vm_policy_type] = "cyberark_sia_vm_policy"
         types[settings.cyberark_tf_sia_db_policy_type] = "cyberark_sia_db_policy"
         return types
@@ -353,6 +354,7 @@ class TerraformStateParser:
         id_mappings[settings.cyberark_tf_account_type] = "id"
         id_mappings[settings.cyberark_tf_role_type] = "role_name"
         id_mappings[settings.cyberark_tf_user_type] = "username"
+        id_mappings[settings.cyberark_tf_role_member_type] = "member_name"
         # SIA/UAP policies store the name nested under metadata
         id_mappings[settings.cyberark_tf_sia_vm_policy_type] = "metadata.name"
         id_mappings[settings.cyberark_tf_sia_db_policy_type] = "metadata.name"
@@ -625,6 +627,7 @@ class TerraformStateAggregator:
             "cyberark_account": [],
             "cyberark_role": [],
             "cyberark_user": [],
+            "cyberark_role_member": [],
             "cyberark_sia_vm_policy": [],
             "cyberark_sia_db_policy": [],
         }
