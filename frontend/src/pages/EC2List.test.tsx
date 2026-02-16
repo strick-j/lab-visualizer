@@ -30,7 +30,13 @@ const mockInstances = [
   },
 ];
 
-let mockData = { data: mockInstances, meta: { total: 2 } };
+let mockData = {
+  data: mockInstances,
+  total: 2,
+  page: 1,
+  page_size: 50,
+  has_more: false,
+};
 let mockIsLoading = false;
 let mockError: Error | null = null;
 
@@ -45,7 +51,13 @@ vi.mock("@/hooks", () => ({
 describe("EC2ListPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockData = { data: mockInstances, meta: { total: 2 } };
+    mockData = {
+      data: mockInstances,
+      total: 2,
+      page: 1,
+      page_size: 50,
+      has_more: false,
+    };
     mockIsLoading = false;
     mockError = null;
   });
@@ -141,13 +153,13 @@ describe("EC2ListPage", () => {
   });
 
   it("shows empty state when no instances", () => {
-    mockData = { data: [], meta: { total: 0 } };
+    mockData = { data: [], total: 0, page: 1, page_size: 50, has_more: false };
     render(<EC2ListPage />);
     expect(screen.getByText("No EC2 instances found")).toBeInTheDocument();
   });
 
   it("shows appropriate empty state message with filters", () => {
-    mockData = { data: [], meta: { total: 0 } };
+    mockData = { data: [], total: 0, page: 1, page_size: 50, has_more: false };
     render(<EC2ListPage />);
     expect(
       screen.getByText("No EC2 instances are available in your account"),

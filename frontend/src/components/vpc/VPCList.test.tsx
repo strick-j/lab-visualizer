@@ -31,7 +31,13 @@ const mockVPCs = [
   },
 ];
 
-let mockData = { data: mockVPCs, meta: { total: 2 } };
+let mockData = {
+  data: mockVPCs,
+  total: 2,
+  page: 1,
+  page_size: 50,
+  has_more: false,
+};
 let mockIsLoading = false;
 let mockError: Error | null = null;
 
@@ -52,7 +58,13 @@ describe("VPCList", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockData = { data: mockVPCs, meta: { total: 2 } };
+    mockData = {
+      data: mockVPCs,
+      total: 2,
+      page: 1,
+      page_size: 50,
+      has_more: false,
+    };
     mockIsLoading = false;
     mockError = null;
   });
@@ -125,7 +137,7 @@ describe("VPCList", () => {
   });
 
   it("shows empty state when no VPCs", () => {
-    mockData = { data: [], meta: { total: 0 } };
+    mockData = { data: [], total: 0, page: 1, page_size: 50, has_more: false };
     render(<VPCList {...defaultProps} />);
     expect(screen.getByText("No VPCs found")).toBeInTheDocument();
   });

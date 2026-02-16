@@ -29,7 +29,13 @@ const mockInstances = [
   },
 ];
 
-let mockData = { data: mockInstances, meta: { total: 2 } };
+let mockData = {
+  data: mockInstances,
+  total: 2,
+  page: 1,
+  page_size: 50,
+  has_more: false,
+};
 let mockIsLoading = false;
 let mockError: Error | null = null;
 
@@ -44,7 +50,13 @@ vi.mock("@/hooks", () => ({
 describe("RDSListPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockData = { data: mockInstances, meta: { total: 2 } };
+    mockData = {
+      data: mockInstances,
+      total: 2,
+      page: 1,
+      page_size: 50,
+      has_more: false,
+    };
     mockIsLoading = false;
     mockError = null;
   });
@@ -132,7 +144,7 @@ describe("RDSListPage", () => {
   });
 
   it("shows empty state when no databases", () => {
-    mockData = { data: [], meta: { total: 0 } };
+    mockData = { data: [], total: 0, page: 1, page_size: 50, has_more: false };
     render(<RDSListPage />);
     expect(screen.getByText("No RDS databases found")).toBeInTheDocument();
   });

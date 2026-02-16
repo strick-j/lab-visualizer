@@ -148,7 +148,11 @@ describe("queryKeys", () => {
 
   it("generates correct ec2 instances key with filters", () => {
     const filters = { search: "test" };
-    expect(queryKeys.ec2Instances(filters)).toEqual(["ec2-instances", filters]);
+    expect(queryKeys.ec2Instances(filters)).toEqual([
+      "ec2-instances",
+      filters,
+      undefined,
+    ]);
   });
 
   it("generates correct ec2 instance key", () => {
@@ -157,7 +161,11 @@ describe("queryKeys", () => {
 
   it("generates correct rds instances key with filters", () => {
     const filters = { status: "active" as DisplayStatus };
-    expect(queryKeys.rdsInstances(filters)).toEqual(["rds-instances", filters]);
+    expect(queryKeys.rdsInstances(filters)).toEqual([
+      "rds-instances",
+      filters,
+      undefined,
+    ]);
   });
 
   it("generates correct vpc key", () => {
