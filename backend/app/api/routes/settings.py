@@ -448,7 +448,7 @@ async def update_terraform_bucket(
 
     await db.commit()
     await db.refresh(bucket)
-    logger.info("User %s updated terraform bucket %s", _sanitize_for_log(current_user.username), bucket_id)
+    logger.info("User %s updated terraform bucket %d", _sanitize_for_log(current_user.username), int(bucket_id))
     return TerraformBucketResponse.model_validate(bucket)
 
 
@@ -551,7 +551,7 @@ async def update_terraform_path(
 
     await db.commit()
     await db.refresh(path)
-    logger.info("User %s updated terraform path %s", _sanitize_for_log(current_user.username), path_id)
+    logger.info("User %s updated terraform path %d", _sanitize_for_log(current_user.username), int(path_id))
     return TerraformPathResponse.model_validate(path)
 
 
