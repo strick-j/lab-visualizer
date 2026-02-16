@@ -183,3 +183,85 @@ variable "debug" {
   type        = bool
   default     = true
 }
+
+# -----------------------------------------------------------------------------
+# CyberArk Integration (Optional)
+# -----------------------------------------------------------------------------
+
+variable "cyberark_enabled" {
+  description = "Enable CyberArk integration"
+  type        = bool
+  default     = false
+}
+
+variable "cyberark_tenant_name" {
+  description = "CyberArk tenant name for auto-discovery of URLs"
+  type        = string
+  default     = ""
+}
+
+variable "cyberark_base_url" {
+  description = "CyberArk Privilege Cloud base URL"
+  type        = string
+  default     = ""
+}
+
+variable "cyberark_identity_url" {
+  description = "CyberArk Identity tenant URL"
+  type        = string
+  default     = ""
+}
+
+variable "cyberark_client_id" {
+  description = "CyberArk API client ID"
+  type        = string
+  default     = ""
+}
+
+variable "cyberark_client_secret" {
+  description = "CyberArk API client secret (stored in Secrets Manager)"
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "cyberark_uap_base_url" {
+  description = "CyberArk UAP base URL for SIA policy collection"
+  type        = string
+  default     = ""
+}
+
+# -----------------------------------------------------------------------------
+# CyberArk SCIM Integration (Optional)
+# -----------------------------------------------------------------------------
+
+variable "cyberark_scim_enabled" {
+  description = "Enable CyberArk SCIM user collection"
+  type        = bool
+  default     = false
+}
+
+variable "cyberark_scim_app_id" {
+  description = "CyberArk Identity SCIM application ID"
+  type        = string
+  default     = ""
+}
+
+variable "cyberark_scim_scope" {
+  description = "OAuth2 scope for SCIM token request"
+  type        = string
+  default     = ""
+}
+
+variable "cyberark_scim_client_id" {
+  description = "CyberArk SCIM OAuth2 client ID"
+  type        = string
+  default     = ""
+}
+
+variable "cyberark_scim_client_secret" {
+  description = "CyberArk SCIM OAuth2 client secret (stored in Secrets Manager)"
+  type        = string
+  default     = ""
+  sensitive   = true
+}

@@ -13,9 +13,13 @@ import {
   SettingsPage,
   AuthCallbackPage,
   SetupPage,
+  CyberArkPage,
+  CyberArkDashboardPage,
+  AccessMappingPage,
 } from "@/pages";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { SidebarProvider } from "@/contexts/SidebarContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 
 // Create React Query client
@@ -34,36 +38,47 @@ function App() {
     <ThemeProvider>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
-          <BrowserRouter>
-            <Routes>
-              {/* Public routes */}
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/setup" element={<SetupPage />} />
-              <Route path="/auth/callback" element={<AuthCallbackPage />} />
+          <SidebarProvider>
+            <BrowserRouter>
+              <Routes>
+                {/* Public routes */}
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/setup" element={<SetupPage />} />
+                <Route path="/auth/callback" element={<AuthCallbackPage />} />
 
-              {/* Protected routes - require authentication */}
-              <Route
-                path="/"
-                element={
-                  <ProtectedRoute>
-                    <Layout />
-                  </ProtectedRoute>
-                }
-              >
-                <Route index element={<DashboardPage />} />
-                <Route path="ec2" element={<EC2ListPage />} />
-                <Route path="rds" element={<RDSListPage />} />
-                <Route path="ecs" element={<ECSListPage />} />
-                <Route path="vpc" element={<VPCPage />} />
-                <Route path="terraform" element={<TerraformPage />} />
-                <Route path="topology" element={<TopologyPage />} />
-                <Route path="settings" element={<SettingsPage />} />
-              </Route>
+                {/* Protected routes - require authentication */}
+                <Route
+                  path="/"
+                  element={
+                    <ProtectedRoute>
+                      <Layout />
+                    </ProtectedRoute>
+                  }
+                >
+                  <Route index element={<DashboardPage />} />
+                  <Route path="ec2" element={<EC2ListPage />} />
+                  <Route path="rds" element={<RDSListPage />} />
+                  <Route path="ecs" element={<ECSListPage />} />
+                  <Route path="vpc" element={<VPCPage />} />
+                  <Route path="terraform" element={<TerraformPage />} />
+                  <Route path="topology" element={<TopologyPage />} />
+                  <Route
+                    path="cyberark-dashboard"
+                    element={<CyberArkDashboardPage />}
+                  />
+                  <Route path="cyberark" element={<CyberArkPage />} />
+                  <Route
+                    path="access-mapping"
+                    element={<AccessMappingPage />}
+                  />
+                  <Route path="settings" element={<SettingsPage />} />
+                </Route>
 
-              {/* Catch-all route - redirect to home (which will redirect to login if not authenticated) */}
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </BrowserRouter>
+                {/* Catch-all route - redirect to home (which will redirect to login if not authenticated) */}
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </BrowserRouter>
+          </SidebarProvider>
         </AuthProvider>
       </QueryClientProvider>
     </ThemeProvider>

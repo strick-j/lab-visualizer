@@ -98,6 +98,18 @@ vi.mock("@/hooks", () => ({
   useElasticIPs: () => ({
     data: { data: [], meta: { total: 2 } },
   }),
+  useCyberArkSafes: () => ({
+    data: { data: [], meta: { total: 3 } },
+  }),
+  useCyberArkRoles: () => ({
+    data: { data: [], meta: { total: 5 } },
+  }),
+  useCyberArkSIAPolicies: () => ({
+    data: { data: [], meta: { total: 2 } },
+  }),
+  useCyberArkDrift: () => ({
+    data: { drift_detected: false, items: [] },
+  }),
 }));
 
 describe("DashboardPage", () => {
@@ -111,13 +123,13 @@ describe("DashboardPage", () => {
 
   it("renders page title", () => {
     render(<DashboardPage />);
-    expect(screen.getByText("Dashboard")).toBeInTheDocument();
+    expect(screen.getByText("Home")).toBeInTheDocument();
   });
 
   it("renders page description", () => {
     render(<DashboardPage />);
     expect(
-      screen.getByText("Overview of your AWS infrastructure"),
+      screen.getByText("Overview of your infrastructure"),
     ).toBeInTheDocument();
   });
 
@@ -178,7 +190,7 @@ describe("DashboardPage", () => {
   it("renders view all links", () => {
     render(<DashboardPage />);
     const viewAllLinks = screen.getAllByText("View all →");
-    // Now there are 4 "View all" links (EC2, RDS, ECS, VPC)
+    // 4 "View all" links (EC2, RDS, ECS, VPC)
     expect(viewAllLinks).toHaveLength(4);
   });
 

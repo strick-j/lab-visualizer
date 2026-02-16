@@ -13,15 +13,32 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.collectors.cyberark_accounts import CyberArkAccountCollector
+from app.collectors.cyberark_roles import CyberArkRoleCollector
+from app.collectors.cyberark_safes import CyberArkSafeCollector
+from app.collectors.cyberark_sia import CyberArkSIAPolicyCollector
+from app.collectors.cyberark_users import CyberArkUserCollector
 from app.collectors.ec2 import EC2Collector
 from app.collectors.ecs import ECSCollector
 from app.collectors.eip import ElasticIPCollector
 from app.collectors.igw import InternetGatewayCollector
 from app.collectors.nat_gateway import NATGatewayCollector
 from app.collectors.rds import RDSCollector
+from app.collectors.s3 import S3BucketCollector
 from app.collectors.subnet import SubnetCollector
 from app.collectors.vpc import VPCCollector
 from app.config import get_settings
+from app.models.cyberark import (
+    CyberArkAccount,
+    CyberArkRole,
+    CyberArkRoleMember,
+    CyberArkSafe,
+    CyberArkSafeMember,
+    CyberArkSettings,
+    CyberArkSIAPolicy,
+    CyberArkSIAPolicyPrincipal,
+    CyberArkUser,
+)
 from app.models.database import get_db
 from app.models.resources import (
     VPC,
@@ -32,6 +49,7 @@ from app.models.resources import (
     NATGateway,
     RDSInstance,
     Region,
+    S3Bucket,
     Subnet,
     SyncStatus,
 )
@@ -204,12 +222,25 @@ async def refresh_data(
         resources_updated += eip_count
         logger.info(f"Synced {eip_count} Elastic IPs")
 
+        # Collect S3 Buckets
+        s3_collector = S3BucketCollector()
+        s3_buckets = await s3_collector.collect()
+        s3_count = await _sync_s3_buckets(db, s3_buckets, region.id)
+        resources_updated += s3_count
+        logger.info(f"Synced {s3_count} S3 buckets")
+
         # Collect ECS containers
         ecs_collector = ECSCollector()
         ecs_containers = await ecs_collector.collect()
         ecs_count = await _sync_ecs_containers(db, ecs_containers, region.id)
         resources_updated += ecs_count
         logger.info(f"Synced {ecs_count} ECS containers")
+
+        # Collect CyberArk resources (if enabled)
+        cyberark_count = await _refresh_cyberark(db)
+        if cyberark_count > 0:
+            resources_updated += cyberark_count
+            logger.info(f"Synced {cyberark_count} CyberArk resources")
 
         # Update Terraform managed flags
         tf_count = await _sync_terraform_state(db)
@@ -284,6 +315,8 @@ async def _sync_ec2_instances(db: AsyncSession, instances: list, region_id: int)
             existing.availability_zone = instance_data.get("availability_zone")
             existing.launch_time = instance_data.get("launch_time")
             existing.tags = json.dumps(instance_data.get("tags", {}))
+            existing.platform = instance_data.get("platform", "linux")
+            existing.owner_account_id = instance_data.get("owner_account_id")
             existing.is_deleted = False
             existing.deleted_at = None
         else:
@@ -303,6 +336,8 @@ async def _sync_ec2_instances(db: AsyncSession, instances: list, region_id: int)
                 availability_zone=instance_data.get("availability_zone"),
                 launch_time=instance_data.get("launch_time"),
                 tags=json.dumps(instance_data.get("tags", {})),
+                platform=instance_data.get("platform", "linux"),
+                owner_account_id=instance_data.get("owner_account_id"),
                 is_deleted=False,
             )
             db.add(new_instance)
@@ -368,6 +403,7 @@ async def _sync_rds_instances(db: AsyncSession, instances: list, region_id: int)
             existing.vpc_id = instance_data.get("vpc_id")
             existing.availability_zone = instance_data.get("availability_zone")
             existing.multi_az = instance_data.get("multi_az", False)
+            existing.owner_account_id = instance_data.get("owner_account_id")
             existing.tags = json.dumps(instance_data.get("tags", {}))
             existing.is_deleted = False
             existing.deleted_at = None
@@ -387,6 +423,7 @@ async def _sync_rds_instances(db: AsyncSession, instances: list, region_id: int)
                 vpc_id=instance_data.get("vpc_id"),
                 availability_zone=instance_data.get("availability_zone"),
                 multi_az=instance_data.get("multi_az", False),
+                owner_account_id=instance_data.get("owner_account_id"),
                 tags=json.dumps(instance_data.get("tags", {})),
                 is_deleted=False,
             )
@@ -772,6 +809,93 @@ async def _sync_elastic_ips(db: AsyncSession, eips: list, region_id: int) -> int
     return count
 
 
+async def _sync_s3_buckets(db: AsyncSession, buckets: list, region_id: int) -> int:
+    """Sync S3 buckets to database, marking deleted ones."""
+    count = 0
+
+    # Get all existing bucket names for this region
+    result = await db.execute(
+        select(S3Bucket.bucket_name).where(S3Bucket.region_id == region_id)
+    )
+    existing_names = set(row[0] for row in result.all())
+
+    # Track which buckets we see from AWS
+    seen_names = set()
+
+    for bucket_data in buckets:
+        bucket_name = bucket_data["bucket_name"]
+        seen_names.add(bucket_name)
+
+        # Check if bucket exists
+        result = await db.execute(
+            select(S3Bucket).where(S3Bucket.bucket_name == bucket_name)
+        )
+        existing = result.scalar_one_or_none()
+
+        if existing:
+            # Update existing bucket and mark as not deleted
+            existing.name = bucket_data.get("name")
+            existing.creation_date = bucket_data.get("creation_date")
+            existing.versioning_enabled = bucket_data.get("versioning_enabled", False)
+            existing.mfa_delete = bucket_data.get("mfa_delete", False)
+            existing.encryption_algorithm = bucket_data.get("encryption_algorithm")
+            existing.kms_key_id = bucket_data.get("kms_key_id")
+            existing.bucket_key_enabled = bucket_data.get("bucket_key_enabled", False)
+            existing.block_public_acls = bucket_data.get("block_public_acls", False)
+            existing.block_public_policy = bucket_data.get("block_public_policy", False)
+            existing.ignore_public_acls = bucket_data.get("ignore_public_acls", False)
+            existing.restrict_public_buckets = bucket_data.get(
+                "restrict_public_buckets", False
+            )
+            existing.policy = bucket_data.get("policy")
+            existing.tags = json.dumps(bucket_data.get("tags", {}))
+            existing.is_deleted = False
+            existing.deleted_at = None
+        else:
+            # Create new bucket
+            new_bucket = S3Bucket(
+                bucket_name=bucket_name,
+                region_id=region_id,
+                name=bucket_data.get("name"),
+                creation_date=bucket_data.get("creation_date"),
+                versioning_enabled=bucket_data.get("versioning_enabled", False),
+                mfa_delete=bucket_data.get("mfa_delete", False),
+                encryption_algorithm=bucket_data.get("encryption_algorithm"),
+                kms_key_id=bucket_data.get("kms_key_id"),
+                bucket_key_enabled=bucket_data.get("bucket_key_enabled", False),
+                block_public_acls=bucket_data.get("block_public_acls", False),
+                block_public_policy=bucket_data.get("block_public_policy", False),
+                ignore_public_acls=bucket_data.get("ignore_public_acls", False),
+                restrict_public_buckets=bucket_data.get(
+                    "restrict_public_buckets", False
+                ),
+                policy=bucket_data.get("policy"),
+                tags=json.dumps(bucket_data.get("tags", {})),
+                is_deleted=False,
+            )
+            db.add(new_bucket)
+
+        count += 1
+
+    # Mark buckets that weren't in AWS response as deleted
+    deleted_names = existing_names - seen_names
+    if deleted_names:
+        result = await db.execute(
+            select(S3Bucket).where(
+                S3Bucket.bucket_name.in_(deleted_names),
+                S3Bucket.region_id == region_id,
+            )
+        )
+        for bucket in result.scalars():
+            if not bucket.is_deleted:
+                bucket.is_deleted = True
+                bucket.deleted_at = datetime.now(timezone.utc)
+                logger.info(f"Marked S3 bucket as deleted: {bucket.bucket_name}")
+
+    await db.flush()
+    return count
+
+
 async def _sync_ecs_containers(
     db: AsyncSession, containers: list, region_id: int
 ) -> int:
@@ -972,6 +1096,34 @@ async def _sync_terraform_state(db: AsyncSession) -> int:
                 eip.tf_resource_address = tf_resource.resource_address
                 count += 1
 
+        # Update S3 Buckets — consolidate aws_s3_bucket, aws_s3_bucket_policy,
+        # and aws_s3_bucket_public_access_block into a single TF-managed flag
+        s3_bucket_names: set[str] = set()
+        s3_bucket_lookup: dict = {}
+        for category in (
+            "s3_bucket",
+            "s3_bucket_policy",
+            "s3_bucket_public_access_block",
+        ):
+            for tf_resource in tf_resources.get(category, []):
+                bucket_name = tf_resource.resource_id
+                s3_bucket_names.add(bucket_name)
+                # Prefer the aws_s3_bucket resource address for the primary TF address
+                if category == "s3_bucket" or bucket_name not in s3_bucket_lookup:
+                    s3_bucket_lookup[bucket_name] = tf_resource
+
+        for bucket_name in s3_bucket_names:
+            result = await db.execute(
+                select(S3Bucket).where(S3Bucket.bucket_name == bucket_name)
+            )
+            bucket = result.scalar_one_or_none()
+            if bucket:
+                tf_res = s3_bucket_lookup[bucket_name]
+                bucket.tf_managed = True
+                bucket.tf_state_source = tf_res.state_source
+                bucket.tf_resource_address = tf_res.resource_address
+                count += 1
+
         # Update ECS containers - mark all containers in a Terraform-managed
         # cluster as terraform-managed
         tf_cluster_names = set()
@@ -999,12 +1151,712 @@ async def _sync_terraform_state(db: AsyncSession) -> int:
                     container.managed_by = "terraform"
                 count += 1
 
+        # Update CyberArk Safes
+        tf_safes = tf_resources.get("cyberark_safe", [])
+        logger.info("TF sync: %d CyberArk safes from Terraform", len(tf_safes))
+        for tf_resource in tf_safes:
+            result = await db.execute(
+                select(CyberArkSafe).where(
+                    CyberArkSafe.safe_name == tf_resource.resource_id
+                )
+            )
+            safe = result.scalar_one_or_none()
+            if safe:
+                safe.tf_managed = True
+                safe.tf_state_source = tf_resource.state_source
+                safe.tf_resource_address = tf_resource.resource_address
+                count += 1
+            else:
+                logger.debug(
+                    "TF sync: safe '%s' in TF but not in DB",
+                    tf_resource.resource_id,
+                )
+
+        # Update CyberArk Accounts
+        tf_accounts = tf_resources.get("cyberark_account", [])
+        logger.info("TF sync: %d CyberArk accounts from Terraform", len(tf_accounts))
+        for tf_resource in tf_accounts:
+            result = await db.execute(
+                select(CyberArkAccount).where(
+                    CyberArkAccount.account_id == tf_resource.resource_id
+                )
+            )
+            account = result.scalar_one_or_none()
+            if account:
+                account.tf_managed = True
+                account.tf_state_source = tf_resource.state_source
+                account.tf_resource_address = tf_resource.resource_address
+                count += 1
+            else:
+                logger.debug(
+                    "TF sync: account '%s' in TF but not in DB",
+                    tf_resource.resource_id,
+                )
+
+        # Update CyberArk Roles
+        tf_roles = tf_resources.get("cyberark_role", [])
+        logger.info("TF sync: %d CyberArk roles from Terraform", len(tf_roles))
+        for tf_resource in tf_roles:
+            result = await db.execute(
+                select(CyberArkRole).where(
+                    CyberArkRole.role_name == tf_resource.resource_id
+                )
+            )
+            role = result.scalar_one_or_none()
+            if role:
+                role.tf_managed = True
+                role.tf_state_source = tf_resource.state_source
+                role.tf_resource_address = tf_resource.resource_address
+                count += 1
+            else:
+                logger.debug(
+                    "TF sync: role '%s' in TF but not in DB",
+                    tf_resource.resource_id,
+                )
+
+        # Update CyberArk SIA Policies (VM + DB)
+        for policy_type in ("cyberark_sia_vm_policy", "cyberark_sia_db_policy"):
+            tf_policies = tf_resources.get(policy_type, [])
+            logger.info(
+                "TF sync: %d CyberArk %s from Terraform",
+                len(tf_policies),
+                policy_type,
+            )
+            for tf_resource in tf_policies:
+                result = await db.execute(
+                    select(CyberArkSIAPolicy).where(
+                        CyberArkSIAPolicy.policy_name == tf_resource.resource_id
+                    )
+                )
+                policy = result.scalar_one_or_none()
+                if policy:
+                    policy.tf_managed = True
+                    policy.tf_state_source = tf_resource.state_source
+                    policy.tf_resource_address = tf_resource.resource_address
+                    count += 1
+
+        # Update CyberArk Users
+        tf_users = tf_resources.get("cyberark_user", [])
+        logger.info("TF sync: %d CyberArk users from Terraform", len(tf_users))
+        for tf_resource in tf_users:
+            result = await db.execute(
+                select(CyberArkUser).where(
+                    CyberArkUser.user_name == tf_resource.resource_id
+                )
+            )
+            user = result.scalar_one_or_none()
+            if user:
+                user.tf_managed = True
+                user.tf_state_source = tf_resource.state_source
+                user.tf_resource_address = tf_resource.resource_address
+                count += 1
+            else:
+                logger.debug(
+                    "TF sync: user '%s' in TF but not in DB",
+                    tf_resource.resource_id,
+                )
+
+        # Log counts for safe members (counted but not persisted
+        # to DB since that model lacks tf_managed columns)
+        tf_safe_members = tf_resources.get("cyberark_safe_member", [])
+        if tf_safe_members:
+            logger.info(
+                "TF sync: %d CyberArk safe members from Terraform (count only)",
+                len(tf_safe_members),
+            )
+
         await db.flush()
         return count
 
     except Exception as e:
         logger.warning(f"Failed to sync Terraform state: {e}")
         return 0
+
+
+async def _get_cyberark_config(db: AsyncSession) -> dict | None:
+    """Get CyberArk connection config from DB, falling back to env vars.
+
+    Returns None if CyberArk is not enabled or not configured.
+    """
+    result = await db.execute(select(CyberArkSettings).limit(1))
+    db_settings = result.scalar_one_or_none()
+
+    if db_settings and db_settings.enabled:
+        logger.info("CyberArk: using DB settings (enabled=%s)", db_settings.enabled)
+        base_url = db_settings.base_url
+        identity_url = db_settings.identity_url
+        uap_base_url = db_settings.uap_base_url
+        client_id = db_settings.client_id
+        client_secret = db_settings.client_secret
+    elif settings.cyberark_enabled:
+        logger.info("CyberArk: using environment variable settings")
+        base_url = settings.cyberark_base_url
+        identity_url = settings.cyberark_identity_url
+        uap_base_url = settings.cyberark_uap_base_url
+        client_id = settings.cyberark_client_id
+        client_secret = settings.cyberark_client_secret
+    else:
+        logger.info(
+            "CyberArk: skipping collection — not enabled "
+            "(db_settings=%s, env_enabled=%s)",
+            db_settings is not None,
+            settings.cyberark_enabled,
+        )
+        return None
+
+    if not all([base_url, identity_url, client_id, client_secret]):
+        logger.warning(
+            "CyberArk: enabled but missing required config — "
+            "base_url=%s, identity_url=%s, client_id=%s, client_secret=%s",
+            bool(base_url),
+            bool(identity_url),
+            bool(client_id),
+            bool(client_secret),
+        )
+        return None
+
+    return {
+        "base_url": base_url,
+        "identity_url": identity_url,
+        "client_id": client_id,
+        "client_secret": client_secret,
+        "uap_base_url": uap_base_url,
+    }
+
+
+async def _get_scim_config(db: AsyncSession) -> dict | None:
+    """Get SCIM connection config from DB.
+
+    Returns None if SCIM is not enabled or not configured.
+    """
+    result = await db.execute(select(CyberArkSettings).limit(1))
+    db_settings = result.scalar_one_or_none()
+
+    if not db_settings or not db_settings.scim_enabled:
+        logger.info(
+            "SCIM: skipping collection — not enabled "
+            "(db_settings=%s, scim_enabled=%s)",
+            db_settings is not None,
+            db_settings.scim_enabled if db_settings else False,
+        )
+        return None
+
+    if not all(
+        [
+            db_settings.identity_url,
+            db_settings.scim_oauth2_url,
+            db_settings.scim_scope,
+            db_settings.scim_client_id,
+            db_settings.scim_client_secret,
+        ]
+    ):
+        logger.warning(
+            "SCIM: enabled but missing required config — "
+            "identity_url=%s, scim_oauth2_url=%s, scim_scope=%s, "
+            "scim_client_id=%s, scim_client_secret=%s",
+            bool(db_settings.identity_url),
+            bool(db_settings.scim_oauth2_url),
+            bool(db_settings.scim_scope),
+            bool(db_settings.scim_client_id),
+            bool(db_settings.scim_client_secret),
+        )
+        return None
+
+    return {
+        "identity_url": db_settings.identity_url,
+        "scim_oauth2_url": db_settings.scim_oauth2_url,
+        "scim_scope": db_settings.scim_scope,
+        "scim_client_id": db_settings.scim_client_id,
+        "scim_client_secret": db_settings.scim_client_secret,
+    }
+
+
+async def _refresh_cyberark(db: AsyncSession) -> int:
+    """Collect and sync all CyberArk resources. Returns total count."""
+    config = await _get_cyberark_config(db)
+    scim_config = await _get_scim_config(db)
+
+    if not config and not scim_config:
+        return 0
+
+    total = 0
+
+    # --- Platform Token collectors (safes, accounts, SIA) ---
+    if config:
+        # Split UAP URL from base config (safe/account collectors don't need it)
+        uap_base_url = config.pop("uap_base_url", None)
+        try:
+            # Collect safes
+            safe_collector = CyberArkSafeCollector(**config)
+            safes = await safe_collector.collect()
+            logger.info("CyberArk: collected %d safes from API", len(safes))
+            safe_count = await _sync_cyberark_safes(db, safes)
+            total += safe_count
+
+            # Collect accounts
+            account_collector = CyberArkAccountCollector(**config)
+            accounts = await account_collector.collect()
+            logger.info("CyberArk: collected %d accounts from API", len(accounts))
+            acct_count = await _sync_cyberark_accounts(db, accounts)
+            total += acct_count
+
+            # Update safe account counts from synced accounts
+            await _update_safe_account_counts(db)
+
+            # Collect SIA policies (uses UAP service, not Privilege Cloud)
+            sia_collector = CyberArkSIAPolicyCollector(
+                uap_base_url=uap_base_url, **config
+            )
+            policies = await sia_collector.collect()
+            logger.info("CyberArk: collected %d SIA policies from API", len(policies))
+            policy_count = await _sync_cyberark_sia_policies(db, policies)
+            total += policy_count
+
+            logger.info(
+                "CyberArk platform: %d safes, %d accounts, %d policies",
+                safe_count,
+                acct_count,
+                policy_count,
+            )
+        except Exception:
+            logger.exception("Error during CyberArk platform data refresh")
+
+    # --- SCIM collectors (roles/groups, users) ---
+    if scim_config:
+        try:
+            # Collect roles via SCIM groups
+            role_collector = CyberArkRoleCollector(**scim_config)
+            roles = await role_collector.collect()
+            logger.info("CyberArk SCIM: collected %d roles from API", len(roles))
+            role_count = await _sync_cyberark_roles(db, roles)
+            total += role_count
+
+            # Collect users via SCIM users
+            user_collector = CyberArkUserCollector(**scim_config)
+            users = await user_collector.collect()
+            logger.info("CyberArk SCIM: collected %d users from API", len(users))
+            user_count = await _sync_cyberark_users(db, users)
+            total += user_count
+
+            logger.info(
+                "CyberArk SCIM: %d roles, %d users",
+                role_count,
+                user_count,
+            )
+        except Exception:
+            logger.exception("Error during CyberArk SCIM data refresh")
+
+    await _update_sync_status(db, "cyberark", total)
+    return total
+
+
+async def _sync_cyberark_roles(db: AsyncSession, roles: list) -> int:
+    """Sync CyberArk roles to database."""
+    count = 0
+
+    # Get existing role IDs
+    result = await db.execute(select(CyberArkRole.role_id))
+    existing_ids = set(row[0] for row in result.all())
+    seen_ids = set()
+
+    for role_data in roles:
+        role_id = role_data["role_id"]
+        seen_ids.add(role_id)
+
+        result = await db.execute(
+            select(CyberArkRole).where(CyberArkRole.role_id == role_id)
+        )
+        existing = result.scalar_one_or_none()
+
+        if existing:
+            existing.role_name = role_data["role_name"]
+            existing.description = role_data.get("description")
+            existing.is_deleted = False
+            existing.deleted_at = None
+        else:
+            existing = CyberArkRole(
+                role_id=role_id,
+                role_name=role_data["role_name"],
+                description=role_data.get("description"),
+                is_deleted=False,
+            )
+            db.add(existing)
+
+        # Sync role members: delete old, insert new
+        old_members = (
+            (
+                await db.execute(
+                    select(CyberArkRoleMember).where(
+                        CyberArkRoleMember.role_id == role_id
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+        for m in old_members:
+            await db.delete(m)
+
+        for member in role_data.get("members", []):
+            db.add(
+                CyberArkRoleMember(
+                    role_id=role_id,
+                    member_name=member["member_name"],
+                    member_type=member.get("member_type", "user"),
+                )
+            )
+
+        count += 1
+
+    # Mark roles not seen as deleted — but only if we actually received
+    # results from the API.  An empty response likely means the API call
+    # failed (e.g. 403) and we must not wipe existing data.
+    if seen_ids:
+        deleted_ids = existing_ids - seen_ids
+        if deleted_ids:
+            result = await db.execute(
+                select(CyberArkRole).where(CyberArkRole.role_id.in_(deleted_ids))
+            )
+            for role in result.scalars():
+                if not role.is_deleted:
+                    role.is_deleted = True
+                    role.deleted_at = datetime.now(timezone.utc)
+    elif existing_ids:
+        logger.warning(
+            "CyberArk: received 0 roles but %d exist in DB — "
+            "skipping soft-delete to protect against API failure",
+            len(existing_ids),
+        )
+
+    await db.flush()
+    return count
+
+
+async def _sync_cyberark_safes(db: AsyncSession, safes: list) -> int:
+    """Sync CyberArk safes to database."""
+    count = 0
+
+    result = await db.execute(select(CyberArkSafe.safe_name))
+    existing_names = set(row[0] for row in result.all())
+    seen_names = set()
+
+    for safe_data in safes:
+        safe_name = safe_data["safe_name"]
+        seen_names.add(safe_name)
+
+        result = await db.execute(
+            select(CyberArkSafe).where(CyberArkSafe.safe_name == safe_name)
+        )
+        existing = result.scalar_one_or_none()
+
+        if existing:
+            existing.description = safe_data.get("description")
+            existing.managing_cpm = safe_data.get("managing_cpm")
+            existing.number_of_members = safe_data.get("number_of_members") or 0
+            existing.is_deleted = False
+            existing.deleted_at = None
+        else:
+            existing = CyberArkSafe(
+                safe_name=safe_name,
+                description=safe_data.get("description"),
+                managing_cpm=safe_data.get("managing_cpm"),
+                number_of_members=safe_data.get("number_of_members") or 0,
+                number_of_accounts=0,
+                is_deleted=False,
+            )
+            db.add(existing)
+
+        # Sync safe members
+        old_members = (
+            (
+                await db.execute(
+                    select(CyberArkSafeMember).where(
+                        CyberArkSafeMember.safe_name == safe_name
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+        for m in old_members:
+            await db.delete(m)
+
+        for member in safe_data.get("members", []):
+            db.add(
+                CyberArkSafeMember(
+                    safe_name=safe_name,
+                    member_name=member["member_name"],
+                    member_type=member.get("member_type", "user"),
+                    permission_level=member.get("permission_level"),
+                )
+            )
+
+        count += 1
+
+    # Mark safes not seen as deleted — only when we received results
+    if seen_names:
+        deleted_names = existing_names - seen_names
+        if deleted_names:
+            result = await db.execute(
+                select(CyberArkSafe).where(CyberArkSafe.safe_name.in_(deleted_names))
+            )
+            for safe in result.scalars():
+                if not safe.is_deleted:
+                    safe.is_deleted = True
+                    safe.deleted_at = datetime.now(timezone.utc)
+    elif existing_names:
+        logger.warning(
+            "CyberArk: received 0 safes but %d exist in DB — "
+            "skipping soft-delete to protect against API failure",
+            len(existing_names),
+        )
+
+    await db.flush()
+    return count
+
+
+async def _sync_cyberark_accounts(db: AsyncSession, accounts: list) -> int:
+    """Sync CyberArk accounts to database."""
+    count = 0
+
+    result = await db.execute(select(CyberArkAccount.account_id))
+    existing_ids = set(row[0] for row in result.all())
+    seen_ids = set()
+
+    for acct_data in accounts:
+        account_id = acct_data["account_id"]
+        seen_ids.add(account_id)
+
+        result = await db.execute(
+            select(CyberArkAccount).where(CyberArkAccount.account_id == account_id)
+        )
+        existing = result.scalar_one_or_none()
+
+        if existing:
+            existing.account_name = acct_data["account_name"]
+            existing.safe_name = acct_data["safe_name"]
+            existing.platform_id = acct_data.get("platform_id")
+            existing.address = acct_data.get("address")
+            existing.username = acct_data.get("username")
+            existing.secret_type = acct_data.get("secret_type")
+            existing.is_deleted = False
+            existing.deleted_at = None
+        else:
+            db.add(
+                CyberArkAccount(
+                    account_id=account_id,
+                    account_name=acct_data["account_name"],
+                    safe_name=acct_data["safe_name"],
+                    platform_id=acct_data.get("platform_id"),
+                    address=acct_data.get("address"),
+                    username=acct_data.get("username"),
+                    secret_type=acct_data.get("secret_type"),
+                    is_deleted=False,
+                )
+            )
+
+        count += 1
+
+    # Mark accounts not seen as deleted — only when we received results
+    if seen_ids:
+        deleted_ids = existing_ids - seen_ids
+        if deleted_ids:
+            result = await db.execute(
+                select(CyberArkAccount).where(
+                    CyberArkAccount.account_id.in_(deleted_ids)
+                )
+            )
+            for acct in result.scalars():
+                if not acct.is_deleted:
+                    acct.is_deleted = True
+                    acct.deleted_at = datetime.now(timezone.utc)
+    elif existing_ids:
+        logger.warning(
+            "CyberArk: received 0 accounts but %d exist in DB — "
+            "skipping soft-delete to protect against API failure",
+            len(existing_ids),
+        )
+
+    await db.flush()
+    return count
+
+
+async def _update_safe_account_counts(db: AsyncSession) -> None:
+    """Update number_of_accounts on each safe by counting active accounts."""
+    result = await db.execute(
+        select(
+            CyberArkAccount.safe_name,
+            func.count(CyberArkAccount.account_id),
+        )
+        .where(CyberArkAccount.is_deleted == False)  # noqa: E712
+        .group_by(CyberArkAccount.safe_name)
+    )
+    counts = {row[0]: row[1] for row in result.all()}
+
+    safes_result = await db.execute(
+        select(CyberArkSafe).where(CyberArkSafe.is_deleted == False)  # noqa: E712
+    )
+    updated = 0
+    for safe in safes_result.scalars():
+        safe.number_of_accounts = counts.get(safe.safe_name, 0)
+        updated += 1
+
+    await db.flush()
+    logger.info(
+        "Updated account counts on %d safes (%d safes have accounts)",
+        updated,
+        len(counts),
+    )
+
+
+async def _sync_cyberark_sia_policies(db: AsyncSession, policies: list) -> int:
+    """Sync CyberArk SIA policies to database."""
+    count = 0
+
+    result = await db.execute(select(CyberArkSIAPolicy.policy_id))
+    existing_ids = set(row[0] for row in result.all())
+    seen_ids = set()
+
+    for policy_data in policies:
+        policy_id = policy_data["policy_id"]
+        seen_ids.add(policy_id)
+
+        result = await db.execute(
+            select(CyberArkSIAPolicy).where(CyberArkSIAPolicy.policy_id == policy_id)
+        )
+        existing = result.scalar_one_or_none()
+
+        target_criteria = policy_data.get("target_criteria")
+        criteria_json = json.dumps(target_criteria) if target_criteria else None
+
+        if existing:
+            existing.policy_name = policy_data["policy_name"]
+            existing.policy_type = policy_data["policy_type"]
+            existing.description = policy_data.get("description")
+            existing.status = policy_data.get("status", "active")
+            existing.target_criteria = criteria_json
+            existing.is_deleted = False
+            existing.deleted_at = None
+        else:
+            existing = CyberArkSIAPolicy(
+                policy_id=policy_id,
+                policy_name=policy_data["policy_name"],
+                policy_type=policy_data["policy_type"],
+                description=policy_data.get("description"),
+                status=policy_data.get("status", "active"),
+                target_criteria=criteria_json,
+                is_deleted=False,
+            )
+            db.add(existing)
+
+        # Sync principals
+        old_principals = (
+            (
+                await db.execute(
+                    select(CyberArkSIAPolicyPrincipal).where(
+                        CyberArkSIAPolicyPrincipal.policy_id == policy_id
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+        for p in old_principals:
+            await db.delete(p)
+
+        for principal in policy_data.get("principals", []):
+            db.add(
+                CyberArkSIAPolicyPrincipal(
+                    policy_id=policy_id,
+                    principal_name=principal["principal_name"],
+                    principal_type=principal.get("principal_type", "user"),
+                )
+            )
+
+        count += 1
+
+    # Mark policies not seen as deleted — only when we received results
+    if seen_ids:
+        deleted_ids = existing_ids - seen_ids
+        if deleted_ids:
+            result = await db.execute(
+                select(CyberArkSIAPolicy).where(
+                    CyberArkSIAPolicy.policy_id.in_(deleted_ids)
+                )
+            )
+            for policy in result.scalars():
+                if not policy.is_deleted:
+                    policy.is_deleted = True
+                    policy.deleted_at = datetime.now(timezone.utc)
+    elif existing_ids:
+        logger.warning(
+            "CyberArk: received 0 SIA policies but %d exist in DB — "
+            "skipping soft-delete to protect against API failure",
+            len(existing_ids),
+        )
+
+    await db.flush()
+    return count
+
+
+async def _sync_cyberark_users(db: AsyncSession, users: list) -> int:
+    """Sync CyberArk Identity users to database."""
+    count = 0
+
+    result = await db.execute(select(CyberArkUser.user_id))
+    existing_ids = set(row[0] for row in result.all())
+    seen_ids = set()
+
+    for user_data in users:
+        user_id = user_data["user_id"]
+        seen_ids.add(user_id)
+
+        result = await db.execute(
+            select(CyberArkUser).where(CyberArkUser.user_id == user_id)
+        )
+        existing = result.scalar_one_or_none()
+
+        if existing:
+            existing.user_name = user_data["user_name"]
+            existing.display_name = user_data.get("display_name")
+            existing.email = user_data.get("email")
+            existing.active = user_data.get("active", True)
+            existing.is_deleted = False
+            existing.deleted_at = None
+        else:
+            db.add(
+                CyberArkUser(
+                    user_id=user_id,
+                    user_name=user_data["user_name"],
+                    display_name=user_data.get("display_name"),
+                    email=user_data.get("email"),
+                    active=user_data.get("active", True),
+                    is_deleted=False,
+                )
+            )
+
+        count += 1
+
+    # Mark users not seen as deleted — only when we received results
+    if seen_ids:
+        deleted_ids = existing_ids - seen_ids
+        if deleted_ids:
+            result = await db.execute(
+                select(CyberArkUser).where(CyberArkUser.user_id.in_(deleted_ids))
+            )
+            for user in result.scalars():
+                if not user.is_deleted:
+                    user.is_deleted = True
+                    user.deleted_at = datetime.now(timezone.utc)
+    elif existing_ids:
+        logger.warning(
+            "CyberArk: received 0 users but %d exist in DB — "
+            "skipping soft-delete to protect against API failure",
+            len(existing_ids),
+        )
+
+    await db.flush()
+    return count
 
 
 async def _update_sync_status(

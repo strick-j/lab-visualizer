@@ -76,6 +76,50 @@ resource "aws_secretsmanager_secret_version" "admin_password" {
 }
 
 # -----------------------------------------------------------------------------
+# CyberArk API Client Secret
+# -----------------------------------------------------------------------------
+
+resource "aws_secretsmanager_secret" "cyberark_client_secret" {
+  count = var.create_cyberark_secret ? 1 : 0
+
+  name        = "${var.project_name}/${var.environment}/cyberark-client-secret-${random_id.secret_suffix.hex}"
+  description = "CyberArk API client secret"
+
+  tags = merge(var.tags, {
+    Name = "${var.project_name}-${var.environment}-cyberark-secret"
+  })
+}
+
+resource "aws_secretsmanager_secret_version" "cyberark_client_secret" {
+  count = var.create_cyberark_secret && var.cyberark_client_secret != "" ? 1 : 0
+
+  secret_id     = aws_secretsmanager_secret.cyberark_client_secret[0].id
+  secret_string = var.cyberark_client_secret
+}
+
+# -----------------------------------------------------------------------------
+# CyberArk SCIM Client Secret
+# -----------------------------------------------------------------------------
+
+resource "aws_secretsmanager_secret" "scim_client_secret" {
+  count = var.create_scim_secret ? 1 : 0
+
+  name        = "${var.project_name}/${var.environment}/cyberark-scim-client-secret-${random_id.secret_suffix.hex}"
+  description = "CyberArk SCIM OAuth2 client secret"
+
+  tags = merge(var.tags, {
+    Name = "${var.project_name}-${var.environment}-scim-secret"
+  })
+}
+
+resource "aws_secretsmanager_secret_version" "scim_client_secret" {
+  count = var.create_scim_secret && var.cyberark_scim_client_secret != "" ? 1 : 0
+
+  secret_id     = aws_secretsmanager_secret.scim_client_secret[0].id
+  secret_string = var.cyberark_scim_client_secret
+}
+
+# -----------------------------------------------------------------------------
 # Application Secrets (combined JSON)
 # -----------------------------------------------------------------------------
 

@@ -80,6 +80,9 @@ class RDSCollector(BaseCollector):
                 "vpc_id": db_instance.get("DBSubnetGroup", {}).get("VpcId"),
                 "availability_zone": db_instance.get("AvailabilityZone"),
                 "multi_az": db_instance.get("MultiAZ", False),
+                "owner_account_id": self._extract_account_from_arn(
+                    db_instance.get("DBInstanceArn")
+                ),
                 "tags": tags_dict,
                 "region": self.region,
                 # Additional metadata
@@ -98,6 +101,19 @@ class RDSCollector(BaseCollector):
         except Exception as e:
             logger.warning(f"Error parsing RDS instance: {e}")
             return None
+
+    @staticmethod
+    def _extract_account_from_arn(arn: Optional[str]) -> Optional[str]:
+        """Extract AWS account ID from a resource ARN.
+
+        ARN format: arn:aws:rds:region:account-id:db:name
+        """
+        if not arn:
+            return None
+        parts = arn.split(":")
+        if len(parts) >= 5:
+            return parts[4]
+        return None
 
     async def _get_instance_tags(
         self, db_instance_arn: Optional[str]

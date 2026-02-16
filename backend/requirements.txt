@@ -33,3 +33,6 @@ email-validator==2.1.0
 
 # Utilities
 python-dateutil==2.8.2
+
+# Security: transitive dependency pinned for CVE-2026-23949 (path traversal)
+jaraco.context>=6.1.0

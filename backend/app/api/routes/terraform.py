@@ -54,6 +54,8 @@ async def list_terraform_states(db: AsyncSession = Depends(get_db)):
                 last_modified=sf.last_modified,
                 resource_count=sf.resource_count,
                 status=sf.status,
+                all_resource_types=sf.all_resource_types or None,
+                skipped_resource_count=sf.skipped_resource_count,
             )
             for sf in state_files
         ]

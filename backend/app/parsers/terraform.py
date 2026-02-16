@@ -7,9 +7,9 @@ and track which resources are managed by Terraform.
 
 import json
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import boto3
 from botocore.exceptions import ClientError
@@ -43,12 +43,14 @@ class TerraformStateFile:
     resource_count: int
     status: str
     resources: List[TerraformResource]
+    all_resource_types: Dict[str, int] = field(default_factory=dict)
+    skipped_resource_count: int = 0
 
 
 class TerraformStateParser:
     """Parser for Terraform state files stored in S3."""
 
-    # Resource types we care about
+    # AWS resource types we care about (static)
     SUPPORTED_RESOURCE_TYPES = {
         "aws_instance": "ec2",
         "aws_db_instance": "rds",
@@ -60,7 +62,32 @@ class TerraformStateParser:
         "aws_ecs_cluster": "ecs_cluster",
         "aws_ecs_service": "ecs_service",
         "aws_ecs_task_definition": "ecs_task_definition",
+        "aws_s3_bucket": "s3_bucket",
+        "aws_s3_bucket_policy": "s3_bucket_policy",
+        "aws_s3_bucket_public_access_block": "s3_bucket_public_access_block",
+        "random_password": "random_password",
     }
+
+    @classmethod
+    def get_all_supported_types(cls) -> Dict[str, str]:
+        """Get all supported resource types including CyberArk types.
+
+        CyberArk resource type names are configurable via settings
+        since the idsec provider may use different naming conventions.
+        Always included regardless of the cyberark_enabled env var so
+        that TF-managed detection works when CyberArk is enabled via
+        the database settings UI.
+        """
+        types = dict(cls.SUPPORTED_RESOURCE_TYPES)
+        types[settings.cyberark_tf_safe_type] = "cyberark_safe"
+        types[settings.cyberark_tf_safe_member_type] = "cyberark_safe_member"
+        types[settings.cyberark_tf_account_type] = "cyberark_account"
+        types[settings.cyberark_tf_role_type] = "cyberark_role"
+        types[settings.cyberark_tf_user_type] = "cyberark_user"
+        types[settings.cyberark_tf_role_member_type] = "cyberark_role_member"
+        types[settings.cyberark_tf_sia_vm_policy_type] = "cyberark_sia_vm_policy"
+        types[settings.cyberark_tf_sia_db_policy_type] = "cyberark_sia_db_policy"
+        return types
 
     def __init__(self, bucket: Optional[str] = None):
         """
@@ -107,7 +134,9 @@ class TerraformStateParser:
             state_data = json.loads(state_content)
 
             # Parse resources
-            resources = self._extract_resources(state_data, key)
+            resources, found_types, skipped_count = self._extract_resources(
+                state_data, key
+            )
 
             return TerraformStateFile(
                 name=name or key,
@@ -118,6 +147,8 @@ class TerraformStateParser:
                 resource_count=len(resources),
                 status="synced",
                 resources=resources,
+                all_resource_types=found_types,
+                skipped_resource_count=skipped_count,
             )
 
         except ClientError as e:
@@ -160,7 +191,7 @@ class TerraformStateParser:
 
     def _extract_resources(
         self, state_data: Dict[str, Any], state_source: str
-    ) -> List[TerraformResource]:
+    ) -> Tuple[List[TerraformResource], Dict[str, int], int]:
         """
         Extract resources from Terraform state data.
 
@@ -171,14 +202,13 @@ class TerraformStateParser:
             state_source: Key of the source state file
 
         Returns:
-            List of extracted TerraformResource objects
+            Tuple of (resources, all_found_type_counts, skipped_count)
         """
-        resources = []
         version = state_data.get("version", 0)
 
         if version >= 4:
             # Terraform 0.12+ format
-            resources = self._extract_v4_resources(state_data, state_source)
+            return self._extract_v4_resources(state_data, state_source)
         else:
             logger.warning(
                 "Unsupported Terraform state version: %s. "
@@ -186,11 +216,11 @@ class TerraformStateParser:
                 version,
             )
 
-        return resources
+        return [], {}, 0
 
     def _extract_v4_resources(
         self, state_data: Dict[str, Any], state_source: str
-    ) -> List[TerraformResource]:
+    ) -> Tuple[List[TerraformResource], Dict[str, int], int]:
         """
         Extract resources from Terraform state version 4 format.
 
@@ -199,19 +229,38 @@ class TerraformStateParser:
             state_source: Key of the source state file
 
         Returns:
-            List of extracted TerraformResource objects
+            Tuple of (resources, all_found_type_counts, skipped_count)
         """
-        resources = []
+        resources: List[TerraformResource] = []
+        all_types = self.get_all_supported_types()
+        found_types: Dict[str, int] = {}
+        skipped_type_count = 0
+        skipped_id_count = 0
 
         for resource_block in state_data.get("resources", []):
             resource_type = resource_block.get("type", "")
+            mode = resource_block.get("mode", "managed")
+            instance_count = len(resource_block.get("instances", []))
 
-            # Skip resources we don't care about
-            if resource_type not in self.SUPPORTED_RESOURCE_TYPES:
+            # Track all managed resource types we encounter
+            if mode == "managed" and resource_type:
+                found_types[resource_type] = (
+                    found_types.get(resource_type, 0) + instance_count
+                )
+
+            # Skip data sources
+            if mode != "managed":
                 continue
 
-            mode = resource_block.get("mode", "managed")
-            if mode != "managed":
+            # Skip unsupported resource types
+            if resource_type not in all_types:
+                logger.debug(
+                    "Skipping unsupported resource type '%s' " "(%d instances) in %s",
+                    resource_type,
+                    instance_count,
+                    state_source,
+                )
+                skipped_type_count += instance_count
                 continue
 
             resource_name = resource_block.get("name", "")
@@ -250,8 +299,32 @@ class TerraformStateParser:
                             attributes=attributes,
                         )
                     )
+                else:
+                    skipped_id_count += 1
+                    logger.warning(
+                        "Failed to extract resource ID for %s at %s — "
+                        "available attributes: %s",
+                        resource_type,
+                        address,
+                        list(attributes.keys())[:10],
+                    )
 
-        return resources
+        total_skipped = skipped_type_count + skipped_id_count
+        if found_types:
+            recognized = len(resources)
+            logger.info(
+                "Parsed %s: %d recognized, %d skipped "
+                "(%d unsupported type, %d missing ID). "
+                "Types found: %s",
+                state_source,
+                recognized,
+                total_skipped,
+                skipped_type_count,
+                skipped_id_count,
+                dict(found_types),
+            )
+
+        return resources, found_types, total_skipped
 
     def _extract_resource_id(
         self, resource_type: str, attributes: Dict[str, Any]
@@ -277,9 +350,34 @@ class TerraformStateParser:
             "aws_ecs_cluster": "name",  # ECS cluster name
             "aws_ecs_service": "name",  # ECS service name
             "aws_ecs_task_definition": "family",  # Task definition family
+            "aws_s3_bucket": "bucket",  # S3 bucket name
+            "aws_s3_bucket_policy": "bucket",  # S3 bucket name
+            "aws_s3_bucket_public_access_block": "bucket",  # S3 bucket name
         }
 
+        # Add CyberArk resource ID mappings (configurable type names)
+        id_mappings[settings.cyberark_tf_safe_type] = "safe_name"
+        id_mappings[settings.cyberark_tf_safe_member_type] = "member_name"
+        id_mappings[settings.cyberark_tf_account_type] = "account_id"
+        id_mappings[settings.cyberark_tf_role_type] = "role_name"
+        id_mappings[settings.cyberark_tf_user_type] = "username"
+        id_mappings[settings.cyberark_tf_role_member_type] = "member_name"
+        # SIA/UAP policies store the name nested under metadata
+        id_mappings[settings.cyberark_tf_sia_vm_policy_type] = "metadata.name"
+        id_mappings[settings.cyberark_tf_sia_db_policy_type] = "metadata.name"
+
         id_field = id_mappings.get(resource_type, "id")
+
+        # Support dot-notation for nested attributes (e.g. "metadata.name")
+        if "." in id_field:
+            value: Any = attributes
+            for key in id_field.split("."):
+                if isinstance(value, dict):
+                    value = value.get(key)
+                else:
+                    return None
+            return value if isinstance(value, str) else None
+
         return attributes.get(id_field)
 
 
@@ -531,6 +629,18 @@ class TerraformStateAggregator:
             "ecs_cluster": [],
             "ecs_service": [],
             "ecs_task_definition": [],
+            "s3_bucket": [],
+            "s3_bucket_policy": [],
+            "s3_bucket_public_access_block": [],
+            "cyberark_safe": [],
+            "cyberark_safe_member": [],
+            "cyberark_account": [],
+            "cyberark_role": [],
+            "cyberark_user": [],
+            "cyberark_role_member": [],
+            "cyberark_sia_vm_policy": [],
+            "cyberark_sia_db_policy": [],
+            "random_password": [],
         }
 
         bucket_entries = await self._get_all_bucket_configs()
@@ -557,12 +667,9 @@ class TerraformStateAggregator:
                     description=config.get("description", ""),
                 )
 
+                all_types = TerraformStateParser.get_all_supported_types()
                 for resource in state_file.resources:
-                    resource_category = (
-                        TerraformStateParser.SUPPORTED_RESOURCE_TYPES.get(
-                            resource.resource_type
-                        )
-                    )
+                    resource_category = all_types.get(resource.resource_type)
                     if resource_category and resource_category in all_resources:
                         all_resources[resource_category].append(resource)
 
