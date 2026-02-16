@@ -30,7 +30,7 @@ export function AuditLogPanel() {
         action: actionFilter || undefined,
         username: usernameFilter || undefined,
       });
-      setLogs(data.logs);
+      setLogs(data.data);
       setTotal(data.total);
     } catch {
       setError("Failed to load audit logs");
