@@ -19,6 +19,7 @@ import {
   ManagedByBadge,
   EmptyState,
   SearchInput,
+  RefreshButton,
 } from "@/components/common";
 import { ECSDetailPanel } from "@/components/resources";
 import { useECSClusters } from "@/hooks";
@@ -224,18 +225,21 @@ export function ECSListPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-teal-100 dark:bg-teal-900">
-          <Container className="h-6 w-6 text-teal-600 dark:text-teal-400" />
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-teal-100 dark:bg-teal-900">
+            <Container className="h-6 w-6 text-teal-600 dark:text-teal-400" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+              ECS Containers
+            </h1>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Amazon Elastic Container Service clusters and tasks
+            </p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-            ECS Containers
-          </h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Amazon Elastic Container Service clusters and tasks
-          </p>
-        </div>
+        <RefreshButton size="md" />
       </div>
 
       {/* Summary cards */}

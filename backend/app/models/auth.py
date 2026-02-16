@@ -129,3 +129,37 @@ class AuthSettings(Base):
         DateTime, server_default=func.now(), onupdate=func.now(), nullable=False
     )
     updated_by: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+
+    # OIDC group-to-role mapping
+    oidc_role_claim: Mapped[Optional[str]] = mapped_column(
+        String(100), nullable=True, default="groups"
+    )
+    oidc_admin_groups: Mapped[Optional[str]] = mapped_column(
+        String(1000), nullable=True
+    )
+    oidc_user_groups: Mapped[Optional[str]] = mapped_column(String(1000), nullable=True)
+    oidc_viewer_groups: Mapped[Optional[str]] = mapped_column(
+        String(1000), nullable=True
+    )
+    oidc_default_role: Mapped[Optional[str]] = mapped_column(
+        String(20), nullable=True, default="viewer"
+    )
+
+
+class AuditLog(Base):
+    """Persistent audit log for tracking user actions."""
+
+    __tablename__ = "audit_logs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    timestamp: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), nullable=False
+    )
+    user_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    username: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    action: Mapped[str] = mapped_column(String(50), nullable=False)
+    resource_type: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    resource_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    details: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    ip_address: Mapped[Optional[str]] = mapped_column(String(45), nullable=True)
+    user_agent: Mapped[Optional[str]] = mapped_column(Text, nullable=True)

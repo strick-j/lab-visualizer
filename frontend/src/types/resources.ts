@@ -283,6 +283,22 @@ export interface ListResponse<T> {
   meta: MetaInfo;
 }
 
+export interface PaginatedResponse<T> {
+  data: T[];
+  total: number;
+  page: number;
+  page_size: number;
+  has_more: boolean;
+}
+
+export interface PaginationParams {
+  page?: number;
+  page_size?: number;
+  sort_by?: string;
+  sort_order?: "asc" | "desc";
+  tag?: string;
+}
+
 export interface ResourceCount {
   active: number;
   inactive: number;

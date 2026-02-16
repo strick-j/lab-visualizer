@@ -77,12 +77,11 @@ export function InfrastructureTopology({
         <Waypoints className="h-16 w-16 text-gray-300 dark:text-gray-600" />
         <div className="text-center max-w-md">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-            No Terraform-managed infrastructure found
+            No infrastructure found
           </h3>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
-            This visualization only shows resources that are managed by
-            Terraform. Make sure your Terraform state files are configured and
-            resources have been refreshed.
+            No resources were found. Make sure your AWS credentials are
+            configured and data has been refreshed.
           </p>
         </div>
         <button

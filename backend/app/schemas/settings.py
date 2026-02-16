@@ -32,6 +32,24 @@ class OIDCSettingsUpdate(BaseModel):
     refresh_token_expire_days: Optional[int] = Field(
         None, description="Refresh token expiration in days", ge=1, le=365
     )
+    # Group-to-role mapping
+    role_claim: Optional[str] = Field(
+        None, description="OIDC claim containing group names", max_length=100
+    )
+    admin_groups: Optional[str] = Field(
+        None, description="Comma-separated group names that map to admin role"
+    )
+    user_groups: Optional[str] = Field(
+        None, description="Comma-separated group names that map to user role"
+    )
+    viewer_groups: Optional[str] = Field(
+        None, description="Comma-separated group names that map to viewer role"
+    )
+    default_role: Optional[str] = Field(
+        None,
+        description="Default role for OIDC users without matching groups",
+        pattern="^(viewer|user|admin)$",
+    )
 
 
 class OIDCSettingsResponse(BaseModel):
@@ -46,6 +64,11 @@ class OIDCSettingsResponse(BaseModel):
     display_name: str = "OIDC"
     access_token_expire_minutes: int = 30
     refresh_token_expire_days: int = 7
+    role_claim: Optional[str] = None
+    admin_groups: Optional[str] = None
+    user_groups: Optional[str] = None
+    viewer_groups: Optional[str] = None
+    default_role: Optional[str] = None
     updated_at: Optional[datetime] = None
     updated_by: Optional[str] = None
 

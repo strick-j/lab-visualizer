@@ -119,6 +119,23 @@ async def get_current_admin_user(
     return current_user
 
 
+async def get_current_operator_user(
+    current_user: User = Depends(get_current_active_user),
+) -> User:
+    """
+    Dependency to get a user with operator (user) or admin privileges.
+
+    Viewers are read-only and cannot trigger mutations like data refresh.
+    Raises 403 if the user has the viewer role.
+    """
+    if current_user.role == "viewer":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Operator or admin privileges required",
+        )
+    return current_user
+
+
 class RequireAuth:
     """
     Dependency class for flexible authentication requirements.

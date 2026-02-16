@@ -38,7 +38,11 @@ import {
   getAccessMappingUsers,
   getAccessMappingTargets,
 } from "@/api";
-import type { ResourceFilters, CyberArkFilters } from "@/types";
+import type {
+  ResourceFilters,
+  PaginationParams,
+  CyberArkFilters,
+} from "@/types";
 
 // =============================================================================
 // Query Keys
@@ -47,14 +51,14 @@ import type { ResourceFilters, CyberArkFilters } from "@/types";
 export const queryKeys = {
   appInfo: ["app-info"] as const,
   statusSummary: ["status-summary"] as const,
-  ec2Instances: (filters?: ResourceFilters) =>
-    ["ec2-instances", filters] as const,
+  ec2Instances: (filters?: ResourceFilters, pagination?: PaginationParams) =>
+    ["ec2-instances", filters, pagination] as const,
   ec2Instance: (id: string) => ["ec2-instance", id] as const,
-  rdsInstances: (filters?: ResourceFilters) =>
-    ["rds-instances", filters] as const,
+  rdsInstances: (filters?: ResourceFilters, pagination?: PaginationParams) =>
+    ["rds-instances", filters, pagination] as const,
   rdsInstance: (id: string) => ["rds-instance", id] as const,
-  ecsContainers: (filters?: ResourceFilters) =>
-    ["ecs-containers", filters] as const,
+  ecsContainers: (filters?: ResourceFilters, pagination?: PaginationParams) =>
+    ["ecs-containers", filters, pagination] as const,
   ecsContainer: (id: string) => ["ecs-container", id] as const,
   ecsClusters: (filters?: {
     region?: string;
@@ -62,7 +66,8 @@ export const queryKeys = {
     tf_managed?: boolean;
   }) => ["ecs-clusters", filters] as const,
   ecsSummary: ["ecs-summary"] as const,
-  vpcs: (filters?: ResourceFilters) => ["vpcs", filters] as const,
+  vpcs: (filters?: ResourceFilters, pagination?: PaginationParams) =>
+    ["vpcs", filters, pagination] as const,
   vpc: (id: string) => ["vpc", id] as const,
   subnets: (filters?: ResourceFilters) => ["subnets", filters] as const,
   subnet: (id: string) => ["subnet", id] as const,
@@ -125,10 +130,13 @@ export function useAppInfo() {
 // EC2 Instances
 // =============================================================================
 
-export function useEC2Instances(filters?: ResourceFilters) {
+export function useEC2Instances(
+  filters?: ResourceFilters,
+  pagination?: PaginationParams,
+) {
   return useQuery({
-    queryKey: queryKeys.ec2Instances(filters),
-    queryFn: () => getEC2Instances(filters),
+    queryKey: queryKeys.ec2Instances(filters, pagination),
+    queryFn: () => getEC2Instances(filters, pagination),
   });
 }
 
@@ -144,10 +152,13 @@ export function useEC2Instance(instanceId: string) {
 // RDS Instances
 // =============================================================================
 
-export function useRDSInstances(filters?: ResourceFilters) {
+export function useRDSInstances(
+  filters?: ResourceFilters,
+  pagination?: PaginationParams,
+) {
   return useQuery({
-    queryKey: queryKeys.rdsInstances(filters),
-    queryFn: () => getRDSInstances(filters),
+    queryKey: queryKeys.rdsInstances(filters, pagination),
+    queryFn: () => getRDSInstances(filters, pagination),
   });
 }
 
@@ -163,10 +174,13 @@ export function useRDSInstance(dbIdentifier: string) {
 // ECS Containers
 // =============================================================================
 
-export function useECSContainers(filters?: ResourceFilters) {
+export function useECSContainers(
+  filters?: ResourceFilters,
+  pagination?: PaginationParams,
+) {
   return useQuery({
-    queryKey: queryKeys.ecsContainers(filters),
-    queryFn: () => getECSContainers(filters),
+    queryKey: queryKeys.ecsContainers(filters, pagination),
+    queryFn: () => getECSContainers(filters, pagination),
   });
 }
 
@@ -201,10 +215,13 @@ export function useECSSummary() {
 // VPCs
 // =============================================================================
 
-export function useVPCs(filters?: ResourceFilters) {
+export function useVPCs(
+  filters?: ResourceFilters,
+  pagination?: PaginationParams,
+) {
   return useQuery({
-    queryKey: queryKeys.vpcs(filters),
-    queryFn: () => getVPCs(filters),
+    queryKey: queryKeys.vpcs(filters, pagination),
+    queryFn: () => getVPCs(filters, pagination),
   });
 }
 

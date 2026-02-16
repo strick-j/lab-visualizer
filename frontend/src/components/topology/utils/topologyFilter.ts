@@ -23,6 +23,8 @@ const EMPTY_FILTERS: TopologyFilters = {
   vpcId: "",
   subnetType: "",
   status: "",
+  tfManaged: "",
+  resourceTypes: [],
 };
 
 export function hasActiveFilters(filters: TopologyFilters): boolean {
@@ -30,8 +32,15 @@ export function hasActiveFilters(filters: TopologyFilters): boolean {
     filters.search !== "" ||
     filters.vpcId !== "" ||
     filters.subnetType !== "" ||
-    filters.status !== ""
+    filters.status !== "" ||
+    filters.tfManaged !== "" ||
+    filters.resourceTypes.length > 0
   );
+}
+
+function matchesTfManaged(tfManaged: boolean, filter: string): boolean {
+  if (!filter) return true;
+  return filter === "true" ? tfManaged : !tfManaged;
 }
 
 function matchesSearch(
@@ -50,7 +59,13 @@ function filterEC2(
   instances: TopologyEC2Instance[],
   filters: TopologyFilters,
 ): TopologyEC2Instance[] {
+  if (
+    filters.resourceTypes.length > 0 &&
+    !filters.resourceTypes.includes("ec2")
+  )
+    return [];
   return instances.filter((ec2) => {
+    if (!matchesTfManaged(ec2.tf_managed, filters.tfManaged)) return false;
     if (filters.status && ec2.display_status !== filters.status) return false;
     if (
       filters.search &&
@@ -73,7 +88,13 @@ function filterRDS(
   instances: TopologyRDSInstance[],
   filters: TopologyFilters,
 ): TopologyRDSInstance[] {
+  if (
+    filters.resourceTypes.length > 0 &&
+    !filters.resourceTypes.includes("rds")
+  )
+    return [];
   return instances.filter((rds) => {
+    if (!matchesTfManaged(rds.tf_managed, filters.tfManaged)) return false;
     if (filters.status && rds.display_status !== filters.status) return false;
     if (
       filters.search &&
@@ -97,7 +118,13 @@ function filterECS(
   filters: TopologyFilters,
 ): TopologyECSContainer[] {
   if (!containers) return [];
+  if (
+    filters.resourceTypes.length > 0 &&
+    !filters.resourceTypes.includes("ecs")
+  )
+    return [];
   return containers.filter((ecs) => {
+    if (!matchesTfManaged(ecs.tf_managed, filters.tfManaged)) return false;
     if (filters.status && ecs.display_status !== filters.status) return false;
     if (
       filters.search &&
@@ -121,6 +148,12 @@ function filterNATGateway(
   filters: TopologyFilters,
 ): TopologyNATGateway | null {
   if (!nat) return null;
+  if (
+    filters.resourceTypes.length > 0 &&
+    !filters.resourceTypes.includes("nat")
+  )
+    return null;
+  if (!matchesTfManaged(nat.tf_managed, filters.tfManaged)) return null;
   if (filters.status && !matchesStatus(nat.display_status, filters.status))
     return null;
   if (
@@ -194,9 +227,11 @@ function computeFilteredMeta(vpcs: TopologyVPC[]): TopologyMeta {
   let total_ecs_containers = 0;
   let total_nat_gateways = 0;
   let total_internet_gateways = 0;
+  let total_elastic_ips = 0;
 
   for (const vpc of vpcs) {
     if (vpc.internet_gateway) total_internet_gateways++;
+    total_elastic_ips += vpc.elastic_ips?.length || 0;
     for (const subnet of vpc.subnets) {
       total_subnets++;
       total_ec2 += subnet.ec2_instances.length;
@@ -214,7 +249,7 @@ function computeFilteredMeta(vpcs: TopologyVPC[]): TopologyMeta {
     total_ecs_containers,
     total_nat_gateways,
     total_internet_gateways,
-    total_elastic_ips: 0,
+    total_elastic_ips,
     last_refreshed: null,
   };
 }
@@ -239,6 +274,16 @@ export function filterTopologyData(
 
       // Filter IGW
       let igw = vpc.internet_gateway;
+      if (
+        igw &&
+        filters.resourceTypes.length > 0 &&
+        !filters.resourceTypes.includes("igw")
+      ) {
+        igw = null;
+      }
+      if (igw && !matchesTfManaged(igw.tf_managed, filters.tfManaged)) {
+        igw = null;
+      }
       if (igw && filters.status && igw.display_status !== filters.status) {
         igw = null;
       }
@@ -254,10 +299,25 @@ export function filterTopologyData(
         if (!hasPublicSubnets) igw = null;
       }
 
+      // Filter Elastic IPs
+      let eips = vpc.elastic_ips || [];
+      if (
+        filters.resourceTypes.length > 0 &&
+        !filters.resourceTypes.includes("eip")
+      ) {
+        eips = [];
+      }
+      if (filters.tfManaged) {
+        eips = eips.filter((eip) =>
+          matchesTfManaged(eip.tf_managed, filters.tfManaged),
+        );
+      }
+
       return {
         ...vpc,
         internet_gateway: igw,
         subnets: filteredSubnets,
+        elastic_ips: eips,
       };
     })
     .filter((vpc) => {

@@ -6,6 +6,7 @@ import { SubnetList } from "@/components/vpc/SubnetList";
 import { IGWList } from "@/components/vpc/IGWList";
 import { NATGatewayList } from "@/components/vpc/NATGatewayList";
 import { ElasticIPList } from "@/components/vpc/ElasticIPList";
+import { RefreshButton } from "@/components/common";
 import type { VPCResourceType, ResourceFilters } from "@/types";
 
 export function VPCPage() {
@@ -15,18 +16,21 @@ export function VPCPage() {
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div className="flex items-center gap-3">
-        <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900">
-          <Network className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900">
+            <Network className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+              VPC Network Resources
+            </h1>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Virtual Private Cloud networking components
+            </p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-            VPC Network Resources
-          </h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Virtual Private Cloud networking components
-          </p>
-        </div>
+        <RefreshButton size="md" />
       </div>
 
       {/* Tab Navigation */}
