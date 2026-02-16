@@ -546,6 +546,8 @@ See `.env.example` for complete list. Key variables:
 - ESLint 9 flat config (not legacy `.eslintrc`)
 - All code should pass lint/format checks before committing
 - **Before every commit**, run `cd frontend && npx prettier --write "src/**/*.{ts,tsx}"` to format all frontend files
+- **Before every commit**, run `cd frontend && npx vitest run` and ensure all tests pass. Do not commit if any tests fail
+- **Before every commit**, run `cd frontend && npx tsc --noEmit` and ensure there are no TypeScript errors
 
 ### Security Considerations
 - Never commit secrets or credentials

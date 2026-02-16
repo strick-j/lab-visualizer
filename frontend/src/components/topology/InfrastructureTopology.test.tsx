@@ -133,17 +133,13 @@ describe("InfrastructureTopology", () => {
   it("renders empty state when no VPCs", () => {
     mockData = { ...mockTopologyData, vpcs: [] };
     render(<InfrastructureTopology />);
-    expect(
-      screen.getByText("No Terraform-managed infrastructure found"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("No infrastructure found")).toBeInTheDocument();
   });
 
   it("renders empty state when data is null", () => {
     mockData = null;
     render(<InfrastructureTopology />);
-    expect(
-      screen.getByText("No Terraform-managed infrastructure found"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("No infrastructure found")).toBeInTheDocument();
   });
 
   it("renders refresh button in empty state", () => {

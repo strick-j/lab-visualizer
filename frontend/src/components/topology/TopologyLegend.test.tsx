@@ -9,6 +9,9 @@ describe("TopologyLegend", () => {
     total_ec2: 10,
     total_rds: 3,
     total_ecs_containers: 0,
+    total_nat_gateways: 4,
+    total_internet_gateways: 5,
+    total_elastic_ips: 7,
   };
 
   it("renders the legend header", () => {

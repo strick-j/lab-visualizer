@@ -141,7 +141,7 @@ describe("ResourceTable", () => {
       />,
     );
 
-    const header = screen.getByText("ID");
+    const header = screen.getByText("ID").closest("th");
     expect(header).toHaveClass("custom-column");
   });
 
