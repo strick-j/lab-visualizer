@@ -29,6 +29,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
+# Upgrade base Python packaging tools to fix:
+# - CVE-2025-8869: pip symlink path traversal in tar extraction (pip>=25.3)
+# - CVE-2026-24049: wheel path traversal (wheel>=0.46.2)
+# - setuptools>=76.0.0 removes vendored wheel from setuptools/_vendor/
+RUN pip install --no-cache-dir --upgrade "pip>=25.3" "setuptools>=76.0.0" "wheel>=0.46.2"
+
 # Install Python dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt

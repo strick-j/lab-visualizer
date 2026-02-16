@@ -12,7 +12,9 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.deps import get_current_user
 from app.api.routes import (
+    access_mapping,
     auth,
+    cyberark,
     ec2,
     ecs,
     eip,
@@ -22,6 +24,7 @@ from app.api.routes import (
     nat_gateway,
     rds,
     resources,
+    s3,
 )
 from app.api.routes import settings as settings_routes
 from app.api.routes import subnet, terraform, topology, users, vpc
@@ -43,15 +46,17 @@ async def lifespan(app: FastAPI):
     """Application lifespan handler for startup and shutdown events."""
     from app.models.database import async_session_maker
     from app.services.auth import ensure_admin_user
+    from app.services.cyberark_settings import ensure_cyberark_settings
 
     # Startup
     logger.info("Starting AWS Infrastructure Visualizer...")
     await init_db()
     logger.info("Database initialized")
 
-    # Ensure admin user exists if configured
+    # Ensure admin user and CyberArk settings exist if configured
     async with async_session_maker() as session:
         await ensure_admin_user(session)
+        await ensure_cyberark_settings(session)
 
     yield
 
@@ -127,6 +132,9 @@ app.include_router(
     eip.router, prefix="/api", tags=["Elastic IPs"], dependencies=auth_dependency
 )
 app.include_router(
+    s3.router, prefix="/api", tags=["S3 Buckets"], dependencies=auth_dependency
+)
+app.include_router(
     ecs.router, prefix="/api", tags=["ECS Containers"], dependencies=auth_dependency
 )
 app.include_router(
@@ -144,6 +152,22 @@ app.include_router(
     users.router,
     prefix="/api/users",
     tags=["Users"],
+    dependencies=auth_dependency,
+)
+
+# CyberArk resource routes
+app.include_router(
+    cyberark.router,
+    prefix="/api/cyberark",
+    tags=["CyberArk"],
+    dependencies=auth_dependency,
+)
+
+# Access mapping routes
+app.include_router(
+    access_mapping.router,
+    prefix="/api",
+    tags=["Access Mapping"],
     dependencies=auth_dependency,
 )
 

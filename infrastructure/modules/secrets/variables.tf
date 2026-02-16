@@ -45,6 +45,32 @@ variable "admin_password" {
   sensitive   = true
 }
 
+variable "create_cyberark_secret" {
+  description = "Create CyberArk API client secret"
+  type        = bool
+  default     = false
+}
+
+variable "cyberark_client_secret" {
+  description = "CyberArk API client secret value"
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "create_scim_secret" {
+  description = "Create CyberArk SCIM client secret"
+  type        = bool
+  default     = false
+}
+
+variable "cyberark_scim_client_secret" {
+  description = "CyberArk SCIM OAuth2 client secret value"
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
 variable "app_secrets" {
   description = "Additional application secrets as key-value pairs"
   type        = map(string)

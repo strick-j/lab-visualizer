@@ -11,6 +11,7 @@ import type {
   InternetGateway,
   NATGateway,
   ElasticIP,
+  S3Bucket,
   StatusSummary,
   RefreshResponse,
   TerraformStatesResponse,
@@ -332,6 +333,31 @@ export async function getElasticIP(allocationId: string): Promise<ElasticIP> {
 }
 
 // =============================================================================
+// S3 Buckets
+// =============================================================================
+
+export async function getS3Buckets(
+  filters?: ResourceFilters,
+): Promise<ListResponse<S3Bucket>> {
+  const params = new URLSearchParams();
+  if (filters?.status) params.append("status", filters.status);
+  if (filters?.region) params.append("region", filters.region);
+  if (filters?.search) params.append("search", filters.search);
+  if (filters?.tf_managed !== undefined)
+    params.append("tf_managed", String(filters.tf_managed));
+
+  const response = await api.get("/s3-buckets", { params });
+  return response.data;
+}
+
+export async function getS3Bucket(bucketName: string): Promise<S3Bucket> {
+  const response = await api.get(
+    `/s3-buckets/${encodeURIComponent(bucketName)}`,
+  );
+  return response.data;
+}
+
+// =============================================================================
 // Refresh
 // =============================================================================
 
@@ -562,6 +588,200 @@ export async function listS3BucketObjects(
     prefix,
     region: region || undefined,
   });
+  return response.data;
+}
+
+// =============================================================================
+// CyberArk Resources
+// =============================================================================
+
+import type {
+  CyberArkSafeListResponse,
+  CyberArkSafeDetail,
+  CyberArkRoleListResponse,
+  CyberArkRoleDetail,
+  CyberArkSIAPolicyListResponse,
+  CyberArkSIAPolicyDetail,
+  CyberArkDriftResponse,
+  CyberArkFilters,
+  CyberArkUserListResponse,
+  AccessMappingResponse,
+  AccessMappingUserList,
+  AccessMappingTargetList,
+  CyberArkSettingsResponse,
+  CyberArkSettingsUpdate,
+  CyberArkConnectionTestRequest,
+  CyberArkConnectionTestResponse,
+  CyberArkSyncStatus,
+  TenantDiscoveryRequest,
+  TenantDiscoveryResponse,
+  ScimSettingsResponse,
+  ScimSettingsUpdate,
+  ScimConnectionTestRequest,
+  ScimConnectionTestResponse,
+} from "@/types";
+
+export async function getCyberArkSafes(
+  filters?: CyberArkFilters,
+): Promise<CyberArkSafeListResponse> {
+  const params = new URLSearchParams();
+  if (filters?.search) params.append("search", filters.search);
+  if (filters?.tf_managed !== undefined)
+    params.append("tf_managed", String(filters.tf_managed));
+
+  const response = await api.get("/cyberark/safes", { params });
+  return response.data;
+}
+
+export async function getCyberArkSafe(
+  safeName: string,
+): Promise<CyberArkSafeDetail> {
+  const response = await api.get(
+    `/cyberark/safes/${encodeURIComponent(safeName)}`,
+  );
+  return response.data;
+}
+
+export async function getCyberArkRoles(
+  filters?: CyberArkFilters,
+): Promise<CyberArkRoleListResponse> {
+  const params = new URLSearchParams();
+  if (filters?.search) params.append("search", filters.search);
+  if (filters?.tf_managed !== undefined)
+    params.append("tf_managed", String(filters.tf_managed));
+
+  const response = await api.get("/cyberark/roles", { params });
+  return response.data;
+}
+
+export async function getCyberArkRole(
+  roleId: string,
+): Promise<CyberArkRoleDetail> {
+  const response = await api.get(
+    `/cyberark/roles/${encodeURIComponent(roleId)}`,
+  );
+  return response.data;
+}
+
+export async function getCyberArkSIAPolicies(
+  filters?: CyberArkFilters,
+): Promise<CyberArkSIAPolicyListResponse> {
+  const params = new URLSearchParams();
+  if (filters?.search) params.append("search", filters.search);
+  if (filters?.tf_managed !== undefined)
+    params.append("tf_managed", String(filters.tf_managed));
+  if (filters?.policy_type) params.append("policy_type", filters.policy_type);
+  if (filters?.status) params.append("status", filters.status);
+
+  const response = await api.get("/cyberark/sia-policies", { params });
+  return response.data;
+}
+
+export async function getCyberArkSIAPolicy(
+  policyId: string,
+): Promise<CyberArkSIAPolicyDetail> {
+  const response = await api.get(
+    `/cyberark/sia-policies/${encodeURIComponent(policyId)}`,
+  );
+  return response.data;
+}
+
+export async function getCyberArkDrift(): Promise<CyberArkDriftResponse> {
+  const response = await api.get("/cyberark/drift");
+  return response.data;
+}
+
+export async function getCyberArkUsers(
+  filters?: CyberArkFilters,
+): Promise<CyberArkUserListResponse> {
+  const params = new URLSearchParams();
+  if (filters?.search) params.append("search", filters.search);
+  if (filters?.active !== undefined)
+    params.append("active", String(filters.active));
+
+  const response = await api.get("/cyberark/users", { params });
+  return response.data;
+}
+
+// =============================================================================
+// Access Mapping
+// =============================================================================
+
+export async function getAccessMapping(params?: {
+  user?: string;
+}): Promise<AccessMappingResponse> {
+  const searchParams = new URLSearchParams();
+  if (params?.user) searchParams.append("user", params.user);
+
+  const response = await api.get("/access-mapping", { params: searchParams });
+  return response.data;
+}
+
+export async function getAccessMappingUsers(): Promise<AccessMappingUserList> {
+  const response = await api.get("/access-mapping/users");
+  return response.data;
+}
+
+export async function getAccessMappingTargets(): Promise<AccessMappingTargetList> {
+  const response = await api.get("/access-mapping/targets");
+  return response.data;
+}
+
+// =============================================================================
+// CyberArk Settings (Admin only)
+// =============================================================================
+
+export async function getCyberArkSettings(): Promise<CyberArkSettingsResponse> {
+  const response = await api.get("/settings/cyberark");
+  return response.data;
+}
+
+export async function updateCyberArkSettings(
+  settings: CyberArkSettingsUpdate,
+): Promise<CyberArkSettingsResponse> {
+  const response = await api.put("/settings/cyberark", settings);
+  return response.data;
+}
+
+export async function testCyberArkConnection(
+  data: CyberArkConnectionTestRequest,
+): Promise<CyberArkConnectionTestResponse> {
+  const response = await api.post("/settings/cyberark/test", data);
+  return response.data;
+}
+
+export async function getCyberArkSyncStatus(): Promise<CyberArkSyncStatus> {
+  const response = await api.get("/settings/cyberark/status");
+  return response.data;
+}
+
+export async function discoverCyberArkTenant(
+  data: TenantDiscoveryRequest,
+): Promise<TenantDiscoveryResponse> {
+  const response = await api.post("/settings/cyberark/discover", data);
+  return response.data;
+}
+
+// =============================================================================
+// SCIM Settings (Admin only)
+// =============================================================================
+
+export async function getScimSettings(): Promise<ScimSettingsResponse> {
+  const response = await api.get("/settings/cyberark/scim");
+  return response.data;
+}
+
+export async function updateScimSettings(
+  settings: ScimSettingsUpdate,
+): Promise<ScimSettingsResponse> {
+  const response = await api.put("/settings/cyberark/scim", settings);
+  return response.data;
+}
+
+export async function testScimConnection(
+  data: ScimConnectionTestRequest,
+): Promise<ScimConnectionTestResponse> {
+  const response = await api.post("/settings/cyberark/scim/test", data);
   return response.data;
 }
 

@@ -118,6 +118,9 @@ class Region(Base):
     elastic_ips: Mapped[list["ElasticIP"]] = relationship(
         back_populates="region", cascade="all, delete-orphan"
     )
+    s3_buckets: Mapped[list["S3Bucket"]] = relationship(
+        back_populates="region", cascade="all, delete-orphan"
+    )
     ecs_containers: Mapped[list["ECSContainer"]] = relationship(
         back_populates="region", cascade="all, delete-orphan"
     )
@@ -149,6 +152,12 @@ class EC2Instance(Base):
     vpc_id: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
     subnet_id: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
     availability_zone: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+
+    # Platform (AWS returns "windows" for Windows instances; absent for Linux)
+    platform: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
+
+    # Owner account (Reservation.OwnerId from DescribeInstances)
+    owner_account_id: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
 
     # Metadata
     launch_time: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
@@ -221,6 +230,9 @@ class RDSInstance(Base):
     vpc_id: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
     availability_zone: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     multi_az: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    # Owner account (extracted from DBInstanceArn)
+    owner_account_id: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
 
     # Metadata
     tags: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON string
@@ -569,6 +581,75 @@ class ElasticIP(Base):
         if self.association_id:
             return "active"
         return "inactive"
+
+
+class S3Bucket(Base):
+    """S3 Bucket resource."""
+
+    __tablename__ = "s3_buckets"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    bucket_name: Mapped[str] = mapped_column(String(63), unique=True, nullable=False)
+    region_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("regions.id"), nullable=False
+    )
+
+    # Basic info
+    name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    creation_date: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+
+    # Versioning
+    versioning_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    mfa_delete: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    # Encryption
+    encryption_algorithm: Mapped[Optional[str]] = mapped_column(
+        String(30), nullable=True
+    )  # AES256, aws:kms
+    kms_key_id: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    bucket_key_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    # Public access block
+    block_public_acls: Mapped[bool] = mapped_column(Boolean, default=False)
+    block_public_policy: Mapped[bool] = mapped_column(Boolean, default=False)
+    ignore_public_acls: Mapped[bool] = mapped_column(Boolean, default=False)
+    restrict_public_buckets: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    # Bucket policy (stored as JSON string)
+    policy: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    # Metadata
+    tags: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON string
+
+    # Terraform tracking
+    tf_managed: Mapped[bool] = mapped_column(Boolean, default=False)
+    tf_state_source: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    tf_resource_address: Mapped[Optional[str]] = mapped_column(
+        String(500), nullable=True
+    )
+
+    # Deletion tracking
+    is_deleted: Mapped[bool] = mapped_column(Boolean, default=False)
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+
+    # Timestamps
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+    # Relationships
+    region: Mapped["Region"] = relationship(back_populates="s3_buckets")
+
+    @property
+    def display_status(self) -> str:
+        """Get normalized display status.
+
+        S3 buckets are always 'active' if they exist.
+        """
+        return "active"
 
 
 class ECSContainer(Base):

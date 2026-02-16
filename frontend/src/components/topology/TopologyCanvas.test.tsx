@@ -44,12 +44,20 @@ vi.mock("reactflow", () => ({
     </div>
   ),
   Background: () => <div data-testid="react-flow-background" />,
-  Controls: () => <div data-testid="react-flow-controls" />,
+  ReactFlowProvider: ({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  ),
   useNodesState: (initialNodes: MockNode[]) => [initialNodes, vi.fn(), vi.fn()],
   useEdgesState: (
     initialEdges: { id: string; source: string; target: string }[],
   ) => [initialEdges, vi.fn(), vi.fn()],
+  useReactFlow: () => ({ fitView: vi.fn() }),
   BackgroundVariant: { Dots: "dots" },
+}));
+
+// Mock ZoomControls
+vi.mock("@/components/common/ZoomControls", () => ({
+  ZoomControls: () => <div data-testid="zoom-controls" />,
 }));
 
 // Mock the layout calculator
@@ -128,9 +136,9 @@ describe("TopologyCanvas", () => {
     expect(screen.getByTestId("react-flow-background")).toBeInTheDocument();
   });
 
-  it("renders ReactFlow controls", () => {
+  it("renders zoom controls", () => {
     render(<TopologyCanvas data={mockTopologyData} />);
-    expect(screen.getByTestId("react-flow-controls")).toBeInTheDocument();
+    expect(screen.getByTestId("zoom-controls")).toBeInTheDocument();
   });
 
   it("calls onNodeClick when node is clicked", () => {
@@ -156,8 +164,7 @@ describe("TopologyCanvas", () => {
 
   it("renders within a container div", () => {
     const { container } = render(<TopologyCanvas data={mockTopologyData} />);
-    const wrapperDiv = container.firstChild as HTMLElement;
-    expect(wrapperDiv.className).toContain("w-full");
-    expect(wrapperDiv.className).toContain("h-full");
+    const wrapperDiv = container.querySelector(".w-full.h-full");
+    expect(wrapperDiv).toBeInTheDocument();
   });
 });

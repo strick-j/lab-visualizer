@@ -187,6 +187,33 @@ export interface ElasticIP {
   created_at?: string;
 }
 
+export interface S3Bucket {
+  id: number;
+  bucket_name: string;
+  name: string | null;
+  creation_date: string | null;
+  display_status: DisplayStatus;
+  versioning_enabled: boolean;
+  mfa_delete: boolean;
+  encryption_algorithm: string | null;
+  kms_key_id: string | null;
+  bucket_key_enabled: boolean;
+  block_public_acls: boolean;
+  block_public_policy: boolean;
+  ignore_public_acls: boolean;
+  restrict_public_buckets: boolean;
+  policy?: string | null;
+  tags: Record<string, string> | null;
+  tf_managed: boolean;
+  tf_state_source: string | null;
+  tf_resource_address: string | null;
+  region_name: string | null;
+  is_deleted: boolean;
+  deleted_at: string | null;
+  updated_at: string;
+  created_at?: string;
+}
+
 export type ECSLaunchType = "FARGATE" | "EC2" | "EXTERNAL";
 
 export interface ECSContainer {
@@ -295,6 +322,8 @@ export interface TerraformStateInfo {
   last_modified: string | null;
   resource_count: number;
   status: string;
+  all_resource_types?: Record<string, number> | null;
+  skipped_resource_count?: number;
 }
 
 export interface TerraformStatesResponse {

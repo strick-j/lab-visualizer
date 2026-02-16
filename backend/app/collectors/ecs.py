@@ -182,9 +182,7 @@ class ECSCollector(BaseCollector):
             return None
 
     @staticmethod
-    def _detect_managed_by(
-        image_tag: Optional[str], tags: Dict[str, str]
-    ) -> str:
+    def _detect_managed_by(image_tag: Optional[str], tags: Dict[str, str]) -> str:
         """
         Detect who manages this task based on image tag patterns and resource tags.
 

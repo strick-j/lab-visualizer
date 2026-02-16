@@ -33,8 +33,11 @@ class EC2Collector(BaseCollector):
 
             for page in paginator.paginate():
                 for reservation in page.get("Reservations", []):
+                    owner_id = reservation.get("OwnerId")
                     for instance in reservation.get("Instances", []):
-                        instance_data = self._parse_instance(instance)
+                        instance_data = self._parse_instance(
+                            instance, owner_id=owner_id
+                        )
                         if instance_data:
                             instances.append(instance_data)
 
@@ -47,7 +50,9 @@ class EC2Collector(BaseCollector):
 
         return instances
 
-    def _parse_instance(self, instance: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    def _parse_instance(
+        self, instance: Dict[str, Any], owner_id: Optional[str] = None
+    ) -> Optional[Dict[str, Any]]:
         """
         Parse an EC2 instance response into a normalized dictionary.
 
@@ -79,6 +84,11 @@ class EC2Collector(BaseCollector):
                 ),
                 "launch_time": instance.get("LaunchTime"),
                 "tags": tags_dict,
+                "platform": self._normalize_platform(
+                    instance.get("Platform"),
+                    instance.get("PlatformDetails"),
+                ),
+                "owner_account_id": owner_id,
                 "region": self.region,
                 # Additional metadata
                 "image_id": instance.get("ImageId"),
@@ -95,6 +105,22 @@ class EC2Collector(BaseCollector):
             logger.warning(f"Error parsing EC2 instance: {e}")
             return None
 
+    @staticmethod
+    def _normalize_platform(
+        platform: Optional[str], platform_details: Optional[str]
+    ) -> str:
+        """Normalize EC2 platform to 'windows' or 'linux'.
+
+        AWS sets Platform to "windows" for Windows instances and omits
+        the field entirely for Linux/UNIX instances.  PlatformDetails
+        provides more granularity but we only need the OS family.
+        """
+        if platform and platform.lower() == "windows":
+            return "windows"
+        if platform_details and "windows" in platform_details.lower():
+            return "windows"
+        return "linux"
+
     async def collect_instance(self, instance_id: str) -> Optional[Dict[str, Any]]:
         """
         Collect a specific EC2 instance by ID.
@@ -110,8 +136,9 @@ class EC2Collector(BaseCollector):
             response = ec2.describe_instances(InstanceIds=[instance_id])
 
             for reservation in response.get("Reservations", []):
+                owner_id = reservation.get("OwnerId")
                 for instance in reservation.get("Instances", []):
-                    return self._parse_instance(instance)
+                    return self._parse_instance(instance, owner_id=owner_id)
 
         except ClientError as e:
             error_code = e.response.get("Error", {}).get("Code")

@@ -237,10 +237,7 @@ async def get_ecs_summary(
 
     Returns cluster count, running/stopped/pending task counts.
     """
-    query = (
-        select(ECSContainer)
-        .where(ECSContainer.is_deleted == False)
-    )
+    query = select(ECSContainer).where(ECSContainer.is_deleted == False)
     result = await db.execute(query)
     containers = result.scalars().all()
 

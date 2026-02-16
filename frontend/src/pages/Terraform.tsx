@@ -69,6 +69,18 @@ function StateFileRow({ state }: { state: TerraformStateInfo }) {
         <span className="whitespace-nowrap rounded-full bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
           {state.resource_count} resources
         </span>
+        {(state.skipped_resource_count ?? 0) > 0 && (
+          <span
+            className="whitespace-nowrap rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
+            title={
+              state.all_resource_types
+                ? `Unrecognized types: ${Object.keys(state.all_resource_types).join(", ")}`
+                : undefined
+            }
+          >
+            {state.skipped_resource_count} skipped
+          </span>
+        )}
         <span className="whitespace-nowrap text-xs text-gray-400 dark:text-gray-500">
           {formatRelativeTime(state.last_modified)}
         </span>
