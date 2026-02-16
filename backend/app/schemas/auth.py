@@ -123,4 +123,4 @@ class UserStatusUpdate(BaseModel):
 class UserRoleUpdate(BaseModel):
     """Request model for updating user role."""
 
-    role: str = Field(..., pattern="^(user|admin)$")
+    role: str = Field(..., pattern="^(viewer|user|admin)$")

@@ -207,44 +207,8 @@ def _validate_issuer_and_build_discovery_url(issuer_input: str) -> str:
     return _build_safe_url(stripped, "/.well-known/openid-configuration")
 
 
-@router.get("", response_model=AuthSettingsResponse)
-async def get_settings_endpoint(
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_admin_user),
-):
-    """Get all authentication settings. Admin only."""
-    settings = await get_or_create_auth_settings(db)
-
-    return AuthSettingsResponse(
-        local_auth_enabled=env_settings.local_auth_enabled,
-        oidc=OIDCSettingsResponse(
-            enabled=settings.oidc_enabled,
-            issuer=settings.oidc_issuer,
-            client_id=settings.oidc_client_id,
-            client_secret_configured=bool(settings.oidc_client_secret),
-            display_name=settings.oidc_display_name or "OIDC",
-            access_token_expire_minutes=(
-                settings.access_token_expire_minutes
-                or env_settings.access_token_expire_minutes
-            ),
-            refresh_token_expire_days=(
-                settings.refresh_token_expire_days
-                or env_settings.refresh_token_expire_days
-            ),
-            updated_at=settings.updated_at,
-            updated_by=settings.updated_by,
-        ),
-    )
-
-
-@router.get("/oidc", response_model=OIDCSettingsResponse)
-async def get_oidc_settings(
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_admin_user),
-):
-    """Get OIDC settings. Admin only."""
-    settings = await get_or_create_auth_settings(db)
-
+def _settings_to_oidc_response(settings) -> OIDCSettingsResponse:
+    """Convert AuthSettings model to OIDCSettingsResponse."""
     return OIDCSettingsResponse(
         enabled=settings.oidc_enabled,
         issuer=settings.oidc_issuer,
@@ -258,9 +222,39 @@ async def get_oidc_settings(
         refresh_token_expire_days=(
             settings.refresh_token_expire_days or env_settings.refresh_token_expire_days
         ),
+        role_claim=settings.oidc_role_claim,
+        admin_groups=settings.oidc_admin_groups,
+        user_groups=settings.oidc_user_groups,
+        viewer_groups=settings.oidc_viewer_groups,
+        default_role=settings.oidc_default_role,
         updated_at=settings.updated_at,
         updated_by=settings.updated_by,
     )
+
+
+@router.get("", response_model=AuthSettingsResponse)
+async def get_settings_endpoint(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_admin_user),
+):
+    """Get all authentication settings. Admin only."""
+    settings = await get_or_create_auth_settings(db)
+
+    return AuthSettingsResponse(
+        local_auth_enabled=env_settings.local_auth_enabled,
+        oidc=_settings_to_oidc_response(settings),
+    )
+
+
+@router.get("/oidc", response_model=OIDCSettingsResponse)
+async def get_oidc_settings(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_admin_user),
+):
+    """Get OIDC settings. Admin only."""
+    settings = await get_or_create_auth_settings(db)
+
+    return _settings_to_oidc_response(settings)
 
 
 @router.put("/oidc", response_model=OIDCSettingsResponse)
@@ -293,24 +287,14 @@ async def update_oidc_settings_endpoint(
         access_token_expire_minutes=update_data.access_token_expire_minutes,
         refresh_token_expire_days=update_data.refresh_token_expire_days,
         updated_by=current_user.username,
+        role_claim=update_data.role_claim,
+        admin_groups=update_data.admin_groups,
+        user_groups=update_data.user_groups,
+        viewer_groups=update_data.viewer_groups,
+        default_role=update_data.default_role,
     )
 
-    return OIDCSettingsResponse(
-        enabled=settings.oidc_enabled,
-        issuer=settings.oidc_issuer,
-        client_id=settings.oidc_client_id,
-        client_secret_configured=bool(settings.oidc_client_secret),
-        display_name=settings.oidc_display_name or "OIDC",
-        access_token_expire_minutes=(
-            settings.access_token_expire_minutes
-            or env_settings.access_token_expire_minutes
-        ),
-        refresh_token_expire_days=(
-            settings.refresh_token_expire_days or env_settings.refresh_token_expire_days
-        ),
-        updated_at=settings.updated_at,
-        updated_by=settings.updated_by,
-    )
+    return _settings_to_oidc_response(settings)
 
 
 @router.post("/oidc/test", response_model=TestConnectionResponse)
@@ -464,7 +448,7 @@ async def update_terraform_bucket(
 
     await db.commit()
     await db.refresh(bucket)
-    logger.info("User %s updated terraform bucket %s", current_user.username, bucket_id)
+    logger.info("User %s updated terraform bucket %d", _sanitize_for_log(current_user.username), int(bucket_id))
     return TerraformBucketResponse.model_validate(bucket)
 
 
@@ -567,7 +551,7 @@ async def update_terraform_path(
 
     await db.commit()
     await db.refresh(path)
-    logger.info("User %s updated terraform path %s", current_user.username, path_id)
+    logger.info("User %s updated terraform path %d", _sanitize_for_log(current_user.username), int(path_id))
     return TerraformPathResponse.model_validate(path)
 
 

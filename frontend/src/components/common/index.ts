@@ -8,3 +8,5 @@ export { EmptyState } from "./EmptyState";
 export { TerraformBadge } from "./TerraformBadge";
 export { ManagedByBadge } from "./ManagedByBadge";
 export type { ManagedByType } from "./ManagedByBadge";
+export { RefreshButton } from "./RefreshButton";
+export { DataFreshnessIndicator } from "./DataFreshnessIndicator";

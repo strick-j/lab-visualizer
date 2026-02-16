@@ -9,7 +9,7 @@ import logging
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
@@ -19,15 +19,23 @@ from app.schemas.resources import (
     DisplayStatus,
     EC2InstanceDetail,
     EC2InstanceResponse,
-    ListResponse,
-    MetaInfo,
+    PaginatedResponse,
 )
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-@router.get("/ec2", response_model=ListResponse[EC2InstanceResponse])
+EC2_SORT_COLUMNS = {
+    "name": EC2Instance.name,
+    "state": EC2Instance.state,
+    "instance_type": EC2Instance.instance_type,
+    "launch_time": EC2Instance.launch_time,
+    "instance_id": EC2Instance.instance_id,
+}
+
+
+@router.get("/ec2", response_model=PaginatedResponse[EC2InstanceResponse])
 async def list_ec2_instances(
     status: Optional[DisplayStatus] = Query(
         None, description="Filter by display status"
@@ -35,55 +43,73 @@ async def list_ec2_instances(
     region: Optional[str] = Query(None, description="Filter by AWS region"),
     search: Optional[str] = Query(None, description="Search by name or instance ID"),
     tf_managed: Optional[bool] = Query(None, description="Filter by Terraform managed"),
+    tag: Optional[str] = Query(None, description="Filter by tag (format: key:value)"),
+    page: int = Query(1, ge=1, description="Page number"),
+    page_size: int = Query(50, ge=1, le=200, description="Items per page"),
+    sort_by: Optional[str] = Query(None, description="Sort by field name"),
+    sort_order: str = Query("asc", pattern="^(asc|desc)$", description="Sort order"),
     db: AsyncSession = Depends(get_db),
 ):
     """
-    List all EC2 instances with optional filtering.
-
-    Args:
-        status: Filter by display status (active, inactive, transitioning, error)
-        region: Filter by AWS region name
-        search: Search term for name or instance ID
-        tf_managed: Filter by Terraform managed status
-
-    Returns:
-        List of EC2 instances matching the filters
+    List EC2 instances with filtering, pagination, and sorting.
     """
-    # Build query - exclude deleted instances by default
-    query = (
-        select(EC2Instance)
-        .options(joinedload(EC2Instance.region))
-        .where(EC2Instance.is_deleted == False)
-    )
+    # Build base filter conditions
+    conditions = [EC2Instance.is_deleted == False]
 
-    # Apply filters
     if status:
         states = _get_states_for_status(status)
-        query = query.where(EC2Instance.state.in_(states))
-
-    if region:
-        query = query.join(Region).where(Region.name == region)
+        conditions.append(EC2Instance.state.in_(states))
 
     if search:
         search_term = f"%{search}%"
-        query = query.where(
+        conditions.append(
             (EC2Instance.name.ilike(search_term))
             | (EC2Instance.instance_id.ilike(search_term))
         )
 
     if tf_managed is not None:
-        query = query.where(EC2Instance.tf_managed == tf_managed)
+        conditions.append(EC2Instance.tf_managed == tf_managed)
 
-    # Execute query
-    result = await db.execute(query.order_by(EC2Instance.name, EC2Instance.instance_id))
+    if tag:
+        conditions.append(EC2Instance.tags.contains(tag))
+
+    # Count query
+    count_query = select(func.count(EC2Instance.id)).where(*conditions)
+    if region:
+        count_query = count_query.join(Region).where(Region.name == region)
+    total = (await db.execute(count_query)).scalar_one()
+
+    # Data query
+    query = (
+        select(EC2Instance).options(joinedload(EC2Instance.region)).where(*conditions)
+    )
+
+    if region:
+        query = query.join(Region).where(Region.name == region)
+
+    # Sorting
+    sort_col = EC2_SORT_COLUMNS.get(sort_by) if sort_by else None
+    if sort_col is not None:
+        query = query.order_by(
+            sort_col.desc() if sort_order == "desc" else sort_col.asc()
+        )
+    else:
+        query = query.order_by(EC2Instance.name, EC2Instance.instance_id)
+
+    # Pagination
+    query = query.offset((page - 1) * page_size).limit(page_size)
+
+    result = await db.execute(query)
     instances = result.scalars().unique().all()
 
-    # Convert to response format
     response_data = [_instance_to_response(instance) for instance in instances]
 
-    return ListResponse(
+    return PaginatedResponse(
         data=response_data,
-        meta=MetaInfo(total=len(response_data)),
+        total=total,
+        page=page,
+        page_size=page_size,
+        has_more=(page * page_size) < total,
     )
 
 

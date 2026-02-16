@@ -109,7 +109,7 @@ export function DashboardPage() {
 
   // Calculate VPC networking totals
   const vpcNetworkingTotal = {
-    vpcs: vpcData?.meta.total || 0,
+    vpcs: vpcData?.total || 0,
     subnets: subnetData?.meta.total || 0,
     igws: igwData?.meta.total || 0,
     natGateways: natData?.meta.total || 0,

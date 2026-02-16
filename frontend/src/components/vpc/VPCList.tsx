@@ -111,7 +111,7 @@ export function VPCList({ filters, onFilterChange }: VPCListProps) {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <p className="text-sm text-gray-600 dark:text-gray-400">
-          {data?.meta.total || 0} VPCs found
+          {data?.total || 0} VPCs found
         </p>
       </div>
 

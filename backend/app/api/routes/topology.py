@@ -2,11 +2,11 @@
 Topology visualization endpoint.
 
 Provides hierarchical infrastructure data for graphical visualization.
-Returns Terraform-managed resources with their relationships.
+Returns resources organized by VPC with optional management-status filtering.
 """
 
 import logging
-from typing import Optional
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import select
@@ -40,6 +40,13 @@ from app.schemas.resources import (
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+
+def _tf_managed_filter(model, tf_managed: Optional[bool]) -> List:
+    """Build optional tf_managed filter clause."""
+    if tf_managed is None:
+        return []
+    return [model.tf_managed == tf_managed]
 
 
 def _get_display_status(state: str, resource_type: str) -> DisplayStatus:
@@ -120,20 +127,25 @@ def _get_display_status(state: str, resource_type: str) -> DisplayStatus:
 @router.get("/topology", response_model=TopologyResponse)
 async def get_topology(
     vpc_id: Optional[str] = Query(None, description="Filter by specific VPC ID"),
+    tf_managed: Optional[bool] = Query(
+        None,
+        description="Filter by Terraform managed status (true/false). Omit to show all resources.",
+    ),
     db: AsyncSession = Depends(get_db),
 ):
     """
     Get hierarchical infrastructure topology for visualization.
 
-    Returns Terraform-managed resources organized in a hierarchy:
+    Returns resources organized in a hierarchy:
     - VPCs contain Subnets, Internet Gateways, and Elastic IPs
     - Subnets contain EC2 instances, RDS instances, and NAT Gateways
 
-    Only returns resources where tf_managed=True.
+    By default returns all resources. Use tf_managed=true to show only
+    Terraform-managed resources, or tf_managed=false for unmanaged only.
     """
-    # Build VPC query - only Terraform-managed, not deleted
+    # Build VPC query - optionally filter by tf_managed status
     vpc_query = select(VPC).where(
-        VPC.tf_managed == True,
+        *_tf_managed_filter(VPC, tf_managed),
         VPC.is_deleted == False,
     )
     if vpc_id:
@@ -156,7 +168,7 @@ async def get_topology(
         igw_result = await db.execute(
             select(InternetGateway).where(
                 InternetGateway.vpc_id == vpc.vpc_id,
-                InternetGateway.tf_managed == True,
+                *_tf_managed_filter(InternetGateway, tf_managed),
                 InternetGateway.is_deleted == False,
             )
         )
@@ -170,7 +182,7 @@ async def get_topology(
                 name=igw.name,
                 state=igw.state,
                 display_status=_get_display_status(igw.state, "igw"),
-                tf_managed=True,
+                tf_managed=igw.tf_managed,
                 tf_resource_address=igw.tf_resource_address,
             )
 
@@ -179,7 +191,7 @@ async def get_topology(
             select(Subnet)
             .where(
                 Subnet.vpc_id == vpc.vpc_id,
-                Subnet.tf_managed == True,
+                *_tf_managed_filter(Subnet, tf_managed),
                 Subnet.is_deleted == False,
             )
             .order_by(Subnet.subnet_type, Subnet.availability_zone)
@@ -193,7 +205,7 @@ async def get_topology(
         rds_result = await db.execute(
             select(RDSInstance).where(
                 RDSInstance.vpc_id == vpc.vpc_id,
-                RDSInstance.tf_managed == True,
+                *_tf_managed_filter(RDSInstance, tf_managed),
                 RDSInstance.is_deleted == False,
             )
         )
@@ -208,7 +220,7 @@ async def get_topology(
             nat_result = await db.execute(
                 select(NATGateway).where(
                     NATGateway.subnet_id == subnet.subnet_id,
-                    NATGateway.tf_managed == True,
+                    *_tf_managed_filter(NATGateway, tf_managed),
                     NATGateway.is_deleted == False,
                 )
             )
@@ -223,7 +235,7 @@ async def get_topology(
                     state=nat.state,
                     display_status=_get_display_status(nat.state, "nat_gateway"),
                     primary_public_ip=nat.primary_public_ip,
-                    tf_managed=True,
+                    tf_managed=nat.tf_managed,
                     tf_resource_address=nat.tf_resource_address,
                 )
 
@@ -231,7 +243,7 @@ async def get_topology(
             ec2_result = await db.execute(
                 select(EC2Instance).where(
                     EC2Instance.subnet_id == subnet.subnet_id,
-                    EC2Instance.tf_managed == True,
+                    *_tf_managed_filter(EC2Instance, tf_managed),
                     EC2Instance.is_deleted == False,
                 )
             )
@@ -251,7 +263,7 @@ async def get_topology(
                         public_ip=ec2.public_ip,
                         private_dns=ec2.private_dns,
                         public_dns=ec2.public_dns,
-                        tf_managed=True,
+                        tf_managed=ec2.tf_managed,
                         tf_resource_address=ec2.tf_resource_address,
                     )
                 )
@@ -275,7 +287,7 @@ async def get_topology(
                             display_status=_get_display_status(rds.status, "rds"),
                             endpoint=rds.endpoint,
                             port=rds.port,
-                            tf_managed=True,
+                            tf_managed=rds.tf_managed,
                             tf_resource_address=rds.tf_resource_address,
                         )
                     )
@@ -328,7 +340,7 @@ async def get_topology(
                     availability_zone=subnet.availability_zone,
                     subnet_type=subnet.subnet_type,
                     display_status=_get_display_status(subnet.state, "subnet"),
-                    tf_managed=True,
+                    tf_managed=subnet.tf_managed,
                     tf_resource_address=subnet.tf_resource_address,
                     nat_gateway=topology_nat,
                     ec2_instances=topology_ec2,
@@ -340,7 +352,7 @@ async def get_topology(
         # Get Elastic IPs associated with resources in this VPC
         eip_result = await db.execute(
             select(ElasticIP).where(
-                ElasticIP.tf_managed == True,
+                *_tf_managed_filter(ElasticIP, tf_managed),
                 ElasticIP.is_deleted == False,
             )
         )
@@ -385,7 +397,7 @@ async def get_topology(
                         public_ip=eip.public_ip,
                         associated_with=associated_with,
                         association_type=association_type,
-                        tf_managed=True,
+                        tf_managed=eip.tf_managed,
                         tf_resource_address=eip.tf_resource_address,
                     )
                 )
@@ -397,7 +409,7 @@ async def get_topology(
                 cidr_block=vpc.cidr_block,
                 state=vpc.state,
                 display_status=_get_display_status(vpc.state, "vpc"),
-                tf_managed=True,
+                tf_managed=vpc.tf_managed,
                 tf_resource_address=vpc.tf_resource_address,
                 internet_gateway=topology_igw,
                 subnets=topology_subnets,

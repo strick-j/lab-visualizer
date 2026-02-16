@@ -26,6 +26,7 @@ from app.schemas.auth import (
     TokenResponse,
     UserResponse,
 )
+from app.services.audit import audit_log
 from app.services.auth import (
     authenticate_local_user,
     check_admin_exists,
@@ -34,6 +35,7 @@ from app.services.auth import (
     create_session,
     get_user_by_external_id,
     refresh_access_token,
+    resolve_role_from_groups,
     revoke_session,
     validate_access_token,
 )
@@ -176,6 +178,15 @@ async def login(
         db, user, user_agent=user_agent, ip_address=ip_address
     )
 
+    await audit_log(
+        db,
+        "login",
+        user=user,
+        resource_type="session",
+        ip_address=ip_address,
+        user_agent=user_agent,
+    )
+
     return TokenResponse(
         access_token=access_token,
         refresh_token=refresh_token,
@@ -229,6 +240,17 @@ async def logout(
 
     user, session = result
     await revoke_session(db, session)
+
+    ip_address, user_agent = get_client_info(request)
+    await audit_log(
+        db,
+        "logout",
+        user=user,
+        resource_type="session",
+        ip_address=ip_address,
+        user_agent=user_agent,
+    )
+
     return LogoutResponse()
 
 
@@ -402,7 +424,7 @@ async def oidc_callback(
                 userinfo_response.raise_for_status()
                 userinfo = userinfo_response.json()
             except httpx.HTTPError as e:
-                logger.warning(f"OIDC userinfo fetch failed: {e}")
+                logger.warning("OIDC userinfo fetch failed with %s", type(e).__name__)
                 # Continue without userinfo - we can still use id_token claims
 
     # Find or create user
@@ -427,6 +449,20 @@ async def oidc_callback(
             email=userinfo.get("email"),
             display_name=userinfo.get("name"),
         )
+
+    # Resolve role from OIDC group claims if configured
+    role_claim = oidc_config.get("role_claim", "groups")
+    groups = userinfo.get(role_claim, [])
+    if isinstance(groups, str):
+        groups = [groups]
+    if groups and any(
+        oidc_config.get(k) for k in ("admin_groups", "user_groups", "viewer_groups")
+    ):
+        resolved_role = resolve_role_from_groups(groups, oidc_config)
+        if user.role != resolved_role:
+            user.role = resolved_role
+            user.is_admin = resolved_role == "admin"
+            logger.info("Updated OIDC user role based on group claims")
 
     # Create session
     ip_address, user_agent = get_client_info(request)

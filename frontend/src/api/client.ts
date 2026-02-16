@@ -1,6 +1,8 @@
 import axios from "axios";
 import type {
   ListResponse,
+  PaginatedResponse,
+  PaginationParams,
   AppInfo,
   EC2Instance,
   RDSInstance,
@@ -110,18 +112,37 @@ export async function getAppInfo(): Promise<AppInfo> {
 }
 
 // =============================================================================
+// Pagination Helper
+// =============================================================================
+
+function appendPaginationParams(
+  params: URLSearchParams,
+  pagination?: PaginationParams,
+) {
+  if (!pagination) return;
+  if (pagination.page) params.append("page", String(pagination.page));
+  if (pagination.page_size)
+    params.append("page_size", String(pagination.page_size));
+  if (pagination.sort_by) params.append("sort_by", pagination.sort_by);
+  if (pagination.sort_order) params.append("sort_order", pagination.sort_order);
+  if (pagination.tag) params.append("tag", pagination.tag);
+}
+
+// =============================================================================
 // EC2 Instances
 // =============================================================================
 
 export async function getEC2Instances(
   filters?: ResourceFilters,
-): Promise<ListResponse<EC2Instance>> {
+  pagination?: PaginationParams,
+): Promise<PaginatedResponse<EC2Instance>> {
   const params = new URLSearchParams();
   if (filters?.status) params.append("status", filters.status);
   if (filters?.region) params.append("region", filters.region);
   if (filters?.search) params.append("search", filters.search);
   if (filters?.tf_managed !== undefined)
     params.append("tf_managed", String(filters.tf_managed));
+  appendPaginationParams(params, pagination);
 
   const response = await api.get("/ec2", { params });
   return response.data;
@@ -138,13 +159,15 @@ export async function getEC2Instance(instanceId: string): Promise<EC2Instance> {
 
 export async function getRDSInstances(
   filters?: ResourceFilters,
-): Promise<ListResponse<RDSInstance>> {
+  pagination?: PaginationParams,
+): Promise<PaginatedResponse<RDSInstance>> {
   const params = new URLSearchParams();
   if (filters?.status) params.append("status", filters.status);
   if (filters?.region) params.append("region", filters.region);
   if (filters?.search) params.append("search", filters.search);
   if (filters?.tf_managed !== undefined)
     params.append("tf_managed", String(filters.tf_managed));
+  appendPaginationParams(params, pagination);
 
   const response = await api.get("/rds", { params });
   return response.data;
@@ -163,7 +186,8 @@ export async function getRDSInstance(
 
 export async function getECSContainers(
   filters?: ResourceFilters,
-): Promise<ListResponse<ECSContainer>> {
+  pagination?: PaginationParams,
+): Promise<PaginatedResponse<ECSContainer>> {
   const params = new URLSearchParams();
   if (filters?.status) params.append("status", filters.status);
   if (filters?.region) params.append("region", filters.region);
@@ -173,6 +197,7 @@ export async function getECSContainers(
   if (filters?.cluster_name)
     params.append("cluster_name", filters.cluster_name);
   if (filters?.launch_type) params.append("launch_type", filters.launch_type);
+  appendPaginationParams(params, pagination);
 
   const response = await api.get("/ecs", { params });
   return response.data;
@@ -211,13 +236,15 @@ export async function getECSSummary(): Promise<ECSSummaryResponse> {
 
 export async function getVPCs(
   filters?: ResourceFilters,
-): Promise<ListResponse<VPC>> {
+  pagination?: PaginationParams,
+): Promise<PaginatedResponse<VPC>> {
   const params = new URLSearchParams();
   if (filters?.status) params.append("status", filters.status);
   if (filters?.region) params.append("region", filters.region);
   if (filters?.search) params.append("search", filters.search);
   if (filters?.tf_managed !== undefined)
     params.append("tf_managed", String(filters.tf_managed));
+  appendPaginationParams(params, pagination);
 
   const response = await api.get("/vpcs", { params });
   return response.data;
@@ -588,6 +615,46 @@ export async function listS3BucketObjects(
     prefix,
     region: region || undefined,
   });
+  return response.data;
+}
+
+// =============================================================================
+// Audit Logs
+// =============================================================================
+
+export interface AuditLogEntry {
+  id: number;
+  timestamp: string;
+  user_id: number | null;
+  username: string;
+  action: string;
+  resource_type: string | null;
+  resource_id: string | null;
+  details: Record<string, unknown> | null;
+  ip_address: string | null;
+}
+
+export interface AuditLogsResponse {
+  logs: AuditLogEntry[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
+export async function getAuditLogs(params?: {
+  page?: number;
+  page_size?: number;
+  action?: string;
+  username?: string;
+}): Promise<AuditLogsResponse> {
+  const searchParams = new URLSearchParams();
+  if (params?.page) searchParams.append("page", String(params.page));
+  if (params?.page_size)
+    searchParams.append("page_size", String(params.page_size));
+  if (params?.action) searchParams.append("action", params.action);
+  if (params?.username) searchParams.append("username", params.username);
+
+  const response = await api.get("/audit-logs", { params: searchParams });
   return response.data;
 }
 

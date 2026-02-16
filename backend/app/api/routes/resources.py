@@ -10,9 +10,10 @@ import time
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.deps import get_current_operator_user
 from app.collectors.cyberark_accounts import CyberArkAccountCollector
 from app.collectors.cyberark_roles import CyberArkRoleCollector
 from app.collectors.cyberark_safes import CyberArkSafeCollector
@@ -28,6 +29,7 @@ from app.collectors.s3 import S3BucketCollector
 from app.collectors.subnet import SubnetCollector
 from app.collectors.vpc import VPCCollector
 from app.config import get_settings
+from app.models.auth import User
 from app.models.cyberark import (
     CyberArkAccount,
     CyberArkRole,
@@ -60,6 +62,7 @@ from app.schemas.resources import (
     ResourceCount,
     StatusSummary,
 )
+from app.services.audit import audit_log
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -157,6 +160,7 @@ async def _get_rds_counts(db: AsyncSession) -> ResourceCount:
 async def refresh_data(
     request: RefreshRequest = RefreshRequest(),
     db: AsyncSession = Depends(get_db),
+    _current_user: User = Depends(get_current_operator_user),
 ):
     """
     Trigger a refresh of AWS data.
@@ -248,6 +252,14 @@ async def refresh_data(
 
         # Update sync status
         await _update_sync_status(db, "aws", resources_updated)
+
+        await audit_log(
+            db,
+            "data_refresh",
+            user=_current_user,
+            resource_type="data",
+            details={"resources_updated": resources_updated},
+        )
 
         await db.commit()
 
@@ -1001,6 +1013,49 @@ async def _sync_terraform_state(db: AsyncSession) -> int:
         aggregator = TerraformStateAggregator()
         tf_resources = await aggregator.aggregate_all()
         count = 0
+
+        # Reset tf_managed for all non-deleted resources so that resources
+        # removed from Terraform state are correctly marked as unmanaged.
+        for model in (
+            EC2Instance,
+            RDSInstance,
+            VPC,
+            Subnet,
+            InternetGateway,
+            NATGateway,
+            ElasticIP,
+            S3Bucket,
+            ECSContainer,
+            CyberArkSafe,
+            CyberArkAccount,
+            CyberArkRole,
+            CyberArkSIAPolicy,
+            CyberArkUser,
+        ):
+            await db.execute(
+                update(model)
+                .where(
+                    model.is_deleted == False, model.tf_managed == True
+                )  # noqa: E712
+                .values(
+                    tf_managed=False,
+                    tf_state_source=None,
+                    tf_resource_address=None,
+                )
+            )
+
+        # ECS containers also need managed_by reset when dropping TF state.
+        # Only reset containers whose managed_by is "terraform"; leave
+        # "github_actions" containers untouched.
+        await db.execute(
+            update(ECSContainer)
+            .where(
+                ECSContainer.is_deleted == False,  # noqa: E712
+                ECSContainer.tf_managed == True,  # noqa: E712
+                ECSContainer.managed_by == "terraform",
+            )
+            .values(managed_by="unmanaged")
+        )
 
         # Update EC2 instances
         for tf_resource in tf_resources.get("ec2", []):
