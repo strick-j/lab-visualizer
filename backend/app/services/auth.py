@@ -235,7 +235,7 @@ async def create_session(
     await db.commit()
     await db.refresh(session)
 
-    logger.info(f"Created session for user: {user.username}")
+    logger.info(f"Created session for user: {_sanitize_for_log(user.username)}")
     return access_token, refresh_token, session
 
 
@@ -305,7 +305,7 @@ async def refresh_access_token(
     session.last_activity_at = now
 
     await db.commit()
-    logger.info(f"Refreshed tokens for user: {user.username}")
+    logger.info(f"Refreshed tokens for user: {_sanitize_for_log(user.username)}")
 
     return new_access_token, new_refresh_token
 
