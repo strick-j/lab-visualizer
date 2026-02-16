@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Search, X, Filter, ChevronDown } from "lucide-react";
 import type { TopologyFilters, TopologyVPC } from "@/types/topology";
 import { hasActiveFilters } from "./utils/topologyFilter";
@@ -101,6 +101,37 @@ export function TopologyFilterBar({
   onChange,
   vpcs,
 }: TopologyFilterBarProps) {
+  // Local state for search input to enable debouncing
+  const [searchValue, setSearchValue] = useState(filters.search);
+
+  // Use refs to access latest values in debounce effect without triggering re-runs
+  const filtersRef = useRef(filters);
+  const onChangeRef = useRef(onChange);
+
+  useEffect(() => {
+    filtersRef.current = filters;
+    onChangeRef.current = onChange;
+  }, [filters, onChange]);
+
+  // Debounce search input - only update filters after user stops typing
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (searchValue !== filtersRef.current.search) {
+        onChangeRef.current({ ...filtersRef.current, search: searchValue });
+      }
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [searchValue]);
+
+  // Sync external filter changes back to local state
+  const syncSearch = useCallback((externalSearch: string) => {
+    setSearchValue(externalSearch);
+  }, []);
+
+  useEffect(() => {
+    syncSearch(filters.search);
+  }, [filters.search, syncSearch]);
+
   const activeCount =
     [
       filters.search,
@@ -113,7 +144,8 @@ export function TopologyFilterBar({
   const update = (partial: Partial<TopologyFilters>) =>
     onChange({ ...filters, ...partial });
 
-  const clearAll = () =>
+  const clearAll = () => {
+    setSearchValue("");
     onChange({
       search: "",
       vpcId: "",
@@ -122,6 +154,7 @@ export function TopologyFilterBar({
       tfManaged: "",
       resourceTypes: [],
     });
+  };
 
   return (
     <div className="absolute top-4 left-4 z-10 flex items-center gap-2 flex-wrap">
@@ -131,13 +164,16 @@ export function TopologyFilterBar({
         <input
           type="text"
           placeholder="Search resources..."
-          value={filters.search}
-          onChange={(e) => update({ search: e.target.value })}
+          value={searchValue}
+          onChange={(e) => setSearchValue(e.target.value)}
           className="h-8 w-48 rounded-md border border-gray-300 bg-white pl-8 pr-7 text-xs placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:placeholder:text-gray-500"
         />
-        {filters.search && (
+        {searchValue && (
           <button
-            onClick={() => update({ search: "" })}
+            onClick={() => {
+              setSearchValue("");
+              update({ search: "" });
+            }}
             className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
           >
             <X className="h-3.5 w-3.5" />
