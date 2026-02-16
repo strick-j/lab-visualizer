@@ -140,6 +140,39 @@ async def create_federated_user(
     return user
 
 
+def resolve_role_from_groups(groups: list[str], oidc_config: dict) -> str:
+    """
+    Resolve application role from OIDC group claims.
+
+    Priority: admin > user > viewer > default.
+    Groups are compared case-insensitively.
+    """
+    if not groups:
+        return oidc_config.get("default_role", "viewer")
+
+    groups_lower = {g.lower() for g in groups}
+
+    admin_groups = oidc_config.get("admin_groups", "")
+    if admin_groups:
+        admin_set = {g.strip().lower() for g in admin_groups.split(",") if g.strip()}
+        if groups_lower & admin_set:
+            return "admin"
+
+    user_groups = oidc_config.get("user_groups", "")
+    if user_groups:
+        user_set = {g.strip().lower() for g in user_groups.split(",") if g.strip()}
+        if groups_lower & user_set:
+            return "user"
+
+    viewer_groups = oidc_config.get("viewer_groups", "")
+    if viewer_groups:
+        viewer_set = {g.strip().lower() for g in viewer_groups.split(",") if g.strip()}
+        if groups_lower & viewer_set:
+            return "viewer"
+
+    return oidc_config.get("default_role", "viewer")
+
+
 async def authenticate_local_user(
     db: AsyncSession, username: str, password: str
 ) -> Optional[User]:
@@ -478,7 +511,7 @@ async def ensure_admin_user(db: AsyncSession) -> None:
 
 # --- User Management ---
 
-VALID_ROLES = ("user", "admin")
+VALID_ROLES = ("viewer", "user", "admin")
 
 
 async def list_all_users(db: AsyncSession) -> list[User]:

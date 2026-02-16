@@ -1,4 +1,4 @@
-export type UserRole = "user" | "admin";
+export type UserRole = "viewer" | "user" | "admin";
 
 export interface User {
   id: number;
@@ -47,6 +47,11 @@ export interface OIDCSettings {
   display_name: string;
   access_token_expire_minutes: number;
   refresh_token_expire_days: number;
+  role_claim: string | null;
+  admin_groups: string | null;
+  user_groups: string | null;
+  viewer_groups: string | null;
+  default_role: string | null;
   updated_at: string | null;
   updated_by: string | null;
 }
@@ -64,6 +69,11 @@ export interface OIDCSettingsUpdate {
   display_name?: string;
   access_token_expire_minutes?: number;
   refresh_token_expire_days?: number;
+  role_claim?: string;
+  admin_groups?: string;
+  user_groups?: string;
+  viewer_groups?: string;
+  default_role?: string;
 }
 
 export interface TestConnectionResponse {

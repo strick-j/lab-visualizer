@@ -1,10 +1,11 @@
-import { Shield, Database, Users, Lock } from "lucide-react";
+import { Shield, Database, Users, Lock, FileText } from "lucide-react";
 
 export type SettingsTabType =
   | "authentication"
   | "s3-buckets"
   | "user-management"
-  | "cyberark";
+  | "cyberark"
+  | "audit-log";
 
 interface Tab {
   key: SettingsTabType;
@@ -17,6 +18,7 @@ const tabs: Tab[] = [
   { key: "user-management", label: "User Management", icon: Users },
   { key: "s3-buckets", label: "S3 Buckets", icon: Database },
   { key: "cyberark", label: "CyberArk", icon: Lock },
+  { key: "audit-log", label: "Audit Log", icon: FileText },
 ];
 
 interface SettingsTabNavigationProps {

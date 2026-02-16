@@ -629,7 +629,7 @@ class TopologyEC2Instance(BaseSchema):
     public_ip: Optional[str] = None
     private_dns: Optional[str] = None
     public_dns: Optional[str] = None
-    tf_managed: bool = True
+    tf_managed: bool = False
     tf_resource_address: Optional[str] = None
 
 
@@ -644,7 +644,7 @@ class TopologyRDSInstance(BaseSchema):
     display_status: DisplayStatus
     endpoint: Optional[str] = None
     port: Optional[int] = None
-    tf_managed: bool = True
+    tf_managed: bool = False
     tf_resource_address: Optional[str] = None
 
 
@@ -656,7 +656,7 @@ class TopologyNATGateway(BaseSchema):
     state: str
     display_status: DisplayStatus
     primary_public_ip: Optional[str] = None
-    tf_managed: bool = True
+    tf_managed: bool = False
     tf_resource_address: Optional[str] = None
 
 
@@ -667,7 +667,7 @@ class TopologyInternetGateway(BaseSchema):
     name: Optional[str] = None
     state: str
     display_status: DisplayStatus
-    tf_managed: bool = True
+    tf_managed: bool = False
     tf_resource_address: Optional[str] = None
 
 
@@ -678,7 +678,7 @@ class TopologyElasticIP(BaseSchema):
     public_ip: str
     associated_with: Optional[str] = None
     association_type: Optional[str] = None  # 'ec2', 'nat_gateway', 'eni'
-    tf_managed: bool = True
+    tf_managed: bool = False
     tf_resource_address: Optional[str] = None
 
 
@@ -697,7 +697,7 @@ class TopologyECSContainer(BaseSchema):
     image_tag: Optional[str] = None
     container_port: Optional[int] = None
     private_ip: Optional[str] = None
-    tf_managed: bool = True
+    tf_managed: bool = False
     tf_resource_address: Optional[str] = None
     managed_by: str = "unmanaged"
 
@@ -711,7 +711,7 @@ class TopologySubnet(BaseSchema):
     availability_zone: str
     subnet_type: str  # public, private, unknown
     display_status: DisplayStatus
-    tf_managed: bool = True
+    tf_managed: bool = False
     tf_resource_address: Optional[str] = None
     nat_gateway: Optional[TopologyNATGateway] = None
     ec2_instances: List[TopologyEC2Instance] = []
@@ -727,7 +727,7 @@ class TopologyVPC(BaseSchema):
     cidr_block: str
     state: str
     display_status: DisplayStatus
-    tf_managed: bool = True
+    tf_managed: bool = False
     tf_resource_address: Optional[str] = None
     internet_gateway: Optional[TopologyInternetGateway] = None
     subnets: List[TopologySubnet] = []

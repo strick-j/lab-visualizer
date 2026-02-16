@@ -18,6 +18,9 @@ interface TopologyStats {
   total_ec2: number;
   total_rds: number;
   total_ecs_containers: number;
+  total_nat_gateways: number;
+  total_internet_gateways: number;
+  total_elastic_ips: number;
 }
 
 interface TopologyLegendProps {
@@ -121,6 +124,24 @@ export function TopologyLegend({ stats }: TopologyLegendProps) {
               <span className="text-gray-500 dark:text-gray-400">ECS:</span>
               <span className="font-medium text-gray-900 dark:text-gray-100">
                 {stats.total_ecs_containers}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-500 dark:text-gray-400">IGWs:</span>
+              <span className="font-medium text-gray-900 dark:text-gray-100">
+                {stats.total_internet_gateways}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-500 dark:text-gray-400">NAT GWs:</span>
+              <span className="font-medium text-gray-900 dark:text-gray-100">
+                {stats.total_nat_gateways}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-500 dark:text-gray-400">EIPs:</span>
+              <span className="font-medium text-gray-900 dark:text-gray-100">
+                {stats.total_elastic_ips}
               </span>
             </div>
           </div>

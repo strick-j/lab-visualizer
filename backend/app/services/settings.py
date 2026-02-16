@@ -62,6 +62,11 @@ async def update_oidc_settings(
     access_token_expire_minutes: Optional[int] = None,
     refresh_token_expire_days: Optional[int] = None,
     updated_by: Optional[str] = None,
+    role_claim: Optional[str] = None,
+    admin_groups: Optional[str] = None,
+    user_groups: Optional[str] = None,
+    viewer_groups: Optional[str] = None,
+    default_role: Optional[str] = None,
 ) -> AuthSettings:
     """Update OIDC settings."""
     settings = await get_or_create_auth_settings(db)
@@ -79,6 +84,16 @@ async def update_oidc_settings(
         settings.access_token_expire_minutes = access_token_expire_minutes
     if refresh_token_expire_days is not None:
         settings.refresh_token_expire_days = refresh_token_expire_days
+    if role_claim is not None:
+        settings.oidc_role_claim = role_claim
+    if admin_groups is not None:
+        settings.oidc_admin_groups = admin_groups
+    if user_groups is not None:
+        settings.oidc_user_groups = user_groups
+    if viewer_groups is not None:
+        settings.oidc_viewer_groups = viewer_groups
+    if default_role is not None:
+        settings.oidc_default_role = default_role
     if updated_by:
         settings.updated_by = updated_by
 
@@ -112,6 +127,11 @@ async def get_effective_oidc_config(db: AsyncSession) -> dict:
                 db_settings.refresh_token_expire_days
                 or env_settings.refresh_token_expire_days
             ),
+            "role_claim": db_settings.oidc_role_claim or "groups",
+            "admin_groups": db_settings.oidc_admin_groups or "",
+            "user_groups": db_settings.oidc_user_groups or "",
+            "viewer_groups": db_settings.oidc_viewer_groups or "",
+            "default_role": db_settings.oidc_default_role or "viewer",
         }
 
     # Fall back to environment variables
@@ -123,6 +143,11 @@ async def get_effective_oidc_config(db: AsyncSession) -> dict:
         "display_name": "OIDC",
         "access_token_expire_minutes": env_settings.access_token_expire_minutes,
         "refresh_token_expire_days": env_settings.refresh_token_expire_days,
+        "role_claim": "groups",
+        "admin_groups": "",
+        "user_groups": "",
+        "viewer_groups": "",
+        "default_role": "viewer",
     }
 
 

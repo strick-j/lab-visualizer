@@ -259,6 +259,8 @@ export interface TopologyFilters {
   vpcId: string;
   subnetType: "" | "public" | "private" | "unknown";
   status: "" | DisplayStatus;
+  tfManaged: "" | "true" | "false";
+  resourceTypes: string[];
 }
 
 // =============================================================================

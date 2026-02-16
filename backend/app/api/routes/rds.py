@@ -9,7 +9,7 @@ import logging
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
@@ -17,8 +17,7 @@ from app.models.database import get_db
 from app.models.resources import RDSInstance, Region
 from app.schemas.resources import (
     DisplayStatus,
-    ListResponse,
-    MetaInfo,
+    PaginatedResponse,
     RDSInstanceDetail,
     RDSInstanceResponse,
 )
@@ -27,7 +26,16 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-@router.get("/rds", response_model=ListResponse[RDSInstanceResponse])
+RDS_SORT_COLUMNS = {
+    "name": RDSInstance.name,
+    "status": RDSInstance.status,
+    "engine": RDSInstance.engine,
+    "instance_class": RDSInstance.db_instance_class,
+    "db_instance_identifier": RDSInstance.db_instance_identifier,
+}
+
+
+@router.get("/rds", response_model=PaginatedResponse[RDSInstanceResponse])
 async def list_rds_instances(
     status: Optional[DisplayStatus] = Query(
         None, description="Filter by display status"
@@ -36,61 +44,70 @@ async def list_rds_instances(
     search: Optional[str] = Query(None, description="Search by name or identifier"),
     engine: Optional[str] = Query(None, description="Filter by database engine"),
     tf_managed: Optional[bool] = Query(None, description="Filter by Terraform managed"),
+    tag: Optional[str] = Query(None, description="Filter by tag (format: key:value)"),
+    page: int = Query(1, ge=1, description="Page number"),
+    page_size: int = Query(50, ge=1, le=200, description="Items per page"),
+    sort_by: Optional[str] = Query(None, description="Sort by field name"),
+    sort_order: str = Query("asc", pattern="^(asc|desc)$", description="Sort order"),
     db: AsyncSession = Depends(get_db),
 ):
-    """
-    List all RDS instances with optional filtering.
+    """List RDS instances with filtering, pagination, and sorting."""
+    conditions = [RDSInstance.is_deleted == False]
 
-    Args:
-        status: Filter by display status (active, inactive, transitioning, error)
-        region: Filter by AWS region name
-        search: Search term for name or DB identifier
-        engine: Filter by database engine (e.g., postgres, mysql)
-        tf_managed: Filter by Terraform managed status
-
-    Returns:
-        List of RDS instances matching the filters
-    """
-    # Build query - exclude deleted instances by default
-    query = (
-        select(RDSInstance)
-        .options(joinedload(RDSInstance.region))
-        .where(RDSInstance.is_deleted == False)
-    )
-
-    # Apply filters
     if status:
         statuses = _get_statuses_for_display(status)
-        query = query.where(RDSInstance.status.in_(statuses))
-
-    if region:
-        query = query.join(Region).where(Region.name == region)
+        conditions.append(RDSInstance.status.in_(statuses))
 
     if search:
         search_term = f"%{search}%"
-        query = query.where(
+        conditions.append(
             (RDSInstance.name.ilike(search_term))
             | (RDSInstance.db_instance_identifier.ilike(search_term))
         )
 
     if engine:
-        query = query.where(RDSInstance.engine == engine)
+        conditions.append(RDSInstance.engine == engine)
 
     if tf_managed is not None:
-        query = query.where(RDSInstance.tf_managed == tf_managed)
+        conditions.append(RDSInstance.tf_managed == tf_managed)
 
-    # Execute query
-    result = await db.execute(
-        query.order_by(RDSInstance.name, RDSInstance.db_instance_identifier)
+    if tag:
+        conditions.append(RDSInstance.tags.contains(tag))
+
+    # Count
+    count_query = select(func.count(RDSInstance.id)).where(*conditions)
+    if region:
+        count_query = count_query.join(Region).where(Region.name == region)
+    total = (await db.execute(count_query)).scalar_one()
+
+    # Data
+    query = (
+        select(RDSInstance).options(joinedload(RDSInstance.region)).where(*conditions)
     )
+    if region:
+        query = query.join(Region).where(Region.name == region)
+
+    sort_col = RDS_SORT_COLUMNS.get(sort_by) if sort_by else None
+    if sort_col is not None:
+        query = query.order_by(
+            sort_col.desc() if sort_order == "desc" else sort_col.asc()
+        )
+    else:
+        query = query.order_by(RDSInstance.name, RDSInstance.db_instance_identifier)
+
+    query = query.offset((page - 1) * page_size).limit(page_size)
+
+    result = await db.execute(query)
     instances = result.scalars().unique().all()
 
-    # Convert to response format
     response_data = [_instance_to_response(instance) for instance in instances]
 
-    return ListResponse(
+    return PaginatedResponse(
         data=response_data,
-        meta=MetaInfo(total=len(response_data)),
+        total=total,
+        page=page,
+        page_size=page_size,
+        has_more=(page * page_size) < total,
     )
 
 

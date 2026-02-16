@@ -13,6 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.deps import get_current_user
 from app.api.routes import (
     access_mapping,
+    audit,
     auth,
     cyberark,
     ec2,
@@ -176,6 +177,14 @@ app.include_router(
     settings_routes.router,
     prefix="/api/settings",
     tags=["Settings"],
+    dependencies=auth_dependency,
+)
+
+# Audit log routes - admin only (auth check in route handler)
+app.include_router(
+    audit.router,
+    prefix="/api",
+    tags=["Audit"],
     dependencies=auth_dependency,
 )
 

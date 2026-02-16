@@ -222,6 +222,7 @@ export function UserManagementPanel() {
                           : "Change user role"
                       }
                     >
+                      <option value="viewer">Viewer</option>
                       <option value="user">User</option>
                       <option value="admin">Admin</option>
                     </select>

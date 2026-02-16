@@ -28,6 +28,7 @@ import type {
 import { TerraformBucketsSettings } from "@/components/settings/TerraformBucketsSettings";
 import { UserManagementPanel } from "@/components/settings/UserManagementPanel";
 import { CyberArkSettings } from "@/components/settings/CyberArkSettings";
+import { AuditLogPanel } from "@/components/settings/AuditLogPanel";
 
 export function SettingsPage() {
   const { user, logout } = useAuth();
@@ -200,6 +201,8 @@ export function SettingsPage() {
         )}
 
         {activeTab === "cyberark" && <CyberArkSettings />}
+
+        {activeTab === "audit-log" && <AuditLogPanel />}
       </div>
     </div>
   );
@@ -223,6 +226,15 @@ function OIDCSettingsForm({ settings, onUpdate }: OIDCSettingsFormProps) {
   );
   const [refreshTokenExpireDays, setRefreshTokenExpireDays] = useState(
     settings.refresh_token_expire_days,
+  );
+  const [roleClaim, setRoleClaim] = useState(settings.role_claim || "groups");
+  const [adminGroups, setAdminGroups] = useState(settings.admin_groups || "");
+  const [userGroups, setUserGroups] = useState(settings.user_groups || "");
+  const [viewerGroups, setViewerGroups] = useState(
+    settings.viewer_groups || "",
+  );
+  const [defaultRole, setDefaultRole] = useState(
+    settings.default_role || "viewer",
   );
   const [isSaving, setIsSaving] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
@@ -283,6 +295,11 @@ function OIDCSettingsForm({ settings, onUpdate }: OIDCSettingsFormProps) {
       display_name: displayName || undefined,
       access_token_expire_minutes: accessTokenExpireMinutes,
       refresh_token_expire_days: refreshTokenExpireDays,
+      role_claim: roleClaim || undefined,
+      admin_groups: adminGroups,
+      user_groups: userGroups,
+      viewer_groups: viewerGroups,
+      default_role: defaultRole || undefined,
     };
 
     // Only include client secret if it was changed
@@ -534,6 +551,89 @@ function OIDCSettingsForm({ settings, onUpdate }: OIDCSettingsFormProps) {
                 1-365 days (default: 7)
               </p>
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Group-to-Role Mapping */}
+      <div className="border-t border-gray-200 pt-4 dark:border-gray-700">
+        <h4 className="mb-1 text-sm font-medium text-gray-900 dark:text-gray-100">
+          Group-to-Role Mapping
+        </h4>
+        <p className="mb-3 text-xs text-gray-500 dark:text-gray-400">
+          Map OIDC groups to application roles. Comma-separate multiple group
+          names.
+        </p>
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Role Claim
+              </label>
+              <input
+                type="text"
+                value={roleClaim}
+                onChange={(e) => setRoleClaim(e.target.value)}
+                placeholder="groups"
+                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+              />
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                OIDC token claim containing group names
+              </p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Default Role
+              </label>
+              <select
+                value={defaultRole}
+                onChange={(e) => setDefaultRole(e.target.value)}
+                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+              >
+                <option value="viewer">Viewer</option>
+                <option value="user">User</option>
+                <option value="admin">Admin</option>
+              </select>
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                Role for users without matching groups
+              </p>
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              Admin Groups
+            </label>
+            <input
+              type="text"
+              value={adminGroups}
+              onChange={(e) => setAdminGroups(e.target.value)}
+              placeholder="platform-admins, infra-admins"
+              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              User Groups
+            </label>
+            <input
+              type="text"
+              value={userGroups}
+              onChange={(e) => setUserGroups(e.target.value)}
+              placeholder="platform-users, developers"
+              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              Viewer Groups
+            </label>
+            <input
+              type="text"
+              value={viewerGroups}
+              onChange={(e) => setViewerGroups(e.target.value)}
+              placeholder="platform-viewers, stakeholders"
+              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+            />
           </div>
         </div>
       </div>
