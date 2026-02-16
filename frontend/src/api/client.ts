@@ -635,10 +635,11 @@ export interface AuditLogEntry {
 }
 
 export interface AuditLogsResponse {
-  logs: AuditLogEntry[];
+  data: AuditLogEntry[];
   total: number;
   page: number;
   page_size: number;
+  has_more: boolean;
 }
 
 export async function getAuditLogs(params?: {
