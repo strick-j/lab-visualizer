@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
   Container,
@@ -152,10 +152,35 @@ function ClusterGroupCard({
 
 export function ECSListPage() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const [searchValue, setSearchValue] = useState("");
   const [search, setSearch] = useState("");
   const [expandedClusters, setExpandedClusters] = useState<Set<string>>(
     new Set(),
   );
+
+  // Debounce search input - only update query after user stops typing
+  const searchRef = useRef(search);
+  useEffect(() => {
+    searchRef.current = search;
+  }, [search]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (searchValue !== searchRef.current) {
+        setSearch(searchValue);
+      }
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [searchValue]);
+
+  // Sync external resets back to local state
+  const syncSearch = useCallback((val: string) => {
+    setSearchValue(val);
+  }, []);
+
+  useEffect(() => {
+    syncSearch(search);
+  }, [search, syncSearch]);
 
   const selectedId = searchParams.get("selected");
 
@@ -330,9 +355,12 @@ export function ECSListPage() {
             <CardTitle>Clusters</CardTitle>
             <div className="w-64">
               <SearchInput
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                onClear={() => setSearch("")}
+                value={searchValue}
+                onChange={(e) => setSearchValue(e.target.value)}
+                onClear={() => {
+                  setSearchValue("");
+                  setSearch("");
+                }}
                 placeholder="Search clusters..."
               />
             </div>
@@ -344,7 +372,7 @@ export function ECSListPage() {
               icon={<Container className="h-8 w-8" />}
               title="No ECS clusters found"
               description={
-                search
+                searchValue
                   ? "Try adjusting your search"
                   : "No ECS clusters are available in your account"
               }
