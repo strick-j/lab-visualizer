@@ -424,7 +424,7 @@ async def oidc_callback(
                 userinfo_response.raise_for_status()
                 userinfo = userinfo_response.json()
             except httpx.HTTPError as e:
-                logger.warning(f"OIDC userinfo fetch failed: {e}")
+                logger.warning("OIDC userinfo fetch failed with %s", type(e).__name__)
                 # Continue without userinfo - we can still use id_token claims
 
     # Find or create user
@@ -462,7 +462,7 @@ async def oidc_callback(
         if user.role != resolved_role:
             user.role = resolved_role
             user.is_admin = resolved_role == "admin"
-            logger.info("Updated OIDC user role to %s", resolved_role)
+            logger.info("Updated OIDC user role based on group claims")
 
     # Create session
     ip_address, user_agent = get_client_info(request)
