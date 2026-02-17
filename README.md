@@ -497,6 +497,12 @@ terraform apply
 
 See [infrastructure/README.md](infrastructure/README.md) for detailed deployment instructions.
 
+## Versioning
+
+This project follows [Semantic Versioning](https://semver.org/) (MAJOR.MINOR.PATCH). The `VERSION` file in the repository root is the source of truth — the backend reads it dynamically via `backend/app/version.py`, and CI uses it for image tagging. The `frontend/package.json` `"version"` field must be kept in sync manually.
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the full release process and pre-merge checklist.
+
 ## Required Permissions
 
 ### AWS IAM Permissions
