@@ -78,6 +78,8 @@ A web application that provides visual representation of AWS infrastructure and 
 
 ## Quick Start
 
+> **Deploying to AWS?** This section covers local development with Docker. For production deployment to AWS ECS Fargate using Terraform, see the [Deployment](#deployment) section or the full [Infrastructure Guide](infrastructure/README.md).
+
 ### Prerequisites
 
 - Python 3.11+
