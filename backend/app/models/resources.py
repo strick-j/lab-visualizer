@@ -24,6 +24,9 @@ class TerraformStateBucket(Base):
     region: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
     description: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     prefix: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    excluded_paths: Mapped[Optional[str]] = mapped_column(
+        Text, nullable=True
+    )  # Comma-separated glob patterns to exclude during auto-discovery
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     source: Mapped[str] = mapped_column(
         String(20), nullable=False, default="manual"

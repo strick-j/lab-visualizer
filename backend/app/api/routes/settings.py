@@ -409,6 +409,7 @@ async def create_terraform_bucket(
         region=data.region,
         description=data.description,
         prefix=data.prefix,
+        excluded_paths=data.excluded_paths,
         enabled=data.enabled,
     )
     db.add(bucket)
