@@ -495,7 +495,9 @@ terraform apply
 
 See [infrastructure/README.md](infrastructure/README.md) for detailed deployment instructions.
 
-## IAM Permissions
+## Required Permissions
+
+### AWS IAM Permissions
 
 The application task role is managed by the standalone `iam` module (`infrastructure/modules/iam/`), decoupled from the ECS module so that it persists independently of the deployment mechanism. The required permissions:
 
@@ -557,6 +559,32 @@ The application task role is managed by the standalone `iam` module (`infrastruc
   ]
 }
 ```
+
+### CyberArk Service Account Permissions
+
+When CyberArk integration is enabled (`CYBERARK_ENABLED=true`), the application requires two dedicated service users in CyberArk with the following minimum permissions.
+
+#### SCIM Service User (Identity User/Role Sync)
+
+Used to collect users and roles from CyberArk Identity via the SCIM API. Configured via the SCIM settings in the admin UI (`/api/settings/cyberark/scim`).
+
+| Resource | Permission | Purpose |
+|----------|------------|---------|
+| Users | Read | Enumerate Identity users for access mapping |
+| Groups / Roles | Read | Enumerate Identity roles and role memberships |
+
+#### Platform API Service User (Privilege Cloud + SIA)
+
+Used to collect safes, privileged accounts, safe memberships, and Secure Infrastructure Access (SIA) policies from Privilege Cloud. Configured via the CyberArk settings in the admin UI (`/api/settings/cyberark`).
+
+| Resource | Permission | Purpose |
+|----------|------------|---------|
+| Safes | List / Read (or **Privilege Cloud Auditors** role) | Enumerate safes and safe members |
+| Accounts | List Accounts (or **Privilege Cloud Auditors** role) | Enumerate privileged accounts within safes |
+| Safe Members | Read (or **Privilege Cloud Auditors** role) | Enumerate safe membership for access mapping |
+| UAP Policies | Read | Read Secure Infrastructure Access (SIA) policies for JIT access mapping |
+
+> **Tip**: Assigning the built-in **Privilege Cloud Auditors** role to the Platform API service user grants read-only access to safes, accounts, and safe members in a single step. If a more restrictive approach is preferred, grant individual permissions to only the desired safes.
 
 ## Tech Stack
 
