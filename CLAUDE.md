@@ -273,7 +273,7 @@ lab-visualizer/
 │
 ├── docker-compose.yml         # Local development setup
 ├── Makefile                   # Task automation
-├── VERSION                    # Application version (e.g. 1.4.0)
+├── VERSION                    # Application version (e.g. 1.5.0)
 ├── README.md                  # User documentation
 ├── CLAUDE.md                  # This file (AI assistant context)
 ├── CONTRIBUTING.md            # Contributing guidelines
@@ -548,6 +548,11 @@ See `.env.example` for complete list. Key variables:
 - **Before every commit**, run `cd frontend && npx prettier --write "src/**/*.{ts,tsx}"` to format all frontend files
 - **Before every commit**, run `cd frontend && npx vitest run` and ensure all tests pass. Do not commit if any tests fail
 - **Before every commit**, run `cd frontend && npx tsc --noEmit` and ensure there are no TypeScript errors
+
+### Pre-Merge Checklist (main)
+- **Before merging to `main`**, verify that `VERSION` (root) and `frontend/package.json` `"version"` values match
+- **Before merging to `main`**, verify the version has been bumped appropriately for the scope of changes (MAJOR / MINOR / PATCH per SemVer)
+- The backend (`backend/app/version.py`) reads the `VERSION` file dynamically — it does not need a manual update
 
 ### Security Considerations
 - Never commit secrets or credentials

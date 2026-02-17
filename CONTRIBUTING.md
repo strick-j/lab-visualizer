@@ -34,10 +34,11 @@ This project follows [Semantic Versioning](https://semver.org/) (SemVer) with th
 
 Version numbers are maintained in the following locations and must be kept in sync:
 
-| File | Field |
-|------|-------|
-| `frontend/package.json` | `"version"` |
-| `backend/app/main.py` | `version` parameter in FastAPI app initialization |
+| File | Field | Notes |
+|------|-------|-------|
+| `VERSION` (root) | Plain text version string | **Source of truth** — read by backend and CI |
+| `frontend/package.json` | `"version"` | Must be updated manually to match `VERSION` |
+| `backend/app/main.py` | `version` parameter in FastAPI app | Reads from `VERSION` via `version.py` — no manual update needed |
 
 ### Release Process
 
@@ -45,6 +46,14 @@ Version numbers are maintained in the following locations and must be kept in sy
 2. When a release is ready, `develop` is merged into `main`.
 3. Releases are tagged on `main` using the format `vMAJOR.MINOR.PATCH` (e.g., `v1.1.0`).
 4. Docker images are tagged automatically by CI using the git commit SHA and branch metadata. The `latest` tag is applied to builds from the `main` branch.
+
+### Pre-Merge Checklist
+
+Before merging to `main`, verify:
+
+- [ ] `VERSION` and `frontend/package.json` `"version"` values match
+- [ ] Version has been bumped appropriately for the scope of changes (MAJOR / MINOR / PATCH per SemVer)
+- [ ] All CI checks pass (lint, type-check, tests, security scans)
 
 ### Support Policy
 
