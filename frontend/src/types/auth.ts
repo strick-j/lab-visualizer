@@ -127,6 +127,7 @@ export interface TerraformBucket {
   region: string | null;
   description: string | null;
   prefix: string | null;
+  excluded_paths: string | null;
   enabled: boolean;
   source: string;
   paths: TerraformPath[];
@@ -144,6 +145,7 @@ export interface TerraformBucketCreate {
   region?: string;
   description?: string;
   prefix?: string;
+  excluded_paths?: string;
   enabled?: boolean;
 }
 
@@ -152,6 +154,7 @@ export interface TerraformBucketUpdate {
   region?: string;
   description?: string;
   prefix?: string;
+  excluded_paths?: string;
   enabled?: boolean;
 }
 

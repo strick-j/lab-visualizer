@@ -206,6 +206,19 @@ function filterSubnets(
         );
       }
 
+      // If tfManaged filter is active, only keep subnet if it matches OR has matching children
+      if (
+        filters.tfManaged &&
+        !matchesTfManaged(subnet.tf_managed, filters.tfManaged)
+      ) {
+        return (
+          subnet.ec2_instances.length > 0 ||
+          subnet.rds_instances.length > 0 ||
+          subnet.ecs_containers.length > 0 ||
+          subnet.nat_gateway !== null
+        );
+      }
+
       // If search is active, only keep subnet if it has matching children
       if (filters.search) {
         return (
@@ -327,6 +340,14 @@ export function filterTopologyData(
         matchesSearch(filters.search, vpc.name, vpc.id, vpc.cidr_block)
       )
         return true;
+
+      // If tfManaged filter is active, only keep VPC if it matches OR has surviving children
+      if (
+        filters.tfManaged &&
+        !matchesTfManaged(vpc.tf_managed, filters.tfManaged)
+      ) {
+        return vpc.subnets.length > 0 || vpc.internet_gateway !== null;
+      }
 
       // Keep VPC if it has any surviving children
       return vpc.subnets.length > 0 || vpc.internet_gateway !== null;

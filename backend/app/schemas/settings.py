@@ -120,6 +120,13 @@ class TerraformBucketCreate(BaseModel):
         description="S3 key prefix to filter state files (e.g., 'lab/')",
         max_length=500,
     )
+    excluded_paths: Optional[str] = Field(
+        None,
+        description=(
+            "Comma-separated glob patterns to exclude during auto-discovery "
+            "(e.g., '*/archive/*,*/backup/*,*/test/*')"
+        ),
+    )
     enabled: bool = Field(True, description="Whether this bucket is active")
 
 
@@ -132,6 +139,10 @@ class TerraformBucketUpdate(BaseModel):
     region: Optional[str] = Field(None, description="AWS region", max_length=30)
     description: Optional[str] = Field(None, description="Description", max_length=500)
     prefix: Optional[str] = Field(None, description="S3 key prefix", max_length=500)
+    excluded_paths: Optional[str] = Field(
+        None,
+        description="Comma-separated glob patterns to exclude during auto-discovery",
+    )
     enabled: Optional[bool] = Field(None, description="Whether this bucket is active")
 
 
@@ -186,6 +197,7 @@ class TerraformBucketResponse(BaseModel):
     region: Optional[str] = None
     description: Optional[str] = None
     prefix: Optional[str] = None
+    excluded_paths: Optional[str] = None
     enabled: bool = True
     source: str = "manual"
     paths: List[TerraformPathResponse] = []

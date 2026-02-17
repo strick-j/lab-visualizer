@@ -432,6 +432,7 @@ class TerraformStateAggregator:
                             "prefix": row.prefix,
                             "description": row.description,
                             "source": row.source,
+                            "excluded_paths": row.excluded_paths,
                             "explicit_paths": explicit_paths,
                         }
                     )
@@ -498,6 +499,7 @@ class TerraformStateAggregator:
             region = db_bucket.get("region")
             source = db_bucket.get("source", "manual")
             explicit_paths = db_bucket.get("explicit_paths", [])
+            excluded_paths = db_bucket.get("excluded_paths") or ""
 
             state_configs: List[Dict[str, Any]] = []
 
@@ -513,7 +515,7 @@ class TerraformStateAggregator:
             elif not state_configs:
                 # No explicit paths and no YAML -> auto-discover
                 discovered = await self._discover_state_files(
-                    bucket_name, prefix, region
+                    bucket_name, prefix, region, excluded_paths
                 )
                 state_configs.extend(discovered)
 
@@ -542,7 +544,11 @@ class TerraformStateAggregator:
         return entries
 
     async def _discover_state_files(
-        self, bucket_name: str, prefix: str, region: Optional[str] = None
+        self,
+        bucket_name: str,
+        prefix: str,
+        region: Optional[str] = None,
+        excluded_paths: str = "",
     ) -> List[Dict[str, Any]]:
         """
         Discover .tfstate files in an S3 bucket under the given prefix.
@@ -551,10 +557,21 @@ class TerraformStateAggregator:
             bucket_name: S3 bucket name
             prefix: Key prefix to search under
             region: AWS region for the S3 client
+            excluded_paths: Comma-separated glob patterns to exclude
 
         Returns:
             List of state file configurations
         """
+        import fnmatch
+
+        # Build exclusion patterns from both hardcoded defaults and user config
+        exclude_patterns = ["*/archive/*", "*/backup/*"]
+        if excluded_paths:
+            for pattern in excluded_paths.split(","):
+                pattern = pattern.strip()
+                if pattern:
+                    exclude_patterns.append(pattern)
+
         try:
             session_kwargs: Dict[str, Any] = {}
             if settings.aws_profile:
@@ -568,10 +585,8 @@ class TerraformStateAggregator:
             for page in paginator.paginate(Bucket=bucket_name, Prefix=prefix):
                 for obj in page.get("Contents", []):
                     key = obj["Key"]
-                    if (
-                        key.endswith(".tfstate")
-                        and "/archive/" not in key
-                        and "/backup/" not in key
+                    if key.endswith(".tfstate") and not any(
+                        fnmatch.fnmatch(key, pat) for pat in exclude_patterns
                     ):
                         # Derive a human-readable name from the key
                         name = key

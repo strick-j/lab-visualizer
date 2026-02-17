@@ -64,6 +64,28 @@ The `iam` module is intentionally separate from the `ecs` module so that the app
 - **ECS read-only policy**: `DescribeClusters`, `ListClusters`, `DescribeServices`, `ListServices`, `DescribeTasks`, `ListTasks`, `DescribeTaskDefinition`, `DescribeContainerInstances`
 - **S3 Terraform state policy**: `GetObject`, `ListBucket`, `GetBucketLocation` scoped to the current AWS account
 
+### CyberArk Service Account Permissions
+
+When CyberArk integration is enabled, the application requires two dedicated service users with the following minimum permissions.
+
+**SCIM Service User** (Identity User/Role Sync):
+
+| Resource | Permission | Purpose |
+|----------|------------|---------|
+| Users | Read | Enumerate Identity users for access mapping |
+| Groups / Roles | Read | Enumerate Identity roles and role memberships |
+
+**Platform API Service User** (Privilege Cloud + SIA):
+
+| Resource | Permission | Purpose |
+|----------|------------|---------|
+| Safes | List / Read (or **Privilege Cloud Auditors** role) | Enumerate safes and safe members |
+| Accounts | List Accounts (or **Privilege Cloud Auditors** role) | Enumerate privileged accounts within safes |
+| Safe Members | Read (or **Privilege Cloud Auditors** role) | Enumerate safe membership for access mapping |
+| UAP Policies | Read | Read SIA policies for JIT access mapping |
+
+> **Tip**: Assigning the built-in **Privilege Cloud Auditors** role to the Platform API service user grants read-only access to safes, accounts, and safe members in a single step.
+
 ### Secrets Module
 
 The `secrets` module manages AWS Secrets Manager secrets for sensitive configuration that persists across ECS task redeployments:

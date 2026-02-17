@@ -358,6 +358,12 @@ function BucketCard({
                 ? `${pathCount} path${pathCount !== 1 ? "s" : ""} configured`
                 : "Auto-discovery"}
             </span>
+            {bucket.excluded_paths && (
+              <span>
+                Exclusions:{" "}
+                <code className="text-xs">{bucket.excluded_paths}</code>
+              </span>
+            )}
           </div>
         </div>
         <div className="ml-4 flex items-center gap-1 flex-shrink-0">
@@ -896,6 +902,7 @@ function BucketAddForm({ onSave, onCancel }: BucketAddFormProps) {
   const [region, setRegion] = useState("");
   const [description, setDescription] = useState("");
   const [prefix, setPrefix] = useState("");
+  const [excludedPaths, setExcludedPaths] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -909,6 +916,7 @@ function BucketAddForm({ onSave, onCancel }: BucketAddFormProps) {
         region: region.trim() || undefined,
         description: description.trim() || undefined,
         prefix: prefix.trim() || undefined,
+        excluded_paths: excludedPaths.trim() || undefined,
         enabled: true,
       });
     } catch (err: unknown) {
@@ -975,6 +983,22 @@ function BucketAddForm({ onSave, onCancel }: BucketAddFormProps) {
             className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
           />
         </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            Excluded Paths
+          </label>
+          <input
+            type="text"
+            value={excludedPaths}
+            onChange={(e) => setExcludedPaths(e.target.value)}
+            placeholder="*/archive/*, */backup/*, */test/* (comma-separated)"
+            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+          />
+          <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">
+            Comma-separated glob patterns to exclude during auto-discovery.
+            Paths matching */archive/* and */backup/* are always excluded.
+          </p>
+        </div>
         {saveError && (
           <p className="text-sm text-red-600 dark:text-red-400">{saveError}</p>
         )}
@@ -1009,6 +1033,9 @@ function BucketEditForm({ bucket, onSave, onCancel }: BucketEditFormProps) {
   const [region, setRegion] = useState(bucket.region || "");
   const [description, setDescription] = useState(bucket.description || "");
   const [prefix, setPrefix] = useState(bucket.prefix || "");
+  const [excludedPaths, setExcludedPaths] = useState(
+    bucket.excluded_paths || "",
+  );
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -1023,6 +1050,7 @@ function BucketEditForm({ bucket, onSave, onCancel }: BucketEditFormProps) {
         region: region.trim() || undefined,
         description: description.trim() || undefined,
         prefix: prefix.trim() || undefined,
+        excluded_paths: excludedPaths.trim() || undefined,
       };
       // Only allow renaming non-env buckets
       if (!isEnvBucket) {
@@ -1098,6 +1126,22 @@ function BucketEditForm({ bucket, onSave, onCancel }: BucketEditFormProps) {
             onChange={(e) => setDescription(e.target.value)}
             className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
           />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            Excluded Paths
+          </label>
+          <input
+            type="text"
+            value={excludedPaths}
+            onChange={(e) => setExcludedPaths(e.target.value)}
+            placeholder="*/archive/*, */backup/*, */test/* (comma-separated)"
+            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+          />
+          <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">
+            Comma-separated glob patterns to exclude during auto-discovery.
+            Paths matching */archive/* and */backup/* are always excluded.
+          </p>
         </div>
         {saveError && (
           <p className="text-sm text-red-600 dark:text-red-400">{saveError}</p>
