@@ -91,6 +91,13 @@ resource "aws_s3_bucket" "alb_logs_access_logs" {
   tags = merge(var.tags, {
     Name = "${var.project_name}-${var.environment}-alb-logs-access"
   })
+
+  lifecycle {
+    precondition {
+      condition     = length("${var.project_name}-${var.environment}-alb-logs-access-${data.aws_caller_identity.current.account_id}") <= 63
+      error_message = "S3 bucket name '${var.project_name}-${var.environment}-alb-logs-access-${data.aws_caller_identity.current.account_id}' exceeds the 63-character AWS limit. Shorten project_name (currently ${length(var.project_name)} characters)."
+    }
+  }
 }
 
 resource "aws_s3_bucket_versioning" "alb_logs_access_logs" {
@@ -211,8 +218,8 @@ resource "aws_sns_topic" "alb_logs_events" {
 }
 
 resource "aws_sns_topic_policy" "alb_logs_events" {
-  count  = var.enable_access_logs && var.access_logs_bucket == "" ? 1 : 0
-  arn    = aws_sns_topic.alb_logs_events[0].arn
+  count = var.enable_access_logs && var.access_logs_bucket == "" ? 1 : 0
+  arn   = aws_sns_topic.alb_logs_events[0].arn
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -296,7 +303,7 @@ resource "aws_s3_bucket_policy" "alb_logs" {
 # -----------------------------------------------------------------------------
 
 resource "aws_lb" "main" {
-  name               = "${var.project_name}-${var.environment}-alb"
+  name = "${var.project_name}-${var.environment}-alb"
   #trivy:ignore:AWS-0053 -- ALB is intentionally public-facing as the internet entry point for the web application
   internal           = false
   load_balancer_type = "application"
@@ -318,6 +325,13 @@ resource "aws_lb" "main" {
   tags = merge(var.tags, {
     Name = "${var.project_name}-${var.environment}-alb"
   })
+
+  lifecycle {
+    precondition {
+      condition     = length("${var.project_name}-${var.environment}-alb") <= 32
+      error_message = "ALB name '${var.project_name}-${var.environment}-alb' exceeds the 32-character AWS limit. Shorten project_name (currently ${length(var.project_name)} characters)."
+    }
+  }
 }
 
 # -----------------------------------------------------------------------------
@@ -357,6 +371,11 @@ resource "aws_lb_target_group" "main" {
 
   lifecycle {
     create_before_destroy = true
+
+    precondition {
+      condition     = length("${var.project_name}-${var.environment}-tg") <= 32
+      error_message = "Target group name '${var.project_name}-${var.environment}-tg' exceeds the 32-character AWS limit. Shorten project_name (currently ${length(var.project_name)} characters)."
+    }
   }
 }
 
@@ -390,6 +409,11 @@ resource "aws_lb_target_group" "frontend" {
 
   lifecycle {
     create_before_destroy = true
+
+    precondition {
+      condition     = length("${var.project_name}-${var.environment}-fe-tg") <= 32
+      error_message = "Frontend target group name '${var.project_name}-${var.environment}-fe-tg' exceeds the 32-character AWS limit. Shorten project_name (currently ${length(var.project_name)} characters)."
+    }
   }
 }
 

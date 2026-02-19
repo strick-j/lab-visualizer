@@ -495,6 +495,8 @@ terraform plan
 terraform apply
 ```
 
+> **Project name length limit**: The `project_name` Terraform variable is used as a prefix for AWS resource names. Due to AWS name length limits (e.g., ALB target groups are limited to 32 characters), `project_name` must be **22 characters or fewer for dev** and **21 characters or fewer for prod**. The default `aws-infra-visualizer` (20 chars) fits both. See the [Infrastructure Guide](infrastructure/README.md#project-name-limitations) for details.
+
 See [infrastructure/README.md](infrastructure/README.md) for detailed deployment instructions.
 
 ## Versioning
