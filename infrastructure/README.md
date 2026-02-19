@@ -97,6 +97,32 @@ The `secrets` module manages AWS Secrets Manager secrets for sensitive configura
 
 Secrets are injected into ECS task definitions as secret environment variables (resolved at container launch from Secrets Manager ARNs).
 
+## Project Name Limitations
+
+The `project_name` variable is used as a prefix for AWS resource names. Because several AWS services enforce strict name length limits, `project_name` must stay within the bounds below:
+
+| Environment | Max Length | Tightest Constraint |
+|-------------|-----------|---------------------|
+| **dev** | **22 characters** | ALB target group: `{name}-dev-fe-tg` (32 char limit) |
+| **prod** | **21 characters** | ALB target group: `{name}-prod-fe-tg` (32 char limit) |
+
+The default value `aws-infra-visualizer` (20 characters) fits both environments.
+
+**Additional format rules:**
+- Lowercase letters, numbers, and hyphens only
+- Must not start or end with a hyphen
+
+**Derived resource name limits by AWS service:**
+
+| AWS Service | Name Pattern | Limit | Dev max name | Prod max name |
+|-------------|-------------|-------|-------------|---------------|
+| ALB Target Group | `{name}-{env}-fe-tg` | 32 | 22 | 21 |
+| ALB | `{name}-{env}-alb` | 32 | 24 | 23 |
+| S3 Bucket | `{name}-{env}-alb-logs-access-{acct_id}` | 63 | 29 | 28 |
+| IAM Role | `{name}-{env}-vpc-flow-logs-role` | 64 | 39 | 38 |
+
+Terraform will reject a `project_name` that exceeds the limit at plan time with a clear error message.
+
 ## Prerequisites
 
 1. **AWS CLI** configured with appropriate credentials

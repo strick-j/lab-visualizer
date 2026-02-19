@@ -7,9 +7,19 @@
 # -----------------------------------------------------------------------------
 
 variable "project_name" {
-  description = "Name of the project"
+  description = "Name of the project (max 21 characters for prod environment)"
   type        = string
   default     = "aws-infra-visualizer"
+
+  validation {
+    condition     = length(var.project_name) >= 2 && length(var.project_name) <= 21
+    error_message = "project_name must be between 2 and 21 characters. The prod environment appends suffixes like '-prod-fe-tg' to create AWS resource names, and ALB target group names are limited to 32 characters."
+  }
+
+  validation {
+    condition     = can(regex("^[a-z0-9][a-z0-9-]*[a-z0-9]$", var.project_name))
+    error_message = "project_name must contain only lowercase letters, numbers, and hyphens, and must not start or end with a hyphen."
+  }
 }
 
 variable "environment" {
